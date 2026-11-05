@@ -15,19 +15,26 @@ precision highp float;
 precision mediump float;
 #endif
 
+// Schwarzschild black hole, rs = 1. Thin Novikov-Thorne disk from the ISCO (r = 3)
+// out to DISK_OUT, lit by its own blackbody, Doppler-beamed and gravitationally
+// redshifted. Rays are integrated with an adaptive leapfrog step, so a pixel takes
+// 20 to 70 iterations instead of hundreds.
+
 uniform vec2 uRes;
-uniform float uTime;
-uniform float uYaw;
-uniform float uPitch;
-uniform float uDist;
 uniform vec2 uCenter;
 uniform float uScale;
+uniform float uTime;
+uniform vec3 uCamPos;
+uniform vec3 uCamRight;
+uniform vec3 uCamUp;
+uniform vec3 uCamFwd;
+uniform sampler2D uNoise;
 
-float hash13(vec3 p3) {
-  p3 = fract(p3 * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
+const float ISCO = 3.0;
+const float DISK_OUT = 13.0;
+const float R_OUT = 16.0;
+const float FLUX_NORM = 476.6;   // 1 / peak of (1 - sqrt(3/r)) / r^3, at r ~ 4.08
+const int MAX_STEPS = 64;
 
 float hash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -35,171 +42,147 @@ float hash12(vec2 p) {
   return fract((p3.x + p3.y) * p3.z);
 }
 
-vec3 hash33(vec3 p3) {
-  p3 = fract(p3 * vec3(0.1031, 0.1030, 0.0973));
-  p3 += dot(p3, p3.yxz + 33.33);
-  return fract((p3.xxy + p3.yxx) * p3.zyx);
+float noise(vec2 p) {
+  return texture2D(uNoise, p * (1.0 / 64.0)).r;
 }
 
-float noise2(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  float a = hash12(i);
-  float b = hash12(i + vec2(1.0, 0.0));
-  float c = hash12(i + vec2(0.0, 1.0));
-  float d = hash12(i + vec2(1.0, 1.0));
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+// Blackbody tint for a temperature ratio t (1.0 = the disk's peak): deep orange
+// at the cool rim, white near the peak, a cool blue-white for blueshifted gas.
+vec3 blackbody(float t) {
+  t = clamp(t, 0.0, 2.2);
+  vec3 ember = vec3(0.62, 0.12, 0.02);
+  vec3 amber = vec3(1.0, 0.42, 0.08);
+  vec3 gold = vec3(1.0, 0.7, 0.32);
+  vec3 white = vec3(1.0, 0.93, 0.82);
+  vec3 blue = vec3(0.8, 0.88, 1.0);
+  vec3 c = mix(ember, amber, smoothstep(0.15, 0.5, t));
+  c = mix(c, gold, smoothstep(0.5, 0.85, t));
+  c = mix(c, white, smoothstep(0.9, 1.25, t));
+  return mix(c, blue, smoothstep(1.35, 2.1, t));
 }
 
-float fbm2(vec2 p) {
-  float v = 0.0;
-  float amp = 0.52;
-  for (int i = 0; i < 4; i++) {
-    v += amp * noise2(p);
-    p = p * 2.15 + 7.1;
-    amp *= 0.48;
+vec4 shadeDisk(vec3 hit, vec3 dir) {
+  float r = length(hit.xz);
+  if (r < ISCO || r > DISK_OUT) return vec4(0.0);
+
+  // Keplerian angular speed, slowed for the screen; the pattern is sampled in the
+  // co-rotating frame, so the inner disk visibly laps the outer one.
+  float omega = 2.4 * pow(r, -1.5);
+  float a = atan(hit.z, hit.x) + uTime * omega;
+  float lr = log(r);
+  vec2 q = vec2(a * 3.0, lr * 9.0);
+  float n = noise(q) * 0.5 + noise(q * 2.3 + 7.1) * 0.3 + noise(vec2(a * 14.0, lr * 40.0)) * 0.2;
+  float lanes = 0.28 + 0.72 * smoothstep(0.3, 0.8, n);
+
+  float flux = (1.0 - sqrt(ISCO / r)) / (r * r * r) * FLUX_NORM;
+  float temp = pow(max(flux, 0.0), 0.25);
+
+  // Orbital velocity and the full relativistic shift, gravitational and Doppler.
+  float v = inversesqrt(2.0 * (r - 1.0));
+  vec3 vel = normalize(vec3(-hit.z, 0.0, hit.x)) * v;
+  float gamma = inversesqrt(1.0 - v * v);
+  float g = sqrt(1.0 - 1.5 / r) / (gamma * (1.0 + dot(vel, dir)));
+
+  vec3 col = blackbody(temp * g) * flux * g * g * g * g * lanes * 1.6;
+  float edge = smoothstep(ISCO, ISCO + 0.25, r) * smoothstep(DISK_OUT, DISK_OUT - 4.0, r);
+  return vec4(col * edge, edge * (0.55 + 0.4 * lanes));
+}
+
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.zyx + 31.32);
+  return fract((p.x + p.y) * p.z);
+}
+
+vec3 stars(vec3 d) {
+  vec3 p = d * 110.0;
+  vec3 cell = floor(p);
+  vec3 f = fract(p) - 0.5;
+  float h = hash13(cell);
+  float s = 0.0;
+  if (h > 0.985) {
+    vec3 o = vec3(hash13(cell + 3.1), hash13(cell + 7.7), hash13(cell + 1.9)) - 0.5;
+    float k = (h - 0.985) * 66.7;
+    vec3 q = f - o * 0.55;
+    s = exp(-dot(q, q) * 160.0) * (0.12 + 1.2 * k * k);
   }
-  return v;
-}
-
-vec3 backgroundStars(vec3 dir) {
-  vec3 col = vec3(0.0003, 0.0004, 0.0008);
-  vec3 pStar = dir * 200.0;
-  vec3 iStar = floor(pStar);
-  vec3 fStar = fract(pStar) - 0.5;
-  float rnd = hash13(iStar);
-  if (rnd > 0.985) {
-    vec3 offset = (hash33(iStar) - 0.5) * 0.65;
-    float dist = length(fStar - offset);
-    float size = 0.045 + 0.055 * fract(rnd * 137.1);
-    float glow = exp(-dist * dist / (size * size * 0.20));
-    float twinkle = 0.75 + 0.25 * sin(uTime * 2.5 + rnd * 60.0);
-    vec3 starCol = mix(vec3(0.95, 0.98, 1.0), vec3(0.75, 0.90, 1.0), fract(rnd * 43.1));
-    if (fract(rnd * 89.2) > 0.85) starCol = vec3(1.0, 0.92, 0.82);
-    col += starCol * glow * twinkle * 2.2;
-  }
-  return col;
-}
-
-vec4 sampleDisk(vec3 hit, vec3 rayDir) {
-  float rad = length(hit.xz);
-  float innerR = 1.88;
-  float outerR = 7.6;
-  if (rad < innerR || rad > outerR) return vec4(0.0);
-
-  float speed = 1.55 / (sqrt(rad) + 0.25);
-  float angle = -uTime * speed;
-  float ca = cos(angle), sa = sin(angle);
-  vec2 rotP = vec2(ca * hit.x - sa * hit.z, sa * hit.x + ca * hit.z);
-
-  float turb = fbm2(rotP * 0.95);
-  float bands = 0.35 * sin(rad * 22.0 + turb * 2.8 - uTime * 0.2)
-              + 0.25 * sin(rad * 46.0)
-              + 0.20 * sin(rad * 8.5)
-              + 0.45;
-  float edgeIn = smoothstep(innerR, innerR + 0.35, rad);
-  float edgeOut = smoothstep(outerR, outerR - 1.5, rad);
-  float density = edgeIn * edgeOut * (0.35 + 0.65 * turb) * (0.5 + 0.5 * bands);
-
-  vec3 diskVelocity = normalize(vec3(-hit.z, 0.0, hit.x));
-  float doppler = dot(diskVelocity, -rayDir);
-  float dopplerFactor = pow(clamp(1.0 + 0.62 * doppler, 0.15, 2.7), 3.5);
-
-  vec3 colHot = vec3(1.35, 1.40, 1.48);
-  vec3 colMid = vec3(0.96, 0.98, 1.05);
-  vec3 colWarm = vec3(0.85, 0.82, 0.78);
-  vec3 colOuter = vec3(0.55, 0.35, 0.18);
-
-  vec3 col = mix(colOuter, colWarm, smoothstep(0.0, 0.35, density));
-  col = mix(col, colMid, smoothstep(0.3, 0.7, density));
-  col = mix(col, colHot, smoothstep(0.65, 0.98, density));
-
-  float innerGlow = smoothstep(innerR + 0.95, innerR, rad);
-  col += colHot * innerGlow * innerGlow * 2.4;
-  col *= dopplerFactor * 1.95;
-  float alpha = smoothstep(0.015, 0.32, density);
-  return vec4(col, alpha);
-}
-
-vec3 traceScene(vec2 uv) {
-  vec3 lookAt = vec3(0.0, 0.0, 0.0);
-  vec3 camPos = lookAt + uDist * vec3(
-    cos(uPitch) * sin(uYaw),
-    sin(uPitch),
-    -cos(uPitch) * cos(uYaw)
-  );
-  vec3 fwd = normalize(lookAt - camPos);
-  vec3 right = normalize(cross(fwd, vec3(0.0, 1.0, 0.0)));
-  vec3 up = cross(right, fwd);
-  float fov = 0.85;
-  vec3 dir = normalize(fwd + uv.x * fov * right + uv.y * fov * up);
-
-  vec3 pos = camPos;
-  vec3 hvec = cross(pos, dir);
-  float h2 = dot(hvec, hvec);
-  float eventR = 1.0;
-  float photonR = 1.52;
-
-  vec4 diskAccum = vec4(0.0);
-  bool captured = false;
-  float minR = 1000.0;
-  int diskCrossings = 0;
-
-  for (int i = 0; i < 220; i++) {
-    vec3 prevPos = pos;
-    float r = length(pos);
-    minR = min(minR, r);
-
-    float dt = clamp(r * 0.052, 0.007, 0.98);
-    float r2safe = max(dot(pos, pos), 0.55);
-    vec3 acc = -1.65 * h2 * pos / pow(r2safe, 2.5);
-    dir = normalize(dir + acc * dt);
-    pos += dir * dt;
-
-    if (r < eventR) {
-      captured = true;
-      break;
-    }
-
-    if (prevPos.y * pos.y < 0.0 && diskAccum.a < 0.98) {
-      float t = prevPos.y / (prevPos.y - pos.y);
-      vec3 hit = mix(prevPos, pos, t);
-      vec4 dc = sampleDisk(hit, dir);
-      if (diskCrossings >= 2) {
-        dc.rgb *= 0.35;
-        dc.a *= 0.35;
-      }
-      diskAccum.rgb += dc.rgb * dc.a * (1.0 - diskAccum.a);
-      diskAccum.a += dc.a * (1.0 - diskAccum.a);
-      diskCrossings++;
-    }
-
-    if (r > 36.0) {
-      break;
-    }
-  }
-
-  vec3 col = diskAccum.rgb;
-  if (!captured) {
-    col += backgroundStars(normalize(dir)) * (1.0 - diskAccum.a);
-    float ringGlow = exp(-abs(minR - photonR) * 22.0);
-    col += vec3(1.35, 1.40, 1.48) * ringGlow * 2.9;
-    float ringHalo = exp(-abs(minR - photonR) * 4.2);
-    col += vec3(0.96, 0.98, 1.05) * ringHalo * 0.45;
-  }
-
-  return col;
+  vec3 tint = mix(vec3(0.75, 0.84, 1.0), vec3(1.0, 0.9, 0.78), hash13(cell + 5.3));
+  return tint * s;
 }
 
 void main() {
   float minDim = min(uRes.x, uRes.y);
   vec2 uv = (gl_FragCoord.xy - uCenter * uRes) / minDim * uScale;
-  vec3 col = traceScene(uv);
-  col = col / (1.0 + col);
-  col = pow(col, vec3(0.86));
-  float vig = 1.0 - 0.20 * smoothstep(0.4, 1.4, length(uv));
-  col *= vig;
+
+  vec3 dir = normalize(uCamFwd + uv.x * 0.9 * uCamRight + uv.y * 0.9 * uCamUp);
+  vec3 pos = uCamPos;
+
+  // Skip the flat space between the camera and the sphere where gravity matters.
+  float b = dot(pos, dir);
+  float c = dot(pos, pos) - R_OUT * R_OUT;
+  float disc = b * b - c;
+  vec3 col = vec3(0.0);
+  float alpha = 0.0;
+  bool captured = false;
+  bool escaped = false;
+
+  float impact = 100.0;
+  float corot = 0.0;
+  if (disc > 0.0 && -b - sqrt(disc) > 0.0) {
+    pos += dir * (-b - sqrt(disc));
+    vec3 hv = cross(pos, dir);
+    float h2 = dot(hv, hv);
+    impact = sqrt(h2);
+    // The disk's angular momentum points along -y; rays that circle the same way
+    // carry light from the approaching side, beamed brighter.
+    corot = -hv.y / max(impact, 1e-3);
+
+    int crossings = 0;
+    for (int i = 0; i < MAX_STEPS; i++) {
+      float r2 = dot(pos, pos);
+      float r = sqrt(r2);
+      if (r < 1.0) { captured = true; break; }
+      if (r > R_OUT + 0.1 && dot(pos, dir) > 0.0) { escaped = true; break; }
+
+      // Step grows with radius; past r = 9 rays barely bend, so they take long strides.
+      float dt = max(r < 9.0 ? 0.14 * r : 0.35 * r, 0.03);
+      vec3 prev = pos;
+      vec3 vh = dir + (-0.75 * dt * h2 / (r2 * r2 * r)) * pos;
+      pos += dt * vh;
+      float r2n = dot(pos, pos);
+      dir = vh + (-0.75 * dt * h2 / (r2n * r2n * sqrt(r2n))) * pos;
+
+      if (prev.y * pos.y < 0.0) {
+        float t = prev.y / (prev.y - pos.y);
+        vec4 d = shadeDisk(mix(prev, pos, t), normalize(dir));
+        if (crossings > 0) d *= 0.75;
+        crossings++;
+        col += d.rgb * (1.0 - alpha);
+        alpha += d.a * (1.0 - alpha);
+        if (alpha > 0.985) { escaped = true; break; }
+      }
+    }
+  }
+
+  if (disc <= 0.0) escaped = true;
+  // A ray still orbiting when the budget runs out sits on the photon sphere: its
+  // light would wind around many times before leaving, so it reads as shadow.
+  if (escaped && !captured) {
+    col += stars(normalize(dir)) * (1.0 - alpha);
+  }
+
+  // Rays near the critical impact parameter (3 sqrt(3) / 2) wind around the photon
+  // sphere and pile up into a thin bright ring. It is drawn as a smooth band on both
+  // sides of the shadow edge, which also hides the edge's per-pixel flicker.
+  float ringD = impact - 2.585;   // where this integrator's shadow edge actually falls
+  float ring = exp(-ringD * ringD * 260.0) + 0.3 * exp(-max(ringD, 0.0) * 8.0) * step(0.0, ringD);
+  float beam = 0.25 + 0.75 * pow(0.5 + 0.5 * corot, 2.0);
+  col += vec3(1.0, 0.8, 0.55) * ring * 0.38 * beam * (1.0 - alpha * 0.8);
+
+  // Filmic tone map, then a whisper of grain against banding on dark gradients.
+  col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
+  col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
+  col += (hash12(gl_FragCoord.xy + fract(uTime) * 61.0) - 0.5) / 255.0;
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -231,6 +214,72 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
+// A 64x64 tileable value-noise texture, built once on the CPU. Sampling it is far
+// cheaper per pixel than hashing fbm noise in the shader.
+function makeNoiseTexture(gl) {
+  const N = 64;
+  const grid = 8;
+  const lattice = new Float32Array(grid * grid);
+  let seed = 1337;
+  for (let i = 0; i < lattice.length; i++) {
+    seed = (seed * 16807) % 2147483647;
+    lattice[i] = seed / 2147483647;
+  }
+  const at = (x, y) => lattice[((y % grid) + grid) % grid * grid + (((x % grid) + grid) % grid)];
+  const fade = (t) => t * t * (3 - 2 * t);
+  const data = new Uint8Array(N * N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      let v = 0;
+      let amp = 0.5;
+      let freq = 1;
+      for (let o = 0; o < 3; o++) {
+        const fx = (x / N) * grid * freq;
+        const fy = (y / N) * grid * freq;
+        const ix = Math.floor(fx);
+        const iy = Math.floor(fy);
+        const ux = fade(fx - ix);
+        const uy = fade(fy - iy);
+        const a = at(ix, iy) * (1 - ux) + at(ix + 1, iy) * ux;
+        const b = at(ix, iy + 1) * (1 - ux) + at(ix + 1, iy + 1) * ux;
+        v += amp * (a * (1 - uy) + b * uy);
+        amp *= 0.5;
+        freq *= 2;
+      }
+      data[y * N + x] = Math.round((v / 0.875) * 255);
+    }
+  }
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, N, N, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  return tex;
+}
+
+// Orbit camera around the hole, computed once per frame instead of per pixel.
+function cameraBasis(yaw, pitch, dist) {
+  const cp = Math.cos(pitch);
+  const pos = [dist * cp * Math.sin(yaw), dist * Math.sin(pitch), -dist * cp * Math.cos(yaw)];
+  const len = Math.hypot(pos[0], pos[1], pos[2]);
+  const fwd = [-pos[0] / len, -pos[1] / len, -pos[2] / len];
+  let right = [fwd[2], 0, -fwd[0]];
+  const rl = Math.hypot(right[0], right[2]) || 1;
+  right = [right[0] / rl, 0, right[2] / rl];
+  const up = [
+    right[1] * fwd[2] - right[2] * fwd[1],
+    right[2] * fwd[0] - right[0] * fwd[2],
+    right[0] * fwd[1] - right[1] * fwd[0],
+  ];
+  return { pos, fwd, right, up };
+}
+
+// Render scale steps: the canvas is drawn at this fraction of CSS pixels and the
+// browser upscales it. The disk is soft, so 0.5 to 0.75 is indistinguishable at a glance.
+const QUALITY = [0.33, 0.42, 0.5, 0.62, 0.75];
+
 const LABELS = {
   en: { hint: 'Drag to rotate, Ctrl and scroll to zoom', pause: 'Pause', spin: 'Spin', reset: 'Reset' },
   ru: { hint: 'Тяните, чтобы вращать, Ctrl и колесо для зума', pause: 'Пауза', spin: 'Вращать', reset: 'Сброс' },
@@ -242,8 +291,8 @@ export function QuasarScene({ lang = 'en' }) {
   const [autoRotate, setAutoRotate] = useState(true);
   const stateRef = useRef({
     yaw: 0.0,
-    pitch: 0.3,
-    dist: 24.0,
+    pitch: 0.16,
+    dist: 30.0,
     autoRotate: true,
     isDragging: false,
     lastX: 0,
@@ -256,8 +305,8 @@ export function QuasarScene({ lang = 'en' }) {
 
   const resetCamera = useCallback(() => {
     stateRef.current.yaw = 0.0;
-    stateRef.current.pitch = 0.3;
-    stateRef.current.dist = 24.0;
+    stateRef.current.pitch = 0.16;
+    stateRef.current.dist = 30.0;
     stateRef.current.yawVel = 0;
     stateRef.current.pitchVel = 0;
     stateRef.current.wake?.();
@@ -273,7 +322,7 @@ export function QuasarScene({ lang = 'en' }) {
 
     let gl;
     try {
-      gl = canvas.getContext('webgl', { powerPreference: 'high-performance', alpha: false, depth: false, antialias: false });
+      gl = canvas.getContext('webgl', { powerPreference: 'high-performance', alpha: false, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false });
     } catch {
       return;
     }
@@ -291,13 +340,29 @@ export function QuasarScene({ lang = 'en' }) {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
     const aPos = gl.getAttribLocation(prog, 'aPos');
-    const uRes = gl.getUniformLocation(prog, 'uRes');
-    const uTime = gl.getUniformLocation(prog, 'uTime');
-    const uYaw = gl.getUniformLocation(prog, 'uYaw');
-    const uPitch = gl.getUniformLocation(prog, 'uPitch');
-    const uDist = gl.getUniformLocation(prog, 'uDist');
-    const uCenter = gl.getUniformLocation(prog, 'uCenter');
-    const uScale = gl.getUniformLocation(prog, 'uScale');
+    const loc = {};
+    ['uRes', 'uCenter', 'uScale', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uNoise'].forEach((n) => {
+      loc[n] = gl.getUniformLocation(prog, n);
+    });
+    const noiseTex = makeNoiseTexture(gl);
+
+    gl.useProgram(prog);
+    gl.enableVertexAttribArray(aPos);
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, noiseTex);
+    gl.uniform1i(loc.uNoise, 0);
+
+    // Adaptive quality: start mid, then step down when frames run long and back up
+    // when there is headroom. Frame cost is measured as the gap between rAF calls
+    // over a rolling window, and the loop is capped at 60fps on fast screens.
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    let quality = coarse ? 1 : 2;
+    let frameSum = 0;
+    let frameCount = 0;
+    let lastDraw = 0;
+    const FRAME_MIN = 1000 / 61;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let visible = true;
@@ -307,14 +372,31 @@ export function QuasarScene({ lang = 'en' }) {
     let t0 = performance.now();
 
     const render = (now) => {
+      if (now - lastDraw < FRAME_MIN) {
+        animId = requestAnimationFrame(render);
+        return;
+      }
       const dt = Math.min((now - t0) * 0.001, 0.1);
       t0 = now;
+      if (lastDraw) {
+        frameSum += now - lastDraw;
+        frameCount++;
+        if (frameCount === 20) {
+          const avg = frameSum / frameCount;
+          if (avg > 34 && quality > 1) quality -= 2;
+          else if (avg > 21 && quality > 0) quality--;
+          else if (avg < 17.5 && quality < QUALITY.length - 1) quality++;
+          frameSum = 0;
+          frameCount = 0;
+        }
+      }
+      lastDraw = now;
 
       const rect = canvas.getBoundingClientRect();
-      const isMobile = window.innerWidth < 768;
-      const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.0 : 1.35);
-      const width = Math.floor(rect.width * dpr);
-      const height = Math.floor(rect.height * dpr);
+      const isMobile = rect.width < 768;
+      const scale = QUALITY[quality] * Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.round(rect.width * scale));
+      const height = Math.max(1, Math.round(rect.height * scale));
 
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
@@ -324,7 +406,7 @@ export function QuasarScene({ lang = 'en' }) {
 
       const st = stateRef.current;
       if (st.autoRotate && !st.isDragging && !reduceMotion.matches) {
-        st.yaw += dt * 0.12;
+        st.yaw += dt * 0.05;
       }
 
       if (!st.isDragging) {
@@ -335,30 +417,29 @@ export function QuasarScene({ lang = 'en' }) {
         st.pitchVel *= damp;
       }
 
-      st.pitch = Math.max(-0.65, Math.min(0.65, st.pitch));
+      st.pitch = Math.max(-0.6, Math.min(0.6, st.pitch));
+      const cam = cameraBasis(st.yaw, st.pitch, st.dist);
 
-      gl.useProgram(prog);
-      gl.enableVertexAttribArray(aPos);
-      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
-      gl.uniform2f(uRes, width, height);
-      gl.uniform1f(uTime, now * 0.001);
-      gl.uniform1f(uYaw, st.yaw);
-      gl.uniform1f(uPitch, st.pitch);
-      gl.uniform1f(uDist, st.dist);
+      gl.uniform2f(loc.uRes, width, height);
+      gl.uniform1f(loc.uTime, (now * 0.001) % 3600);
+      gl.uniform3fv(loc.uCamPos, cam.pos);
+      gl.uniform3fv(loc.uCamRight, cam.right);
+      gl.uniform3fv(loc.uCamUp, cam.up);
+      gl.uniform3fv(loc.uCamFwd, cam.fwd);
       if (isMobile) {
-        gl.uniform2f(uCenter, 0.5, 0.64);
-        gl.uniform1f(uScale, 1.15);
+        gl.uniform2f(loc.uCenter, 0.5, 0.64);
+        gl.uniform1f(loc.uScale, 1.25);
       } else {
         // Fit the hole into the space right of the hero text: the text column ends
         // about 760px into the capped 1440px container.
         const cssW = rect.width;
         const textRight = Math.max(0, (cssW - 1440) / 2) + 760;
         const free = Math.max(cssW - textRight, 240);
-        const half = 0.4 * Math.min(rect.width, rect.height);
-        gl.uniform2f(uCenter, (textRight + free / 2) / cssW, 0.5);
-        gl.uniform1f(uScale, Math.max(1.0, half / (free / 2 - 24)));
+        // The lensed disk reaches about 0.52 of the short side from the centre
+        // at uScale 1; shrink it until it fits the free column with a margin.
+        const reach = 0.52 * Math.min(rect.width, rect.height) * (30 / st.dist);
+        gl.uniform2f(loc.uCenter, (textRight + free / 2) / cssW, 0.5);
+        gl.uniform1f(loc.uScale, Math.max(1.0, reach / (free / 2 - 32)));
       }
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -374,6 +455,7 @@ export function QuasarScene({ lang = 'en' }) {
       if (running || !visible) return;
       running = true;
       t0 = performance.now();
+      lastDraw = 0;
       animId = requestAnimationFrame(render);
     };
     stateRef.current.wake = start;
@@ -384,6 +466,20 @@ export function QuasarScene({ lang = 'en' }) {
     });
     observer.observe(canvas);
     reduceMotion.addEventListener('change', start);
+
+    const onVisibility = () => {
+      visible = !document.hidden;
+      if (visible) start();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const onContextLost = (e) => {
+      e.preventDefault();
+      cancelAnimationFrame(animId);
+      running = false;
+      visible = false;
+    };
+    canvas.addEventListener('webglcontextlost', onContextLost);
     start();
 
     const onPointerDown = (e) => {
@@ -433,7 +529,7 @@ export function QuasarScene({ lang = 'en' }) {
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
       if (Math.abs(e.deltaY) > 0) {
-        stateRef.current.dist = Math.max(14.0, Math.min(38.0, stateRef.current.dist + e.deltaY * 0.015));
+        stateRef.current.dist = Math.max(18.0, Math.min(44.0, stateRef.current.dist + e.deltaY * 0.015));
         start();
       }
     };
@@ -447,11 +543,14 @@ export function QuasarScene({ lang = 'en' }) {
       cancelAnimationFrame(animId);
       observer.disconnect();
       reduceMotion.removeEventListener('change', start);
+      document.removeEventListener('visibilitychange', onVisibility);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('wheel', onWheel);
       if (posBuf) gl.deleteBuffer(posBuf);
+      if (noiseTex) gl.deleteTexture(noiseTex);
       if (prog) gl.deleteProgram(prog);
     };
   }, []);
