@@ -136,4 +136,4 @@ This project is open-source software licensed under the GNU Affero General Publi
 [hotaru-badge]: https://img.shields.io/badge/Hotaru_Core-Repository-000000.svg?style=for-the-badge&logo=telegram&logoColor=white
 [hotaru-url]: https://github.com/HotaruProject/Hotaru
 [telegram-badge]: https://img.shields.io/badge/Telegram-Community-2CA5E0.svg?style=for-the-badge&logo=telegram&logoColor=white
-[telegram-url]: https://t.me/HotaruProject
+[telegram-url]: https://t.me/hotaru_ub
