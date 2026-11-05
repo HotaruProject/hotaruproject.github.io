@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { RotateCcw, Play, Pause } from 'lucide-react';
+import { RotateCcw, Play, Pause, Hand } from 'lucide-react';
 
 const VERT_SRC = `
 attribute vec2 aPos;
@@ -144,12 +144,12 @@ vec3 traceScene(vec2 uv) {
   float minR = 1000.0;
   int diskCrossings = 0;
 
-  for (int i = 0; i < 280; i++) {
+  for (int i = 0; i < 220; i++) {
     vec3 prevPos = pos;
     float r = length(pos);
     minR = min(minR, r);
 
-    float dt = clamp(r * 0.048, 0.006, 0.95);
+    float dt = clamp(r * 0.052, 0.007, 0.98);
     float r2safe = max(dot(pos, pos), 0.55);
     vec3 acc = -1.65 * h2 * pos / pow(r2safe, 2.5);
     dir = normalize(dir + acc * dt);
@@ -173,7 +173,7 @@ vec3 traceScene(vec2 uv) {
       diskCrossings++;
     }
 
-    if (r > 38.0) {
+    if (r > 36.0) {
       break;
     }
   }
@@ -241,7 +241,7 @@ export function QuasarScene() {
     lastX: 0,
     lastY: 0,
     yawVel: 0,
-    pitchVel: 0
+    pitchVel: 0,
   });
 
   stateRef.current.autoRotate = autoRotate;
@@ -292,7 +292,8 @@ export function QuasarScene() {
       t0 = now;
 
       const rect = canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const isMobile = window.innerWidth < 768;
+      const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.0 : 1.35);
       const width = Math.floor(rect.width * dpr);
       const height = Math.floor(rect.height * dpr);
 
@@ -334,6 +335,11 @@ export function QuasarScene() {
     animId = requestAnimationFrame(render);
 
     const onPointerDown = (e) => {
+      if (e.pointerType === 'touch') {
+        stateRef.current.lastX = e.clientX;
+        stateRef.current.lastY = e.clientY;
+        return;
+      }
       stateRef.current.isDragging = true;
       stateRef.current.lastX = e.clientX;
       stateRef.current.lastY = e.clientY;
@@ -342,6 +348,16 @@ export function QuasarScene() {
     };
 
     const onPointerMove = (e) => {
+      if (e.pointerType === 'touch') {
+        const dx = e.clientX - stateRef.current.lastX;
+        const dy = e.clientY - stateRef.current.lastY;
+        if (Math.abs(dx) > Math.abs(dy) + 4) {
+          stateRef.current.yaw -= dx * 0.005;
+          stateRef.current.lastX = e.clientX;
+          stateRef.current.lastY = e.clientY;
+        }
+        return;
+      }
       if (!stateRef.current.isDragging) return;
       const dx = e.clientX - stateRef.current.lastX;
       const dy = e.clientY - stateRef.current.lastY;
@@ -360,14 +376,15 @@ export function QuasarScene() {
     };
 
     const onWheel = (e) => {
-      e.preventDefault();
-      stateRef.current.dist = Math.max(12.0, Math.min(42.0, stateRef.current.dist + e.deltaY * 0.02));
+      if (Math.abs(e.deltaY) > 0) {
+        stateRef.current.dist = Math.max(14.0, Math.min(38.0, stateRef.current.dist + e.deltaY * 0.015));
+      }
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('wheel', onWheel, { passive: true });
 
     return () => {
       cancelAnimationFrame(animId);
@@ -381,19 +398,19 @@ export function QuasarScene() {
   }, []);
 
   return (
-    <div className="relative w-full h-full overflow-hidden select-none">
+    <div className="relative w-full h-full overflow-hidden select-none touch-pan-y">
       <canvas
         ref={canvasRef}
-        className="w-full h-full block cursor-grab active:cursor-grabbing touch-none"
+        className="w-full h-full block cursor-grab active:cursor-grabbing touch-pan-y"
       />
-      <div className="absolute bottom-6 right-6 flex items-center gap-2 bg-[#050508]/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20">
+      <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 flex items-center gap-2 bg-[#050508]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20">
         <button
           onClick={() => setAutoRotate(!autoRotate)}
           className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white transition-colors"
           title={autoRotate ? "Pause rotation" : "Auto rotate"}
         >
           {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-          <span>{autoRotate ? "Pause" : "Spin"}</span>
+          <span className="hidden sm:inline">{autoRotate ? "Pause" : "Spin"}</span>
         </button>
         <span className="text-white/20">|</span>
         <button
@@ -402,10 +419,10 @@ export function QuasarScene() {
           title="Reset Camera"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Reset</span>
+          <span className="hidden sm:inline">Reset</span>
         </button>
       </div>
-      <div className="absolute bottom-6 left-6 hidden md:block text-[11px] text-white/40 tracking-wider font-mono z-20">
+      <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 hidden sm:block text-[11px] text-white/40 tracking-wider font-mono z-20">
         DRAG TO ROTATE • SCROLL TO ZOOM
       </div>
     </div>
