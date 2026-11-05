@@ -51,24 +51,11 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
             {t.architecture}
           </button>
           <button
-            onClick={() => scrollTo('modules')}
-            className="px-3.5 py-1.5 rounded-full text-xs font-mono text-white/70 hover:text-white hover:bg-white/[0.06] transition-all"
-          >
-            {t.modules}
-          </button>
-          <button
             onClick={handleDocsClick}
             className="px-3.5 py-1.5 rounded-full text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] transition-all flex items-center gap-1.5"
           >
             <BookOpen className="w-3.5 h-3.5 text-white/90" />
             <span>{t.docs}</span>
-          </button>
-          <button
-            onClick={() => scrollTo('agent-skill')}
-            className="px-3.5 py-1.5 rounded-full text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] transition-all flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-white/90" />
-            <span>{t.skill}</span>
           </button>
         </nav>
 
@@ -134,12 +121,6 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
             <span>{t.architecture}</span>
           </button>
           <button
-            onClick={() => scrollTo('modules')}
-            className="text-left text-xs font-mono py-2 text-white/80 hover:text-white border-b border-white/5 flex items-center justify-between"
-          >
-            <span>{t.modules}</span>
-          </button>
-          <button
             onClick={handleDocsClick}
             className="text-left text-xs font-mono py-2 text-white/80 hover:text-white border-b border-white/5 flex items-center justify-between"
           >
@@ -147,13 +128,6 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/70">
               Manual & 292 Methods
             </span>
-          </button>
-          <button
-            onClick={() => scrollTo('agent-skill')}
-            className="text-left text-xs font-mono py-2 text-white/80 hover:text-white flex items-center gap-2 border-b border-white/5"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-white" />
-            <span>{t.skill}</span>
           </button>
           <div className="pt-2 flex flex-col gap-2">
             <a

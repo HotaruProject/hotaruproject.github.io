@@ -242,7 +242,7 @@ HOTARU = {
       features: [
         "Complete manifest schema with typed definitions",
         "Every ModuleContext method, signature, and parameter",
-        "Zero-comments rule enforcement for Python code",
+        "Comprehensive code patterns and real-world examples",
         "Linux namespace sandbox compliance patterns",
         "Ready-to-use production module templates",
       ],
@@ -496,7 +496,7 @@ HOTARU = {
       features: [
         "Полная схема манифеста с типизированными определениями",
         "Каждый метод ModuleContext с сигнатурами и аргументами",
-        "Соблюдение правила отсутствия комментариев в коде",
+        "Практические примеры и проверенные архитектурные паттерны",
         "Соответствие требованиям песочницы Linux Namespaces",
         "Готовые шаблоны модулей для продакшена",
       ],
