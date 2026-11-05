@@ -13,7 +13,7 @@ export const CONTENT = {
     },
     hero: {
       title: "Hotaru",
-      subtitle: "Modular Telegram userbot powered by GoyGram with safe plugin sandboxing.",
+      subtitle: "Modular Telegram userbot powered by GoyGram with safe module sandboxing.",
       installTitle: "Installation command:",
       copyTooltip: "Copy command",
       copiedTooltip: "Copied to clipboard",
@@ -25,22 +25,22 @@ export const CONTENT = {
     },
     architecture: {
       sectionTitle: "How Hotaru Works",
-      sectionSubtitle: "Hotaru runs third-party plugins in isolated worker processes to keep your account safe.",
+      sectionSubtitle: "Hotaru runs third-party modules in isolated worker processes to keep your account safe.",
       cards: [
         {
           id: "namespaces",
           title: "Process Isolation",
-          description: "Every plugin runs inside its own isolated worker process. Third-party scripts cannot access your host filesystem, inspect other processes, or spy on parent memory.",
+          description: "Every module runs inside its own isolated worker process. Third-party scripts cannot access your host filesystem, inspect other processes, or spy on parent memory.",
         },
         {
           id: "capabilities",
           title: "Permission Controls",
-          description: "Plugins explicitly declare what they need: Telegram API calls, local storage, or internet access. If a plugin does not declare internet access, raw network calls are blocked.",
+          description: "Modules explicitly declare what they need: Telegram API calls, local storage, or internet access. If a module does not declare internet access, raw network calls are blocked.",
         },
         {
           id: "vault",
           title: "Protected Storage",
-          description: "Login credentials, account tokens, and session databases are kept in an encrypted local vault. Third-party plugins never see your secret keys.",
+          description: "Login credentials, account tokens, and session databases are kept in an encrypted local vault. Third-party modules never see your secret keys.",
         },
         {
           id: "goygram",
@@ -50,7 +50,7 @@ export const CONTENT = {
         {
           id: "singularity",
           title: "Web Control Panel",
-          description: "An optional web dashboard runs locally to view logs, check system metrics, and configure installed plugins directly from your browser.",
+          description: "An optional web dashboard runs locally to view logs, check system metrics, and configure installed modules directly from your browser.",
         },
         {
           id: "shield",
@@ -61,13 +61,13 @@ export const CONTENT = {
     },
     docs: {
       title: "Developer Manual",
-      subtitle: "Complete documentation for building, loading via .ld, and managing plugins in Telegram.",
+      subtitle: "Complete documentation for building, loading via .ld, and managing modules in Telegram.",
       openDocsBtn: "Open Documentation",
       openCatalogBtn: "Browse 292 Methods",
       cards: [
         {
           title: "Loading & Management",
-          desc: "Send a .hmod file to Telegram and reply with .ld. Hot-reload with .rl, unload with .ul, and inspect active plugins with .mods.",
+          desc: "Send a .hmod file to Telegram and reply with .ld. Hot-reload with .rl, unload with .ul, and inspect active modules with .mods.",
         },
         {
           title: "Manifest Schema",
@@ -106,7 +106,7 @@ export const CONTENT = {
     },
     hero: {
       title: "Hotaru",
-      subtitle: "Модульный юзербот для Telegram на GoyGram с безопасной песочницей плагинов.",
+      subtitle: "Модульный юзербот для Telegram на GoyGram с безопасной песочницей модулей.",
       installTitle: "Команда установки:",
       copyTooltip: "Скопировать команду",
       copiedTooltip: "Скопировано в буфер",
@@ -118,22 +118,22 @@ export const CONTENT = {
     },
     architecture: {
       sectionTitle: "Как устроен Hotaru",
-      sectionSubtitle: "Hotaru запускает сторонние плагины в изолированных процессах, защищая ваш аккаунт и систему.",
+      sectionSubtitle: "Hotaru запускает сторонние модули в изолированных процессах, защищая ваш аккаунт и систему.",
       cards: [
         {
           id: "namespaces",
           title: "Изоляция процессов",
-          description: "Каждый плагин работает в отдельном процессе с временной файловой системой. Недоверенный код не имеет доступа к системным файлам хоста и чужой памяти.",
+          description: "Каждый модуль работает в отдельном процессе с временной файловой системой. Недоверенный код не имеет доступа к системным файлам хоста и чужой памяти.",
         },
         {
           id: "capabilities",
           title: "Контроль разрешений",
-          description: "Плагины явно объявляют нужные права: доступ к Telegram API, локальной базе или интернету. Без разрешения плагин физически не может отправлять сетевые запросы.",
+          description: "Модули явно объявляют нужные права: доступ к Telegram API, локальной базе или интернету. Без разрешения модуль физически не может отправлять сетевые запросы.",
         },
         {
           id: "vault",
           title: "Защищенное хранилище",
-          description: "Ключи авторизации Telegram, сессии и важные данные хранятся в защищенном локальном хранилище. Сторонние плагины не имеют доступа к вашим секретам.",
+          description: "Ключи авторизации Telegram, сессии и важные данные хранятся в защищенном локальном хранилище. Сторонние модули не имеют доступа к вашим секретам.",
         },
         {
           id: "goygram",
@@ -143,7 +143,7 @@ export const CONTENT = {
         {
           id: "singularity",
           title: "Панель управления",
-          description: "Локальный веб-интерфейс позволяет просматривать системные логи, следить за нагрузкой и настраивать плагины прямо в браузере.",
+          description: "Локальный веб-интерфейс позволяет просматривать системные логи, следить за нагрузкой и настраивать модули прямо в браузере.",
         },
         {
           id: "shield",
@@ -154,7 +154,7 @@ export const CONTENT = {
     },
     docs: {
       title: "Руководство по разработке",
-      subtitle: "Полная документация по созданию, быстрой загрузке через .ld и управлению плагинами.",
+      subtitle: "Полная документация по созданию, быстрой загрузке через .ld и управлению модулями.",
       openDocsBtn: "Открыть документацию",
       openCatalogBtn: "Все 292 метода API",
       cards: [
