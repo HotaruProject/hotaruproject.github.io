@@ -403,7 +403,7 @@ export function QuasarScene() {
         ref={canvasRef}
         className="w-full h-full block cursor-grab active:cursor-grabbing touch-pan-y"
       />
-      <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 flex items-center gap-2 bg-[#050508]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20">
+      <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 flex items-center gap-2 bg-[#050508]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20 pointer-events-auto">
         <button
           onClick={() => setAutoRotate(!autoRotate)}
           className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white transition-colors"

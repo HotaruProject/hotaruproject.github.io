@@ -211,7 +211,9 @@ function FormattedContent({ rawContent }) {
 }
 
 export function FumadocsView({ content, lang, setLang, onBackToHome }) {
-  const [activeTab, setActiveTab] = useState('chapters');
+  const [activeTab, setActiveTab] = useState(() =>
+    window.location.hash.includes('catalog') ? 'catalog' : 'chapters'
+  );
   const [activeSection, setActiveSection] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespace, setSelectedNamespace] = useState('all');

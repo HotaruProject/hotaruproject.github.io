@@ -202,6 +202,33 @@ HOTARU = {
       ],
     },
     docs: {
+      badge: "DEVELOPER PORTAL",
+      title: "Hotaru Module Developer Hub",
+      subtitle: "Exhaustive documentation for building, loading, and managing third-party .hmod modules via .ld in Telegram.",
+      openDocsBtn: "Open Full Documentation",
+      openCatalogBtn: "Browse 292 Methods",
+      cards: [
+        {
+          title: "Module Loading & Lifecycle",
+          desc: "Load scripts live in chat via .ld, hot reload with .rl, unload with .ul, export with .ex, and reset database with .resetdb.",
+          tag: "Lifecycle",
+        },
+        {
+          title: "HOTARU Manifest & Dynamic Execution",
+          desc: "First-statement manifest rule, optional Python typing, command handlers, arguments, and return rules.",
+          tag: "Manifest",
+        },
+        {
+          title: "Context & Extended MTProto API",
+          desc: "292 dynamically generated MTProto methods on ctx with smart defaults ($peer, $message) and full return schemas.",
+          tag: "292 Methods",
+        },
+        {
+          title: "Screens, State & Background Tasks",
+          desc: "Interactive Telegram UI forms via ctx.screens, persistent SQLite state via ctx.state, and periodic background tasks.",
+          tag: "Sandboxed APIs",
+        },
+      ],
       searchPlaceholder: "Search developer reference & ctx methods...",
       tocTitle: "Table of Contents",
       sections: DOCS_EN,
@@ -429,6 +456,33 @@ HOTARU = {
       ],
     },
     docs: {
+      badge: "ПОРТАЛ РАЗРАБОТЧИКА",
+      title: "Центр документации модулей Hotaru",
+      subtitle: "Исчерпывающее руководство по созданию, загрузке и управлению сторонними .hmod модулями через .ld в Telegram.",
+      openDocsBtn: "Открыть полную документацию",
+      openCatalogBtn: "Каталог 292 методов",
+      cards: [
+        {
+          title: "Загрузка модулей и жизненный цикл",
+          desc: "Загрузка модулей на лету через .ld, горячая перезагрузка .rl, выгрузка .ul, экспорт .ex и сброс базы .resetdb.",
+          tag: "Жизненный цикл",
+        },
+        {
+          title: "Манифест HOTARU и динамика",
+          desc: "Правило первого выражения в файле, опциональная типизация Python, обработчики команд, аргументы и ответы.",
+          tag: "Манифест",
+        },
+        {
+          title: "Контекст и расширенный MTProto API",
+          desc: "292 динамических MTProto-метода в объекте ctx со смарт-подстановками ($peer, $message) и схемами возвращаемых данных.",
+          tag: "292 метода",
+        },
+        {
+          title: "Интерактивные экраны, состояние и задачи",
+          desc: "Интерактивные UI-формы Telegram через ctx.screens, изолированное SQLite-состояние ctx.state и фоновые задачи tasks.",
+          tag: "Песочница",
+        },
+      ],
       searchPlaceholder: "Поиск по документации и методам ctx...",
       tocTitle: "Содержание",
       sections: DOCS_RU,

@@ -24,19 +24,19 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-2xl bg-[#050508]/85 border-b border-white/[0.08] transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2.5 text-left group">
-            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all duration-200">
+    <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-2xl bg-[#050508]/85 border-b border-white/[0.08] transition-all w-full max-w-full overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between w-full min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 overflow-hidden">
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2.5 text-left group min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all duration-200 flex-shrink-0">
               <Shield className="w-4 h-4" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold tracking-wider text-base text-white">HOTARU</span>
-              <span className="text-[9px] text-white/50 tracking-widest font-mono -mt-1">USERBOT</span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold tracking-wider text-sm sm:text-base text-white truncate">HOTARU</span>
+              <span className="text-[9px] text-white/50 tracking-widest font-mono -mt-1 truncate">USERBOT</span>
             </div>
           </button>
-          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-white/70">
+          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-white/70 flex-shrink-0">
             AGPLv3
           </span>
         </div>
@@ -88,7 +88,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
           </a>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 md:hidden flex-shrink-0">
           <button
             onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}
             className="px-2.5 py-1.5 rounded-lg border border-white/15 text-xs font-mono text-white/90 active:scale-95"
@@ -106,7 +106,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-b border-white/10 bg-[#050508]/98 px-5 pt-3 pb-6 flex flex-col gap-3 backdrop-blur-3xl animate-fade-in shadow-2xl">
+        <div className="md:hidden border-b border-white/10 bg-[#050508]/98 px-4 sm:px-5 pt-3 pb-6 flex flex-col gap-3 backdrop-blur-3xl animate-fade-in shadow-2xl w-full max-w-full overflow-hidden">
           <button
             onClick={() => scrollTo('architecture')}
             className="text-left text-sm py-2.5 text-white/80 hover:text-white border-b border-white/5"
