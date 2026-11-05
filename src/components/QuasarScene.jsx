@@ -3,7 +3,9 @@ import { RotateCcw } from 'lucide-react';
 
 const VERT_SRC = `
 attribute vec2 aPos;
+varying vec2 vUv;
 void main() {
+  vUv = aPos * 0.5 + 0.5;
   gl_Position = vec4(aPos, 0.0, 1.0);
 }
 `;
@@ -18,7 +20,8 @@ precision mediump float;
 // Schwarzschild black hole, rs = 1. Thin Novikov-Thorne disk from the ISCO (r = 3)
 // out to DISK_OUT, its brightness set by the disk temperature, Doppler-beamed and gravitationally
 // redshifted. Rays are integrated with an adaptive leapfrog step, so a pixel takes
-// 20 to 70 iterations instead of hundreds.
+// 20 to 70 iterations instead of hundreds. The camera orbits freely, so nothing here
+// assumes the view is near the disk plane.
 
 uniform vec2 uRes;
 uniform vec2 uCenter;
@@ -31,16 +34,12 @@ uniform vec3 uCamFwd;
 uniform sampler2D uNoise;
 
 const float ISCO = 3.0;
-const float DISK_OUT = 11.0;
-const float R_OUT = 16.0;
+const float DISK_OUT = 12.0;
+const float R_OUT = 17.0;
+const float B_CRIT = 2.598;      // critical impact parameter, 3 sqrt(3) / 2
 const float FLUX_NORM = 476.6;   // 1 / peak of (1 - sqrt(3/r)) / r^3, at r ~ 4.08
+const float FLOW = 12.0;         // seconds per flow cycle, see shadeDisk
 const int MAX_STEPS = 64;
-
-float hash12(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
 
 float noise(vec2 p) {
   return texture2D(uNoise, p * (1.0 / 64.0)).r;
@@ -50,24 +49,37 @@ float noise(vec2 p) {
 // fades to grey, the hottest blueshifted gas to a hard white.
 vec3 glow(float t) {
   float v = smoothstep(0.05, 1.35, t);
-  return vec3(mix(0.12, 1.0, v * v));
+  return vec3(mix(0.1, 1.0, v * v));
+}
+
+// Turbulent streaks in co-rotating coordinates. 8 lattice cells per 64 texels, so
+// angle * 64 / 2pi * k tiles seamlessly for whole k.
+float streaks(float a, float lr, float phase) {
+  vec2 q = vec2(a * 10.186, lr * 22.0 + phase);
+  float n = noise(q) * 0.45
+    + noise(vec2(a * 20.372, lr * 54.0 - phase * 1.7)) * 0.33
+    + noise(vec2(a * 40.744, lr * 130.0 + phase * 2.3)) * 0.22;
+  return n;
 }
 
 vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
   float r = length(hit.xz);
-  if (r < ISCO || r > DISK_OUT) return vec4(0.0);
+  if (r < ISCO * 0.98 || r > DISK_OUT) return vec4(0.0);
 
-  // Keplerian angular speed, slowed for the screen; the pattern is sampled in the
-  // co-rotating frame, so the inner disk visibly laps the outer one.
-  float omega = 2.4 * pow(r, -1.5);
-  float a = atan(hit.z, hit.x) + uTime * omega;
+  // Keplerian shear winds any pattern into a tight spiral within a few orbits, so
+  // two copies run half a cycle apart and crossfade: each is reset while unseen.
+  float omega = 2.2 * pow(r, -1.5);
+  float base = atan(hit.z, hit.x);
   float lr = log(r);
-  float sp = a + 2.2 * lr;
-  vec2 q = vec2(sp * 2.0, lr * 16.0);
-  float n = noise(q) * 0.5 + noise(q * 2.6 + 7.1) * 0.3 + noise(vec2(sp * 6.0, lr * 48.0)) * 0.2;
-  float lanes = mix(0.22 + 0.78 * smoothstep(0.3, 0.78, n), 0.8, step(0.5, order));
+  float c1 = fract(uTime / FLOW);
+  float c2 = fract(uTime / FLOW + 0.5);
+  float n1 = streaks(base + c1 * FLOW * omega + 1.4 * lr, lr, c1 * 3.0);
+  float n2 = streaks(base + c2 * FLOW * omega + 1.4 * lr, lr, c2 * 3.0 + 11.0);
+  float n = mix(n1, n2, abs(c1 * 2.0 - 1.0));
+  float lanes = 0.12 + 1.25 * smoothstep(0.32, 0.8, n);
+  lanes = mix(lanes, 0.85, 0.35 * step(0.5, order));
 
-  float flux = (1.0 - sqrt(ISCO / r)) / (r * r * r) * FLUX_NORM;
+  float flux = (1.0 - sqrt(ISCO / max(r, ISCO))) / (r * r * r) * FLUX_NORM;
   float temp = pow(max(flux, 0.0), 0.25);
 
   // Orbital velocity and the full relativistic shift, gravitational and Doppler.
@@ -76,12 +88,10 @@ vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
   float gamma = inversesqrt(1.0 - v * v);
   float g = sqrt(1.0 - 1.5 / r) / (gamma * (1.0 + dot(vel, dir)));
 
-  vec3 col = glow(temp * g) * flux * g * g * g * g * lanes * 2.1;
-  // The lensed (order 1) image is squeezed so hard near the ISCO that its inner edge
-  // falls under a pixel and breaks into dots; it gets a much wider, softer inner edge.
-  float inner = mix(0.45, 2.2, step(0.5, order));
-  float edge = smoothstep(ISCO, ISCO + inner, r) * smoothstep(DISK_OUT, DISK_OUT - 5.0, r);
-  return vec4(col * edge, edge * (0.55 + 0.4 * lanes));
+  vec3 col = glow(temp * g) * flux * g * g * g * g * lanes * 2.6;
+  float inner = mix(0.35, 1.6, step(0.5, order));
+  float edge = smoothstep(ISCO, ISCO + inner, r) * smoothstep(DISK_OUT, DISK_OUT - 6.0, r);
+  return vec4(col * edge, edge * (0.6 + 0.35 * min(lanes, 1.0)));
 }
 
 float hash13(vec3 p) {
@@ -90,39 +100,48 @@ float hash13(vec3 p) {
   return fract((p.x + p.y) * p.z);
 }
 
-vec3 stars(vec3 d) {
-  vec3 p = d * 110.0;
+vec3 sky(vec3 d) {
+  vec3 p = d * 120.0;
   vec3 cell = floor(p);
   vec3 f = fract(p) - 0.5;
   float h = hash13(cell);
   float s = 0.0;
-  if (h > 0.985) {
+  if (h > 0.982) {
     vec3 o = vec3(hash13(cell + 3.1), hash13(cell + 7.7), hash13(cell + 1.9)) - 0.5;
-    float k = (h - 0.985) * 66.7;
+    float k = (h - 0.982) * 55.6;
     vec3 q = f - o * 0.55;
-    s = exp(-dot(q, q) * 160.0) * (0.12 + 1.2 * k * k);
+    s = exp(-dot(q, q) * 180.0) * (0.1 + 1.6 * k * k * k);
   }
-  return vec3(s);
+  // A faint galactic band on a tilted great circle. The lens drags it around the
+  // shadow into an Einstein ring, the clearest sign that light is bent.
+  float lat = dot(d, vec3(0.28, 0.87, 0.41));
+  float dust = noise(d.xz * 9.0 + d.y * 5.0) * 0.6 + noise(d.yx * 23.0) * 0.4;
+  float band = exp(-lat * lat * 26.0) * (0.25 + 0.9 * dust * dust);
+  return vec3(s + band * 0.055);
 }
 
 void main() {
   float minDim = min(uRes.x, uRes.y);
   vec2 uv = (gl_FragCoord.xy - uCenter * uRes) / minDim * uScale;
+  // One pixel in impact-parameter units: widths of the thin features follow it,
+  // so the shadow rim and photon ring stay smooth at any render scale.
+  float camDist = length(uCamPos);
+  float pix = uScale / minDim * 0.9 * camDist;
 
   vec3 dir = normalize(uCamFwd + uv.x * 0.9 * uCamRight + uv.y * 0.9 * uCamUp);
   vec3 pos = uCamPos;
 
-  // Skip the flat space between the camera and the sphere where gravity matters.
   float b = dot(pos, dir);
   float c = dot(pos, pos) - R_OUT * R_OUT;
   float disc = b * b - c;
   vec3 col = vec3(0.0);
   float alpha = 0.0;
   bool captured = false;
-  bool escaped = false;
   float impact = 100.0;
+  vec3 hv0 = cross(pos, dir);
 
   if (disc > 0.0 && -b - sqrt(disc) > 0.0) {
+    // Skip the flat space between the camera and the sphere where gravity matters.
     pos += dir * (-b - sqrt(disc));
     vec3 hv = cross(pos, dir);
     float h2 = dot(hv, hv);
@@ -133,7 +152,7 @@ void main() {
       float r2 = dot(pos, pos);
       float r = sqrt(r2);
       if (r < 1.0) { captured = true; break; }
-      if (r > R_OUT + 0.1 && dot(pos, dir) > 0.0) { escaped = true; break; }
+      if (r > R_OUT + 0.1 && dot(pos, dir) > 0.0) break;
 
       // Step grows with radius; past r = 9 rays barely bend, so they take long strides.
       float dt = max(r < 9.0 ? 0.14 * r : 0.35 * r, 0.03);
@@ -143,40 +162,91 @@ void main() {
       float r2n = dot(pos, pos);
       dir = vh + (-0.75 * dt * h2 / (r2n * r2n * sqrt(r2n))) * pos;
 
-      if (prev.y * pos.y < 0.0 && crossings < 2) {
+      if (prev.y * pos.y < 0.0 && crossings < 3) {
         float t = prev.y / (prev.y - pos.y);
         vec4 d = shadeDisk(mix(prev, pos, t), normalize(dir), float(crossings));
-        // Right at the shadow edge the lensed image thins to under a pixel and breaks
-        // into dots (measured at impact 2.61 to 2.67), so it fades out across that band.
-        d *= crossings > 0 ? smoothstep(2.68, 2.95, impact) : smoothstep(2.585, 2.64, impact);
+        // Higher images crowd into a sliver at the shadow rim, under a pixel wide;
+        // they fade out there and the photon ring below stands in for them.
+        float fadeW = 0.02 + 3.0 * pix;
+        d *= smoothstep(B_CRIT + fadeW * float(crossings), B_CRIT + fadeW * (1.0 + 2.0 * float(crossings)), impact);
         crossings++;
         col += d.rgb * (1.0 - alpha);
         alpha += d.a * (1.0 - alpha);
-        if (alpha > 0.985) { escaped = true; break; }
+        if (alpha > 0.985) break;
       }
     }
+    if (!captured && impact < B_CRIT) captured = true;
   }
 
-  if (disc <= 0.0) escaped = true;
-  // A ray still orbiting when the budget runs out sits on the photon sphere: its
-  // light would wind around many times before leaving, so it reads as shadow.
-  // A soft shadow edge: whatever the ray hit fades to black over a thin band of impact
-  // parameter, so the rim stays smooth when the low-res canvas is upscaled.
-  float shadowEdge = smoothstep(2.55, 2.64, impact);
-  if (escaped && !captured) {
-    // Right at the shadow edge the lens magnifies the sky so hard that neighbouring
-    // pixels sample unrelated directions; stars there would show as a dotted rim.
-    float skyFade = smoothstep(2.62, 3.4, impact);
-    col += stars(normalize(dir)) * (1.0 - alpha) * skyFade;
-  }
+  if (!captured) col += sky(normalize(dir)) * (1.0 - alpha) * smoothstep(B_CRIT, B_CRIT + 0.6, impact);
 
-  col *= shadowEdge;
+  // The photon ring: light that orbited the hole one or more times before leaving,
+  // a thin bright line right outside the shadow. Its width tracks the pixel, its
+  // integral does not, and the approaching side of the disk lights it harder.
+  float w = max(0.025, 1.4 * pix);
+  float x = (impact - B_CRIT - 0.012) / w;
+  vec3 hn = normalize(hv0);
+  float spin = hn.y;
+  float side = dot(normalize(cross(vec3(0.0, 1.0, 0.0), uCamFwd) + 1e-4), normalize(uv.x * uCamRight + uv.y * uCamUp + 1e-4));
+  float beam = 0.55 + 0.45 * side * (1.0 - abs(spin));
+  col += vec3(exp(-x * x) * 0.11 / w * beam * (1.0 - 0.7 * alpha));
 
-  // Filmic tone map, then a whisper of grain against banding on dark gradients.
+  // Hard shadow edge, antialiased over a pixel and a half.
+  col *= smoothstep(B_CRIT - 0.01 - 1.5 * pix, B_CRIT - 0.01, impact);
+
+  // Filmic tone map; the composite pass adds bloom and grain on top.
   col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
-  col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
-  col += (hash12(gl_FragCoord.xy + fract(uTime) * 61.0) - 0.5) / 255.0;
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)), 1.0);
+}
+`;
+
+// Bloom: the bright pass is read at quarter scale with a 4-tap box, then blurred
+// in two separable passes, so the halo costs a fraction of one scene pass.
+const BRIGHT_SRC = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uTex;
+uniform vec2 uTexel;
+void main() {
+  vec3 c = texture2D(uTex, vUv + uTexel * vec2(-1.0, -1.0)).rgb
+    + texture2D(uTex, vUv + uTexel * vec2(1.0, -1.0)).rgb
+    + texture2D(uTex, vUv + uTexel * vec2(-1.0, 1.0)).rgb
+    + texture2D(uTex, vUv + uTexel * vec2(1.0, 1.0)).rgb;
+  c *= 0.25;
+  float l = max(c.r, max(c.g, c.b));
+  gl_FragColor = vec4(c * smoothstep(0.4, 1.0, l), 1.0);
+}
+`;
+
+const BLUR_SRC = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uTex;
+uniform vec2 uDir;
+void main() {
+  vec3 c = texture2D(uTex, vUv).rgb * 0.227;
+  c += (texture2D(uTex, vUv + uDir * 1.385).rgb + texture2D(uTex, vUv - uDir * 1.385).rgb) * 0.316;
+  c += (texture2D(uTex, vUv + uDir * 3.231).rgb + texture2D(uTex, vUv - uDir * 3.231).rgb) * 0.07;
+  gl_FragColor = vec4(c, 1.0);
+}
+`;
+
+const COMPOSITE_SRC = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uScene;
+uniform sampler2D uBloom;
+uniform float uTime;
+float hash12(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+void main() {
+  vec3 c = texture2D(uScene, vUv).rgb + texture2D(uBloom, vUv).rgb * 0.9;
+  c = 1.0 - (1.0 - clamp(c, 0.0, 1.0)) * (1.0 - clamp(c - 1.0, 0.0, 1.0));
+  c += (hash12(gl_FragCoord.xy + fract(uTime) * 61.0) - 0.5) / 160.0;
+  gl_FragColor = vec4(c, 1.0);
 }
 `;
 
@@ -198,6 +268,7 @@ function createProgram(gl, vsSrc, fsSrc) {
   const prog = gl.createProgram();
   gl.attachShader(prog, vs);
   gl.attachShader(prog, fs);
+  gl.bindAttribLocation(prog, 0, 'aPos');
   gl.linkProgram(prog);
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
     const err = gl.getProgramInfoLog(prog);
@@ -252,52 +323,84 @@ function makeNoiseTexture(gl) {
   return tex;
 }
 
-// Orbit camera around the hole, computed once per frame instead of per pixel.
-function cameraBasis(yaw, pitch, dist) {
-  const cp = Math.cos(pitch);
-  const pos = [dist * cp * Math.sin(yaw), dist * Math.sin(pitch), -dist * cp * Math.cos(yaw)];
-  const len = Math.hypot(pos[0], pos[1], pos[2]);
-  const fwd = [-pos[0] / len, -pos[1] / len, -pos[2] / len];
-  let right = [fwd[2], 0, -fwd[0]];
-  const rl = Math.hypot(right[0], right[2]) || 1;
-  right = [right[0] / rl, 0, right[2] / rl];
-  const up = [
-    right[1] * fwd[2] - right[2] * fwd[1],
-    right[2] * fwd[0] - right[0] * fwd[2],
-    right[0] * fwd[1] - right[1] * fwd[0],
-  ];
-  return { pos, fwd, right, up };
+function makeTarget(gl) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  const t = { tex, fb, w: 0, h: 0 };
+  t.size = (w, h) => {
+    if (t.w === w && t.h === h) return;
+    t.w = w;
+    t.h = h;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  };
+  t.free = () => {
+    gl.deleteTexture(tex);
+    gl.deleteFramebuffer(fb);
+  };
+  return t;
 }
 
-// Render scale steps: the canvas is drawn at this fraction of CSS pixels and the
-// browser upscales it. The disk is soft, so 0.5 to 0.75 is indistinguishable at a glance.
-const QUALITY = [0.33, 0.42, 0.5, 0.62, 0.75];
+// The camera is a free orthonormal frame around the hole (right, up, back), so it
+// turns any way, over the poles included, without a gimbal or a pitch limit.
+const norm = (v) => {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+};
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+// Rodrigues rotation of v about the unit axis k.
+function rotate(v, k, ang) {
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  const kv = cross(k, v);
+  const d = dot(k, v) * (1 - c);
+  return [v[0] * c + kv[0] * s + k[0] * d, v[1] * c + kv[1] * s + k[1] * d, v[2] * c + kv[2] * s + k[2] * d];
+}
+
+function defaultFrame() {
+  const yaw = 0.0;
+  const pitch = 0.2;
+  const cp = Math.cos(pitch);
+  const back = [cp * Math.sin(yaw), Math.sin(pitch), -cp * Math.cos(yaw)];
+  const right = norm(cross([0, 1, 0], back));
+  const up = cross(back, right);
+  return { right, up, back };
+}
+
+// Render scale steps: the scene is drawn at this fraction of device pixels and
+// upscaled bilinearly by the composite pass, which also smooths its edges.
+const QUALITY = [0.28, 0.36, 0.46, 0.58, 0.7, 0.82];
 
 const LABELS = {
-  en: { hint: 'Drag to rotate, Ctrl and scroll to zoom', reset: 'Reset view' },
-  ru: { hint: 'Тяните, чтобы вращать, Ctrl и колесо для зума', reset: 'Сбросить вид' },
+  en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
+  ru: { hint: 'Тяните, чтобы повернуть в любую сторону, щипок или Ctrl и колесо для зума', reset: 'Сбросить вид' },
 };
 
 export function QuasarScene({ lang = 'en' }) {
   const labels = LABELS[lang] || LABELS.en;
   const canvasRef = useRef(null);
   const stateRef = useRef({
-    yaw: 0.0,
-    pitch: 0.16,
+    ...defaultFrame(),
     dist: 30.0,
     isDragging: false,
     lastX: 0,
     lastY: 0,
-    yawVel: 0,
-    pitchVel: 0,
+    velX: 0,
+    velY: 0,
+    hole: { x: 0, y: 0, r: 0 },
   });
 
   const resetCamera = useCallback(() => {
-    stateRef.current.yaw = 0.0;
-    stateRef.current.pitch = 0.16;
-    stateRef.current.dist = 30.0;
-    stateRef.current.yawVel = 0;
-    stateRef.current.pitchVel = 0;
+    Object.assign(stateRef.current, defaultFrame(), { dist: 30.0, velX: 0, velY: 0 });
     stateRef.current.wake?.();
   }, []);
 
@@ -313,9 +416,14 @@ export function QuasarScene({ lang = 'en' }) {
     }
     if (!gl) return;
 
-    let prog;
+    let progs;
     try {
-      prog = createProgram(gl, VERT_SRC, FRAG_SRC);
+      progs = {
+        scene: createProgram(gl, VERT_SRC, FRAG_SRC),
+        bright: createProgram(gl, VERT_SRC, BRIGHT_SRC),
+        blur: createProgram(gl, VERT_SRC, BLUR_SRC),
+        comp: createProgram(gl, VERT_SRC, COMPOSITE_SRC),
+      };
     } catch {
       return;
     }
@@ -323,21 +431,20 @@ export function QuasarScene({ lang = 'en' }) {
     const posBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    const aPos = gl.getAttribLocation(prog, 'aPos');
     const loc = {};
-    ['uRes', 'uCenter', 'uScale', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uNoise'].forEach((n) => {
-      loc[n] = gl.getUniformLocation(prog, n);
+    Object.entries(progs).forEach(([key, p]) => {
+      loc[key] = {};
+      ['uRes', 'uCenter', 'uScale', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uNoise', 'uTex', 'uTexel', 'uDir', 'uScene', 'uBloom'].forEach((n) => {
+        loc[key][n] = gl.getUniformLocation(p, n);
+      });
     });
     const noiseTex = makeNoiseTexture(gl);
-
-    gl.useProgram(prog);
-    gl.enableVertexAttribArray(aPos);
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, noiseTex);
-    gl.uniform1i(loc.uNoise, 0);
+    const sceneT = makeTarget(gl);
+    const bloomA = makeTarget(gl);
+    const bloomB = makeTarget(gl);
 
     // Adaptive quality: start mid, then step down when frames run long and back up
     // when there is headroom. Frame cost is measured as the gap between rAF calls
@@ -355,6 +462,17 @@ export function QuasarScene({ lang = 'en' }) {
 
     let animId;
     let t0 = performance.now();
+
+    const pass = (prog, target, w, h) => {
+      gl.useProgram(prog);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fb : null);
+      gl.viewport(0, 0, w, h);
+    };
+    const bindTex = (unit, tex, uniform) => {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.uniform1i(uniform, unit);
+    };
 
     const render = (now) => {
       if (now - lastDraw < FRAME_MIN) {
@@ -379,61 +497,116 @@ export function QuasarScene({ lang = 'en' }) {
 
       const rect = canvas.getBoundingClientRect();
       const isMobile = rect.width < 768;
-      const scale = QUALITY[quality] * Math.min(window.devicePixelRatio || 1, 2);
-      const width = Math.max(1, Math.round(rect.width * scale));
-      const height = Math.max(1, Math.round(rect.height * scale));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // The composite runs at up to 1.5x CSS pixels; the expensive scene pass follows quality.
+      const outW = Math.max(1, Math.round(rect.width * Math.min(dpr, 1.5)));
+      const outH = Math.max(1, Math.round(rect.height * Math.min(dpr, 1.5)));
+      const sw = Math.max(1, Math.round(rect.width * dpr * QUALITY[quality]));
+      const sh = Math.max(1, Math.round(rect.height * dpr * QUALITY[quality]));
+      const bw = Math.max(1, Math.round(sw / 4));
+      const bh = Math.max(1, Math.round(sh / 4));
 
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-        gl.viewport(0, 0, width, height);
+      if (canvas.width !== outW || canvas.height !== outH) {
+        canvas.width = outW;
+        canvas.height = outH;
       }
+      sceneT.size(sw, sh);
+      bloomA.size(bw, bh);
+      bloomB.size(bw, bh);
 
       const st = stateRef.current;
-      if (!st.isDragging && !reduceMotion.matches) {
-        st.yaw += dt * 0.05;
-      }
-
       if (!st.isDragging) {
-        st.yaw += st.yawVel * dt;
-        st.pitch += st.pitchVel * dt;
-        const damp = Math.pow(0.92, dt * 60);
-        st.yawVel *= damp;
-        st.pitchVel *= damp;
+        // Inertia, then a slow drift around the disk axis so the scene never sits still.
+        const damp = Math.pow(0.93, dt * 60);
+        st.velX *= damp;
+        st.velY *= damp;
+        let yawRate = st.velX;
+        if (!reduceMotion.matches) yawRate += 0.06;
+        turn(yawRate * dt, st.velY * dt);
       }
 
-      st.pitch = Math.max(-0.6, Math.min(0.6, st.pitch));
-      const cam = cameraBasis(st.yaw, st.pitch, st.dist);
+      const pos = st.back.map((v) => v * st.dist);
+      const fwd = st.back.map((v) => -v);
 
-      gl.uniform2f(loc.uRes, width, height);
-      gl.uniform1f(loc.uTime, (now * 0.001) % 3600);
-      gl.uniform3fv(loc.uCamPos, cam.pos);
-      gl.uniform3fv(loc.uCamRight, cam.right);
-      gl.uniform3fv(loc.uCamUp, cam.up);
-      gl.uniform3fv(loc.uCamFwd, cam.fwd);
+      let center;
+      let scale;
       if (isMobile) {
-        gl.uniform2f(loc.uCenter, 0.5, 0.64);
-        gl.uniform1f(loc.uScale, 1.25);
+        center = [0.5, 0.7];
+        scale = 1.1 * (st.dist / 30);
       } else {
         // Fit the hole into the space right of the hero text: the text column ends
         // about 760px into the capped 1440px container.
         const cssW = rect.width;
         const textRight = Math.max(0, (cssW - 1440) / 2) + 760;
         const free = Math.max(cssW - textRight, 240);
-        // The lensed disk reaches about 0.52 of the short side from the centre
-        // at uScale 1; shrink it until it fits the free column with a margin.
-        const reach = 0.52 * Math.min(rect.width, rect.height) * (30 / st.dist);
-        gl.uniform2f(loc.uCenter, (textRight + free / 2) / cssW, 0.5);
-        gl.uniform1f(loc.uScale, Math.max(1.0, reach / (free / 2 - 32)));
+        const reach = 0.4 * Math.min(rect.width, rect.height);
+        center = [(textRight + free / 2) / cssW, 0.5];
+        scale = Math.max(1.0, reach / (free / 2 - 32)) * (st.dist / 30);
+      }
+      // Where the hole sits in CSS pixels, for touch: a finger on it turns it,
+      // a finger anywhere else scrolls the page.
+      const minCss = Math.min(rect.width, rect.height);
+      st.hole = { x: center[0] * rect.width, y: (1 - center[1]) * rect.height, r: (minCss * 0.42) / scale * (30 / st.dist) };
+
+      const S = loc.scene;
+      pass(progs.scene, sceneT, sw, sh);
+      gl.uniform2f(S.uRes, sw, sh);
+      gl.uniform1f(S.uTime, (now * 0.001) % 3600);
+      gl.uniform3fv(S.uCamPos, pos);
+      gl.uniform3fv(S.uCamRight, st.right);
+      gl.uniform3fv(S.uCamUp, st.up);
+      gl.uniform3fv(S.uCamFwd, fwd);
+      gl.uniform2f(S.uCenter, center[0], center[1]);
+      gl.uniform1f(S.uScale, scale);
+      bindTex(0, noiseTex, S.uNoise);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      pass(progs.bright, bloomA, bw, bh);
+      gl.uniform2f(loc.bright.uTexel, 1 / sw, 1 / sh);
+      bindTex(0, sceneT.tex, loc.bright.uTex);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      for (let i = 0; i < 2; i++) {
+        pass(progs.blur, bloomB, bw, bh);
+        gl.uniform2f(loc.blur.uDir, (1 + i) / bw, 0);
+        bindTex(0, bloomA.tex, loc.blur.uTex);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        pass(progs.blur, bloomA, bw, bh);
+        gl.uniform2f(loc.blur.uDir, 0, (1 + i) / bh);
+        bindTex(0, bloomB.tex, loc.blur.uTex);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
 
+      pass(progs.comp, null, outW, outH);
+      gl.uniform1f(loc.comp.uTime, (now * 0.001) % 3600);
+      bindTex(0, sceneT.tex, loc.comp.uScene);
+      bindTex(1, bloomA.tex, loc.comp.uBloom);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      const moving = st.isDragging || Math.abs(st.yawVel) > 0.001 || Math.abs(st.pitchVel) > 0.001;
+
+      const moving = st.isDragging || Math.abs(st.velX) > 0.002 || Math.abs(st.velY) > 0.002;
       if (visible && (!reduceMotion.matches || moving)) {
         animId = requestAnimationFrame(render);
       } else {
         running = false;
       }
+    };
+
+    // Turn the frame: a around the screen's up axis, b around its right axis.
+    const turn = (a, b) => {
+      const st = stateRef.current;
+      let { right, up, back } = st;
+      if (a) {
+        back = rotate(back, up, a);
+        right = rotate(right, up, a);
+      }
+      if (b) {
+        back = rotate(back, right, b);
+        up = rotate(up, right, b);
+      }
+      back = norm(back);
+      right = norm(cross(up, back));
+      up = cross(back, right);
+      Object.assign(st, { right, up, back });
     };
 
     const start = () => {
@@ -467,61 +640,87 @@ export function QuasarScene({ lang = 'en' }) {
     canvas.addEventListener('webglcontextlost', onContextLost);
     start();
 
-    const onPointerDown = (e) => {
-      if (e.pointerType === 'touch') {
-        stateRef.current.lastX = e.clientX;
-        stateRef.current.lastY = e.clientY;
-        return;
-      }
-      stateRef.current.isDragging = true;
-      stateRef.current.lastX = e.clientX;
-      stateRef.current.lastY = e.clientY;
-      stateRef.current.yawVel = 0;
-      stateRef.current.pitchVel = 0;
+    const SENS = 0.006;
+    const dragTo = (x, y) => {
+      const st = stateRef.current;
+      const dx = x - st.lastX;
+      const dy = y - st.lastY;
+      st.lastX = x;
+      st.lastY = y;
+      turn(-dx * SENS, dy * SENS);
+      st.velX = -dx * SENS * 40;
+      st.velY = dy * SENS * 40;
+    };
+    const beginDrag = (x, y) => {
+      Object.assign(stateRef.current, { isDragging: true, lastX: x, lastY: y, velX: 0, velY: 0 });
+      start();
+    };
+    const zoomBy = (k) => {
+      stateRef.current.dist = Math.max(18.0, Math.min(48.0, stateRef.current.dist * k));
       start();
     };
 
+    const onPointerDown = (e) => {
+      if (e.pointerType === 'touch') return;
+      beginDrag(e.clientX, e.clientY);
+    };
     const onPointerMove = (e) => {
-      if (e.pointerType === 'touch') {
-        const dx = e.clientX - stateRef.current.lastX;
-        const dy = e.clientY - stateRef.current.lastY;
-        if (Math.abs(dx) > Math.abs(dy) + 4) {
-          stateRef.current.yaw -= dx * 0.005;
-          stateRef.current.lastX = e.clientX;
-          stateRef.current.lastY = e.clientY;
-          start();
-        }
+      if (e.pointerType === 'touch' || !stateRef.current.isDragging) return;
+      dragTo(e.clientX, e.clientY);
+    };
+    const onPointerUp = (e) => {
+      if (e.pointerType === 'touch') return;
+      stateRef.current.isDragging = false;
+    };
+
+    // Touch: one finger on the hole turns it, two fingers pinch to zoom; a finger
+    // that lands elsewhere on the hero leaves the page to scroll.
+    let pinch = 0;
+    const touchDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onTouchStart = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        pinch = touchDist(e.touches);
+        stateRef.current.isDragging = false;
+        return;
+      }
+      const t = e.touches[0];
+      const { hole } = stateRef.current;
+      if (Math.hypot(t.clientX - rect.left - hole.x, t.clientY - rect.top - hole.y) > hole.r) return;
+      e.preventDefault();
+      beginDrag(t.clientX, t.clientY);
+    };
+    const onTouchMove = (e) => {
+      if (e.touches.length === 2 && pinch) {
+        e.preventDefault();
+        const d = touchDist(e.touches);
+        zoomBy(pinch / d);
+        pinch = d;
         return;
       }
       if (!stateRef.current.isDragging) return;
-      const dx = e.clientX - stateRef.current.lastX;
-      const dy = e.clientY - stateRef.current.lastY;
-      stateRef.current.lastX = e.clientX;
-      stateRef.current.lastY = e.clientY;
-
-      const sens = 0.005;
-      stateRef.current.yaw -= dx * sens;
-      stateRef.current.pitch += dy * sens;
-      stateRef.current.yawVel = -dx * sens * 30;
-      stateRef.current.pitchVel = dy * sens * 30;
+      e.preventDefault();
+      dragTo(e.touches[0].clientX, e.touches[0].clientY);
     };
-
-    const onPointerUp = () => {
-      stateRef.current.isDragging = false;
+    const onTouchEnd = (e) => {
+      if (e.touches.length < 2) pinch = 0;
+      if (e.touches.length === 0) stateRef.current.isDragging = false;
     };
 
     const onWheel = (e) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
-      if (Math.abs(e.deltaY) > 0) {
-        stateRef.current.dist = Math.max(18.0, Math.min(44.0, stateRef.current.dist + e.deltaY * 0.015));
-        start();
-      }
+      if (e.deltaY) zoomBy(Math.exp(e.deltaY * 0.0015));
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd);
+    canvas.addEventListener('touchcancel', onTouchEnd);
     canvas.addEventListener('wheel', onWheel, { passive: false });
 
     return () => {
@@ -533,19 +732,24 @@ export function QuasarScene({ lang = 'en' }) {
       canvas.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+      canvas.removeEventListener('touchcancel', onTouchEnd);
       canvas.removeEventListener('wheel', onWheel);
-      if (posBuf) gl.deleteBuffer(posBuf);
-      if (noiseTex) gl.deleteTexture(noiseTex);
-      if (prog) gl.deleteProgram(prog);
+      gl.deleteBuffer(posBuf);
+      gl.deleteTexture(noiseTex);
+      [sceneT, bloomA, bloomB].forEach((t) => t.free());
+      Object.values(progs).forEach((p) => gl.deleteProgram(p));
     };
   }, []);
 
   return (
-    <figure className="relative m-0 w-full h-full overflow-hidden select-none touch-pan-y">
+    <figure className="relative m-0 w-full h-full overflow-hidden select-none">
       <canvas
         ref={canvasRef}
         aria-hidden="true"
-        className="w-full h-full block cursor-grab active:cursor-grabbing touch-pan-y"
+        className="w-full h-full block cursor-grab active:cursor-grabbing touch-manipulation"
       />
       <figcaption className="hidden md:block absolute bottom-6 inset-x-0 z-raised pointer-events-none">
         <div className="max-w-container mx-auto px-[var(--gutter)] flex items-center justify-end gap-[var(--space-xs)] text-sm text-muted">
