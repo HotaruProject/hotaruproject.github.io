@@ -1,72 +1,65 @@
-import React from 'react';
-import { BookOpen, Terminal, ArrowRight, Layers, FileCode, Cpu, ShieldCheck } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { BookOpen, Terminal } from 'lucide-react';
 
-const CARD_ICONS = [Layers, FileCode, Terminal, Cpu];
+const FACTS = [
+  [{ en: 'License', ru: 'Лицензия' }, 'AGPLv3'],
+  [{ en: 'Python', ru: 'Python' }, '3.13'],
+  [{ en: 'GoyGram', ru: 'GoyGram' }, '0.8.28'],
+];
 
-export function Documentation({ content, onOpenDocs }) {
+function firstCodeBlock(sections) {
+  const quickstart = sections?.[0]?.content || '';
+  const match = /```python\n([\s\S]*?)```/.exec(quickstart);
+  return match ? match[1].trimEnd() : '';
+}
+
+export function Documentation({ content, lang = 'en', onOpenDocs }) {
   const t = content.docs;
+  const sample = useMemo(() => firstCodeBlock(t.sections), [t.sections]);
 
   return (
-    <section id="documentation" className="py-20 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-white/[0.08] w-full max-w-full overflow-hidden">
-      <div className="rounded-2xl sm:rounded-3xl border border-white/15 bg-gradient-to-b from-[#080910] to-[#040407] p-6 sm:p-10 md:p-14 relative overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.6)]">
-        <div className="max-w-3xl mb-8 sm:mb-10">
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
-            {t.title || "Hotaru Module Developer Hub"}
-          </h2>
+    <section id="documentation" className="w-full bg-paper-2 py-[var(--section-gap-s)]">
+      <div className="max-w-container mx-auto px-[var(--gutter)] grid grid-cols-1 lg:grid-cols-12 gap-x-[var(--gap-columns)] gap-y-[var(--space-2xl)]">
+        <div className="lg:col-span-5 min-w-0 flex flex-col">
+          <h2 className="text-ink">{t.title}</h2>
+          <p className="lead mt-[var(--space-lg)] text-ink-2">{t.subtitle}</p>
 
-          <p className="mt-3 text-sm sm:text-base md:text-lg text-white/70 leading-relaxed font-normal">
-            {t.subtitle || "Documentation for building, loading, and managing third-party .hmod modules via .ld in Telegram."}
-          </p>
-        </div>
+          <ol className="mt-[var(--space-2xl)] p-0 list-none flex flex-col gap-[var(--space-lg)]">
+            {t.cards?.map((card) => (
+              <li key={card.title}>
+                <h3 className="text-title text-ink">{card.title}</h3>
+                <p className="mt-[var(--space-2xs)] text-ink-2">{card.desc}</p>
+              </li>
+            ))}
+          </ol>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
-          {t.cards?.map((card, idx) => {
-            const Icon = CARD_ICONS[idx % CARD_ICONS.length] || Layers;
-            return (
-              <div
-                key={idx}
-                className="p-5 sm:p-6 rounded-2xl bg-[#090a12]/90 border border-white/[0.08] hover:border-white/25 transition-all duration-300 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white mb-3">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mb-1.5">
-                    {card.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-white/70 leading-relaxed font-normal">
-                    {card.desc}
-                  </p>
-                </div>
+          <dl className="mt-[var(--space-2xl)] m-0 flex flex-wrap gap-x-[var(--space-xl)] gap-y-[var(--space-sm)] pt-[var(--space-lg)] border-t border-rule">
+            {FACTS.map(([k, v]) => (
+              <div key={k.en}>
+                <dt className="text-sm text-muted">{k[lang] || k.en}</dt>
+                <dd className="m-0 text-ink num">{v}</dd>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </dl>
 
-        <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div className="text-xs font-mono text-white/40">
-            AGPLv3 • Python 3.13 • GoyGram 0.8.28
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <button
-              onClick={() => onOpenDocs?.('catalog')}
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-white text-xs sm:text-sm font-mono transition-all duration-200 active:scale-95"
-            >
-              <Terminal className="w-4 h-4 text-white/70" />
-              <span>{t.openCatalogBtn || "Browse 292 Methods"}</span>
+          <div className="mt-[var(--space-xl)] flex flex-wrap items-center gap-x-[var(--space-lg)] gap-y-[var(--space-xs)]">
+            <button type="button" onClick={() => onOpenDocs?.('chapters')} className="btn btn--quiet">
+              <BookOpen aria-hidden="true" className="w-4 h-4" />
+              <span>{t.openDocsBtn}</span>
             </button>
-
-            <button
-              onClick={() => onOpenDocs?.('chapters')}
-              className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-black font-bold text-xs sm:text-sm hover:bg-white/90 transition-all duration-200 shadow-[0_4px_24px_rgba(255,255,255,0.18)] active:scale-95"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>{t.openDocsBtn || "Open Full Documentation"}</span>
-              <ArrowRight className="w-4 h-4" />
+            <button type="button" onClick={() => onOpenDocs?.('catalog')} className="link">
+              <Terminal aria-hidden="true" className="w-4 h-4" />
+              <span>{t.openCatalogBtn}</span>
             </button>
           </div>
         </div>
+
+        <figure className="lg:col-start-6 lg:col-span-7 m-0 min-w-0 self-start lg:sticky lg:top-28">
+          <figcaption className="text-sm text-muted mb-[var(--space-xs)] font-mono">hello_world.hmod</figcaption>
+          <pre tabIndex={0} aria-label="hello_world.hmod" className="m-0 p-[var(--space-md)] sm:p-[var(--space-lg)] rounded-card bg-paper text-ink-2 font-mono text-xs sm:text-sm leading-relaxed overflow-x-auto">
+            <code>{sample}</code>
+          </pre>
+        </figure>
       </div>
     </section>
   );

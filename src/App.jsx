@@ -13,6 +13,10 @@ export function App() {
   const currentContent = CONTENT[lang] || CONTENT.en;
 
   useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  useEffect(() => {
     const handleHash = () => {
       if (window.location.hash.startsWith('#docs')) {
         setView('docs');
@@ -48,17 +52,17 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050508] text-white flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+    <div className="min-h-dvh flex flex-col w-full">
       <Navbar
         lang={lang}
         setLang={setLang}
         content={currentContent}
         onOpenDocs={openDocs}
       />
-      <main className="flex-grow w-full max-w-full overflow-x-hidden">
-        <Hero content={currentContent} onOpenDocs={openDocs} />
+      <main className="flex-grow w-full">
+        <Hero content={currentContent} lang={lang} onOpenDocs={openDocs} />
         <Architecture content={currentContent} />
-        <Documentation content={currentContent} onOpenDocs={openDocs} />
+        <Documentation content={currentContent} lang={lang} onOpenDocs={openDocs} />
       </main>
       <Footer content={currentContent} />
     </div>

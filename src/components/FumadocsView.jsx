@@ -1,126 +1,96 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Book, ChevronRight, ChevronDown, Hash, Layers, ListFilter, Copy, Check, Terminal, ExternalLink, ArrowLeft, Filter, Sparkles, Shield, Code, Cpu } from 'lucide-react';
+import { Search, ChevronDown, Copy, Check, ArrowLeft, Sparkles } from 'lucide-react';
+import { LangSwitch } from './Navbar';
 import { CATALOG_METHODS } from '../data/catalog.js';
+
+function copyText(text, setCopied) {
+  navigator.clipboard?.writeText(text).then(
+    () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    },
+    () => {}
+  );
+}
+
+function CopyButton({ copied, onClick, label = 'Copy code snippet' }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} className="tab inline-flex items-center gap-[var(--space-xs)] flex-shrink-0">
+      {copied ? <Check aria-hidden="true" className="w-4 h-4 text-success" /> : <Copy aria-hidden="true" className="w-4 h-4" />}
+      <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+    </button>
+  );
+}
 
 function CodeBlock({ code, lang = 'python' }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleCopy = () => copyText(code, setCopied);
 
   return (
-    <div className="my-4 rounded-xl border border-white/10 bg-[#040407] overflow-hidden shadow-lg w-full max-w-full">
-      <div className="flex items-center justify-between px-3.5 py-2 bg-white/[0.03] border-b border-white/[0.06] gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Terminal className="w-3.5 h-3.5 text-white/50 flex-shrink-0" />
-          <span className="text-[11px] font-mono uppercase tracking-wider text-white/60 truncate">
-            {lang}
-          </span>
-        </div>
-        <button
-          onClick={handleCopy}
-          aria-label="Copy code snippet"
-          className="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3 h-3 text-emerald-400" />
-              <span className="text-emerald-400">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3 h-3" />
-              <span>Copy</span>
-            </>
-          )}
-        </button>
+    <figure className="m-0 my-[var(--space-lg)] rounded-card bg-paper-2 overflow-hidden w-full max-w-full">
+      <div className="flex items-center justify-between gap-[var(--space-xs)] pl-[var(--space-md)] pr-[var(--space-2xs)] py-[var(--space-2xs)] border-b border-rule">
+        <figcaption className="text-sm text-muted">{lang}</figcaption>
+        <CopyButton copied={copied} onClick={handleCopy} />
       </div>
-      <pre className="p-3.5 sm:p-4 overflow-x-auto text-[11px] sm:text-xs md:text-[13px] font-mono text-white/90 leading-relaxed scrollbar-thin scrollbar-thumb-white/10 max-w-full whitespace-pre">
+      <pre className="m-0 p-[var(--space-md)] overflow-x-auto font-mono text-sm text-ink-2 leading-relaxed whitespace-pre">
         <code>{code}</code>
       </pre>
-    </div>
+    </figure>
   );
 }
 
 function MethodCard({ method, lang }) {
   const [copied, setCopied] = useState(false);
 
-  const copyCall = () => {
-    navigator.clipboard.writeText(method.signature);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const copyCall = () => copyText(method.signature, setCopied);
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[#080910] p-4 transition-all hover:border-white/20">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <span className="font-mono text-xs sm:text-sm font-bold text-white break-all">
-            ctx.{method.name}
-          </span>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/10 text-white/70 border border-white/10">
-            {method.rpc}
-          </span>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-            {method.returns}
-          </span>
+    <article className="py-[var(--space-xl)] border-b border-rule">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-[var(--space-xs)]">
+        <div className="min-w-0">
+          <h3 className="font-mono text-lg text-ink font-normal tracking-normal break-all">ctx.{method.name}</h3>
+          <p className="mt-[var(--space-2xs)] text-sm text-muted">
+            <span className="font-mono">{method.rpc}</span>
+            <span className="mx-[var(--space-xs)]" aria-hidden="true">/</span>
+            <span>{lang === 'ru' ? 'возвращает' : 'returns'} </span>
+            <span className="font-mono text-ink-2">{method.returns}</span>
+          </p>
         </div>
-        <button
-          onClick={copyCall}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-mono bg-white/5 hover:bg-white/15 text-white/70 hover:text-white border border-white/10 transition-colors"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3 h-3 text-emerald-400" />
-              <span className="text-emerald-400">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3 h-3" />
-              <span>Copy</span>
-            </>
-          )}
-        </button>
+        <CopyButton copied={copied} onClick={copyCall} label="Copy method signature" />
       </div>
 
-      <p className="mt-2.5 text-xs text-white/70 font-sans">
+      <p className="mt-[var(--space-sm)] text-ink-2">
         {lang === 'ru' ? method.desc_ru : method.desc_en}
       </p>
 
       {method.params && method.params.length > 0 && (
-        <div className="mt-3 overflow-x-auto no-scrollbar">
-          <table className="w-full text-left font-mono text-[11px]">
+        <div className="mt-[var(--space-md)] overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="text-white/40 border-b border-white/5">
-                <th className="pb-1 pr-3">Parameter</th>
-                <th className="pb-1 pr-3">Type</th>
-                <th className="pb-1 pr-3">Required</th>
-                <th className="pb-1">Default</th>
+              <tr className="text-muted border-b border-rule">
+                <th className="font-normal py-[var(--space-xs)] pr-[var(--space-md)]">{lang === 'ru' ? 'Параметр' : 'Parameter'}</th>
+                <th className="font-normal py-[var(--space-xs)] pr-[var(--space-md)]">{lang === 'ru' ? 'Тип' : 'Type'}</th>
+                <th className="font-normal py-[var(--space-xs)] pr-[var(--space-md)]">{lang === 'ru' ? 'Обязательный' : 'Required'}</th>
+                <th className="font-normal py-[var(--space-xs)]">{lang === 'ru' ? 'По умолчанию' : 'Default'}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 text-white/80">
-              {method.params.map((p, pIdx) => (
-                <tr key={pIdx}>
-                  <td className="py-1 pr-3 text-white font-medium">{p.name}</td>
-                  <td className="py-1 pr-3 text-white/60">{p.type}</td>
-                  <td className="py-1 pr-3">
-                    {p.required ? (
-                      <span className="text-amber-400">yes</span>
-                    ) : (
-                      <span className="text-white/30">no</span>
-                    )}
+            <tbody>
+              {method.params.map((p) => (
+                <tr key={p.name} className="border-b border-rule last:border-b-0">
+                  <td className="py-[var(--space-xs)] pr-[var(--space-md)] font-mono text-ink">{p.name}</td>
+                  <td className="py-[var(--space-xs)] pr-[var(--space-md)] font-mono text-ink-2">{p.type}</td>
+                  <td className="py-[var(--space-xs)] pr-[var(--space-md)] text-ink-2">
+                    {p.required ? (lang === 'ru' ? 'да' : 'yes') : (lang === 'ru' ? 'нет' : 'no')}
                   </td>
-                  <td className="py-1 text-white/50">{p.default || '-'}</td>
+                  <td className="py-[var(--space-xs)] font-mono text-muted">{p.default || '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -158,7 +128,7 @@ function FormattedContent({ rawContent }) {
   }, [rawContent]);
 
   return (
-    <div className="space-y-4 w-full max-w-full overflow-hidden">
+    <div className="w-full max-w-[72ch] min-w-0">
       {elements?.map((part, index) => {
         if (part.type === 'code') {
           return <CodeBlock key={index} code={part.content} lang={part.lang} />;
@@ -166,48 +136,51 @@ function FormattedContent({ rawContent }) {
 
         const paragraphs = part.content.split('\n\n');
         return (
-          <div key={index} className="space-y-3 w-full max-w-full overflow-hidden">
+          <React.Fragment key={index}>
             {paragraphs.map((p, pIdx) => {
               const trimmed = p.trim();
               if (!trimmed) return null;
 
               if (trimmed.startsWith('### ')) {
                 return (
-                  <h4
-                    key={pIdx}
-                    className="text-base sm:text-lg font-bold text-white pt-4 pb-1 border-b border-white/10 flex items-center gap-2 break-words"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/80 inline-block flex-shrink-0" />
-                    <span>{trimmed.replace('### ', '')}</span>
-                  </h4>
+                  <h3 key={pIdx} className="mt-[var(--space-2xl)] mb-[var(--space-sm)] text-title text-ink">
+                    {trimmed.replace('### ', '')}
+                  </h3>
                 );
               }
 
               if (trimmed.startsWith('## ')) {
                 return (
-                  <h3
-                    key={pIdx}
-                    className="text-lg sm:text-xl font-bold text-white pt-5 pb-2 border-b border-white/15 break-words"
-                  >
+                  <h2 key={pIdx} className="mt-[var(--space-3xl)] mb-[var(--space-md)] text-[length:var(--text-2xl)] text-ink">
                     {trimmed.replace('## ', '')}
-                  </h3>
+                  </h2>
                 );
               }
 
               return (
-                <div
-                  key={pIdx}
-                  className="text-white/80 text-xs sm:text-sm leading-relaxed whitespace-pre-line font-sans break-words overflow-hidden"
-                >
-                  {trimmed}
-                </div>
+                <p key={pIdx} className="mt-[var(--space-md)] text-ink-2 leading-[1.7] whitespace-pre-line break-words">
+                  <Inline text={trimmed} />
+                </p>
               );
             })}
-          </div>
+          </React.Fragment>
         );
       })}
     </div>
   );
+}
+
+function Inline({ text }) {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  return parts.map((chunk, i) => {
+    if (chunk.startsWith('`') && chunk.endsWith('`') && chunk.length > 2) {
+      return <code key={i} className="code-inline">{chunk.slice(1, -1)}</code>;
+    }
+    if (chunk.startsWith('**') && chunk.endsWith('**') && chunk.length > 4) {
+      return <strong key={i} className="font-semibold text-ink">{chunk.slice(2, -2)}</strong>;
+    }
+    return chunk;
+  });
 }
 
 export function FumadocsView({ content, lang, setLang, onBackToHome }) {
@@ -218,7 +191,6 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
   const [chapterDropdownOpen, setChapterDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespace, setSelectedNamespace] = useState('all');
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const t = content.docs;
 
@@ -258,340 +230,224 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
   const currentSection =
     filteredSections[activeSection] || filteredSections[0] || t.sections[0];
 
+  const L = lang === 'ru'
+    ? { home: 'На главную', manual: 'Руководство', methods: 'Методы', chapters: 'Разделы', namespaces: 'Пространства имён', filter: 'Фильтр по разделам и методам', current: 'Текущий раздел', pick: 'Выберите раздел', catalogTitle: 'Каталог методов MTProto', showing: (n, total) => `Показано ${n} из ${total}`, prev: 'Назад', next: 'Дальше', empty: 'Ничего не найдено. Измените запрос.' }
+    : { home: 'Home', manual: 'Manual', methods: 'Methods', chapters: 'Chapters', namespaces: 'Namespaces', filter: 'Filter docs and methods', current: 'Current chapter', pick: 'Select chapter', catalogTitle: 'Extended MTProto API catalog', showing: (n, total) => `Showing ${n} of ${total}`, prev: 'Previous', next: 'Next', empty: 'Nothing matches. Change the query.' };
+
+  const shortTitle = (title) => title.split(':')[0];
+
+  const searchField = (id) => (
+    <div className="relative">
+      <label htmlFor={id} className="visually-hidden">{L.filter}</label>
+      <Search aria-hidden="true" className="absolute left-[var(--space-sm)] top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+      <input
+        id={id}
+        type="search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder={t.searchPlaceholder}
+        className="field"
+      />
+    </div>
+  );
+
+  const tabSwitch = (
+    <div className="flex items-center gap-[var(--space-2xs)]" role="group" aria-label="Docs view">
+      <button type="button" onClick={() => setActiveTab('chapters')} aria-pressed={activeTab === 'chapters'} className="tab">
+        {L.manual} <span className="num text-muted">{filteredSections.length}</span>
+      </button>
+      <button type="button" onClick={() => setActiveTab('catalog')} aria-pressed={activeTab === 'catalog'} className="tab">
+        {L.methods} <span className="num text-muted">{CATALOG_METHODS.length}</span>
+      </button>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#040407] text-white flex flex-col font-sans w-full max-w-full overflow-x-hidden">
-      <header className="sticky top-0 z-40 bg-[#07070c]/90 backdrop-blur-2xl border-b border-white/[0.08] px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <button
-            onClick={onBackToHome}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 text-xs font-mono text-white/80 transition-colors active:scale-95 flex-shrink-0"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Home</span>
-          </button>
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-white/80 flex-shrink-0" />
-            <span className="font-bold tracking-tight text-sm sm:text-base text-white truncate">
-              Hotaru
-            </span>
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-white/10 text-white/60 flex-shrink-0">
-              docs
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <div className="hidden sm:flex items-center rounded-full bg-white/[0.03] p-0.5 border border-white/[0.08]">
-            <button
-              onClick={() => setActiveTab('chapters')}
-              className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
-                activeTab === 'chapters'
-                  ? 'bg-white text-black font-bold shadow-sm'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Manual ({filteredSections.length})
+    <div className="min-h-dvh flex flex-col w-full">
+      <header className="sticky top-0 z-sticky-nav nav-pill">
+        <div className="max-w-container mx-auto px-[var(--gutter)] min-h-[56px] flex items-center justify-between gap-[var(--space-md)]">
+          <div className="flex items-center gap-[var(--space-md)] min-w-0">
+            <button type="button" onClick={onBackToHome} className="tab inline-flex items-center gap-[var(--space-xs)] min-h-[44px]" aria-label={L.home}>
+              <ArrowLeft aria-hidden="true" className="w-4 h-4" />
+              <span className="hidden sm:inline">{L.home}</span>
             </button>
-            <button
-              onClick={() => setActiveTab('catalog')}
-              className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
-                activeTab === 'catalog'
-                  ? 'bg-white text-black font-bold shadow-sm'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              All 292 Methods
-            </button>
+            <span className="font-display uppercase text-lg text-ink">Hotaru</span>
           </div>
 
-          <div className="flex rounded-full border border-white/[0.08] bg-black/50 p-0.5">
-            <button
-              onClick={() => setLang('ru')}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
-                lang === 'ru'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-white/40 hover:text-white'
-              }`}
-            >
-              RU
-            </button>
-            <button
-              onClick={() => setLang('en')}
-              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
-                lang === 'en'
-                  ? 'bg-white text-black shadow-sm'
-                  : 'text-white/40 hover:text-white'
-              }`}
-            >
-              EN
-            </button>
+          <div className="flex items-center gap-[var(--space-md)]">
+            <div className="hidden sm:block">{tabSwitch}</div>
+            <LangSwitch lang={lang} setLang={setLang} />
+            <a href="./skill/SKILL.md" download="HOTARU_AGENT_SKILL.md" className="hidden md:inline-flex btn btn--quiet btn--sm">
+              <Sparkles aria-hidden="true" className="w-4 h-4" />
+              <span>SKILL.md</span>
+            </a>
           </div>
-
-          <a
-            href="./skill/SKILL.md"
-            download="HOTARU_AGENT_SKILL.md"
-            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono bg-white text-black font-bold hover:bg-white/90 shadow-sm active:scale-95"
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>SKILL.md</span>
-          </a>
         </div>
       </header>
 
-      <div className="flex-grow flex w-full max-w-full overflow-hidden">
-        <aside className="hidden lg:block w-72 flex-shrink-0 border-r border-white/10 p-4 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto bg-[#07080d]">
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filter docs & methods..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-white/40"
-              />
-            </div>
-          </div>
+      <div className="flex-grow w-full max-w-container mx-auto px-[var(--gutter)] grid grid-cols-1 lg:grid-cols-12 gap-x-[var(--gap-columns)]">
+        <aside className="hidden lg:block lg:col-span-3 sticky top-[56px] self-start max-h-[calc(100dvh-56px)] overflow-y-auto py-[var(--space-xl)] pr-[var(--space-xs)]">
+          {searchField('docs-search')}
 
-          <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider mb-2 px-1">
-            {activeTab === 'chapters' ? 'Chapters' : 'MTProto Namespaces'}
-          </div>
+          <h2 className="mt-[var(--space-xl)] mb-[var(--space-xs)] text-sm text-muted font-sans font-normal tracking-normal">
+            {activeTab === 'chapters' ? (t.tocTitle || L.chapters) : L.namespaces}
+          </h2>
 
           {activeTab === 'chapters' ? (
-            <div className="flex flex-col gap-1">
+            <ol className="m-0 p-0 list-none flex flex-col">
               {filteredSections.map((sec, idx) => (
-                <button
-                  key={sec.id}
-                  onClick={() => setActiveSection(idx)}
-                  className={`text-left px-2.5 py-2 rounded-lg text-xs font-mono transition-colors flex items-center justify-between ${
-                    currentSection?.id === sec.id
-                      ? 'bg-white text-black font-semibold'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <span className="truncate pr-2">{sec.title}</span>
-                  {currentSection?.id === sec.id && <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />}
-                </button>
+                <li key={sec.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection(idx)}
+                    aria-current={currentSection?.id === sec.id}
+                    className="toc-item"
+                  >
+                    {sec.title}
+                  </button>
+                </li>
               ))}
-            </div>
+            </ol>
           ) : (
-            <div className="flex flex-col gap-1">
+            <ul className="m-0 p-0 list-none flex flex-col">
               {namespaces.map((ns) => (
-                <button
-                  key={ns}
-                  onClick={() => setSelectedNamespace(ns)}
-                  className={`text-left px-2.5 py-2 rounded-lg text-xs font-mono transition-colors flex items-center justify-between ${
-                    selectedNamespace === ns
-                      ? 'bg-white text-black font-semibold'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <span className="capitalize">{ns}</span>
-                  <span className="text-[10px] opacity-60">
-                    {ns === 'all'
-                      ? CATALOG_METHODS.length
-                      : CATALOG_METHODS.filter((m) => m.namespace === ns).length}
-                  </span>
-                </button>
+                <li key={ns}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNamespace(ns)}
+                    aria-current={selectedNamespace === ns}
+                    className="toc-item flex items-center justify-between gap-[var(--space-sm)]"
+                  >
+                    <span>{ns}</span>
+                    <span className="num text-muted">
+                      {ns === 'all' ? CATALOG_METHODS.length : CATALOG_METHODS.filter((m) => m.namespace === ns).length}
+                    </span>
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </aside>
 
-        <main className="flex-grow p-4 sm:p-8 max-w-5xl mx-auto w-full overflow-hidden">
-          <div className="lg:hidden flex items-center justify-between mb-4 gap-2">
-            <div className="flex rounded-full bg-white/[0.03] p-0.5 border border-white/[0.08]">
-              <button
-                onClick={() => setActiveTab('chapters')}
-                className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
-                  activeTab === 'chapters' ? 'bg-white text-black font-bold shadow-sm' : 'text-white/60'
-                }`}
-              >
-                Manual
-              </button>
-              <button
-                onClick={() => setActiveTab('catalog')}
-                className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
-                  activeTab === 'catalog' ? 'bg-white text-black font-bold shadow-sm' : 'text-white/60'
-                }`}
-              >
-                292 Methods
-              </button>
-            </div>
+        <main className="lg:col-start-5 lg:col-span-8 min-w-0 py-[var(--space-xl)] lg:py-[var(--space-2xl)]">
+          <div className="lg:hidden flex flex-col gap-[var(--space-sm)] mb-[var(--space-xl)]">
+            <div className="sm:hidden">{tabSwitch}</div>
+            {searchField('docs-search-m')}
 
-            <div className="relative flex-grow max-w-[200px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="w-full pl-8 pr-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white placeholder-white/30"
-              />
-            </div>
-          </div>
-
-          {activeTab === 'chapters' ? (
-            <div>
-              {/* Custom Mobile Chapter Selector */}
-              <div className="lg:hidden mb-5 flex flex-col gap-2 relative">
-                <div className="flex items-center justify-between text-[11px] font-mono text-white/50 px-1">
-                  <span>{lang === 'ru' ? 'Текущий раздел:' : 'Current Chapter:'}</span>
-                  <span>{activeSection + 1} / {filteredSections.length}</span>
-                </div>
-
-                {/* Custom Trigger Button */}
+            {activeTab === 'chapters' && (
+              <div className="relative">
+                <p className="text-sm text-muted mb-[var(--space-2xs)]">
+                  {L.current} <span className="num">{activeSection + 1} / {filteredSections.length}</span>
+                </p>
                 <button
                   type="button"
                   onClick={() => setChapterDropdownOpen(!chapterDropdownOpen)}
-                  className="btn-press w-full px-3.5 py-2.5 rounded-xl bg-[#0a0b16] border border-white/20 text-xs font-mono text-white flex items-center justify-between gap-2 shadow-lg hover:border-white/40 transition-all text-left"
+                  aria-expanded={chapterDropdownOpen}
+                  className="w-full min-h-[48px] px-[var(--space-md)] rounded-input bg-paper-2 text-ink text-left flex items-center justify-between gap-[var(--space-xs)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/70 flex-shrink-0" />
-                    <span className="truncate font-medium">{currentSection?.title || (lang === 'ru' ? 'Выберите раздел' : 'Select Chapter')}</span>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-white/60 flex-shrink-0 transition-transform duration-200 ${chapterDropdownOpen ? 'rotate-180' : ''}`} />
+                  <span className="truncate">{currentSection?.title || L.pick}</span>
+                  <ChevronDown aria-hidden="true" className={`w-4 h-4 text-muted flex-shrink-0 transition-transform duration-short ease-out ${chapterDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {/* Custom Floating Menu */}
                 {chapterDropdownOpen && (
                   <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setChapterDropdownOpen(false)}
-                    />
-                    <div className="absolute top-[68px] inset-x-0 z-50 rounded-2xl bg-[#0a0b16]/95 backdrop-blur-2xl border border-white/20 shadow-2xl p-1.5 max-h-72 overflow-y-auto no-scrollbar flex flex-col gap-1 animate-fade-in">
-                      {filteredSections.map((sec, idx) => {
-                        const isSelected = currentSection?.id === sec.id;
-                        return (
+                    <div className="fixed inset-0 z-dropdown" onClick={() => setChapterDropdownOpen(false)} />
+                    <ol className="absolute top-full mt-[var(--space-2xs)] inset-x-0 z-dropdown m-0 p-[var(--space-2xs)] list-none rounded-input bg-paper-3 max-h-72 overflow-y-auto">
+                      {filteredSections.map((sec, idx) => (
+                        <li key={sec.id}>
                           <button
-                            key={sec.id}
                             type="button"
                             onClick={() => {
                               setActiveSection(idx);
                               setChapterDropdownOpen(false);
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            className={`btn-press w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between gap-2 ${
-                              isSelected
-                                ? 'bg-white text-black font-bold shadow-md'
-                                : 'text-white/80 hover:text-white hover:bg-white/10'
-                            }`}
+                            aria-current={currentSection?.id === sec.id}
+                            className="toc-item"
                           >
-                            <span className="truncate">{sec.title}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0 text-black" />}
+                            {sec.title}
                           </button>
-                        );
-                      })}
-                    </div>
+                        </li>
+                      ))}
+                    </ol>
                   </>
                 )}
+              </div>
+            )}
+          </div>
 
-                {/* Quick-switch pills */}
-                <div className="overflow-x-auto no-scrollbar flex gap-2 pt-1 pb-1">
-                  {filteredSections.map((sec, idx) => (
+          {activeTab === 'chapters' ? (
+            currentSection ? (
+              <article>
+                <p className="text-sm text-muted font-mono">#{currentSection.id}</p>
+                <h1 className="mt-[var(--space-xs)] text-section text-ink max-w-[24ch]">{currentSection.title}</h1>
+                <p className="lead mt-[var(--space-md)] text-ink-2">{currentSection.summary}</p>
+
+                <div className="mt-[var(--space-xl)] pt-[var(--space-xs)] border-t border-rule">
+                  <FormattedContent rawContent={currentSection.content} />
+                </div>
+
+                <nav className="mt-[var(--space-3xl)] pt-[var(--space-lg)] border-t border-rule grid grid-cols-2 gap-[var(--space-md)]" aria-label={L.chapters}>
+                  {activeSection > 0 ? (
                     <button
-                      key={sec.id}
+                      type="button"
                       onClick={() => {
-                        setActiveSection(idx);
-                        setChapterDropdownOpen(false);
+                        setActiveSection(activeSection - 1);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className={`btn-press flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-mono min-h-[34px] flex items-center border transition-all ${
-                        currentSection?.id === sec.id
-                          ? 'bg-white text-black font-semibold border-white shadow-sm'
-                          : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
-                      }`}
+                      className="pager text-left"
                     >
-                      {sec.title.split(':')[0]}
+                      <span className="text-sm text-muted">{L.prev}</span>
+                      <span className="text-ink">{shortTitle(filteredSections[activeSection - 1]?.title || '')}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {currentSection && (
-                <div className="rounded-2xl border border-white/10 bg-[#07080f] p-4 sm:p-8 shadow-2xl">
-                  <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-2">
-                    <Hash className="w-3.5 h-3.5 text-white/70" />
-                    <span>{currentSection.id}</span>
-                  </div>
-                  <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight mb-2 pb-3 border-b border-white/10">
-                    {currentSection.title}
-                  </h1>
-                  <p className="text-xs sm:text-sm text-white/60 mb-6 font-mono">
-                    {currentSection.summary}
-                  </p>
-                  <FormattedContent rawContent={currentSection.content} />
-
-                  {/* Chapter Navigation Footer */}
-                  <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                    {activeSection > 0 ? (
-                      <button
-                        onClick={() => {
-                          setActiveSection(activeSection - 1);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="btn-press flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-mono text-white/80 border border-white/10 transition-colors"
-                      >
-                        ← {filteredSections[activeSection - 1]?.title.split(':')[0]}
-                      </button>
-                    ) : <div />}
-                    {activeSection < filteredSections.length - 1 ? (
-                      <button
-                        onClick={() => {
-                          setActiveSection(activeSection + 1);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="btn-press flex items-center justify-center sm:justify-end gap-2 px-4 py-2.5 rounded-xl bg-white text-black font-semibold text-xs font-mono hover:bg-white/90 transition-colors ml-auto"
-                      >
-                        {filteredSections[activeSection + 1]?.title.split(':')[0]} →
-                      </button>
-                    ) : <div />}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                    Extended MTProto API Catalog
-                  </h2>
-                  <p className="text-xs sm:text-sm text-white/60 mt-1">
-                    Showing {filteredCatalog.length} of {CATALOG_METHODS.length} methods
-                  </p>
-                </div>
-
-                <div className="flex gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1">
-                  {namespaces.map((ns) => (
+                  ) : <span />}
+                  {activeSection < filteredSections.length - 1 ? (
                     <button
-                      key={ns}
-                      onClick={() => setSelectedNamespace(ns)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono capitalize transition-colors ${
-                        selectedNamespace === ns
-                          ? 'bg-white text-black font-semibold'
-                          : 'bg-white/5 text-white/60 hover:text-white'
-                      }`}
+                      type="button"
+                      onClick={() => {
+                        setActiveSection(activeSection + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="pager text-right items-end"
                     >
-                      {ns}
+                      <span className="text-sm text-muted">{L.next}</span>
+                      <span className="text-ink">{shortTitle(filteredSections[activeSection + 1]?.title || '')}</span>
                     </button>
-                  ))}
-                </div>
-              </div>
+                  ) : <span />}
+                </nav>
+              </article>
+            ) : (
+              <p className="text-ink-2">{L.empty}</p>
+            )
+          ) : (
+            <section>
+              <h1 className="text-section text-ink">{L.catalogTitle}</h1>
+              <p className="mt-[var(--space-sm)] text-muted num" aria-live="polite">
+                {L.showing(filteredCatalog.length, CATALOG_METHODS.length)}
+              </p>
 
-              <div className="flex flex-col gap-3">
-                {filteredCatalog.map((method) => (
-                  <MethodCard key={method.name} method={method} lang={lang} />
+              <div className="lg:hidden mt-[var(--space-lg)] flex gap-[var(--space-2xs)] overflow-x-auto no-scrollbar -mx-[var(--gutter)] px-[var(--gutter)]">
+                {namespaces.map((ns) => (
+                  <button key={ns} type="button" onClick={() => setSelectedNamespace(ns)} aria-pressed={selectedNamespace === ns} className="tab">
+                    {ns}
+                  </button>
                 ))}
               </div>
-            </div>
+
+              <div className="mt-[var(--space-lg)] border-t border-rule">
+                {filteredCatalog.length > 0
+                  ? filteredCatalog.map((method) => <MethodCard key={method.name} method={method} lang={lang} />)
+                  : <p className="py-[var(--space-xl)] text-ink-2">{L.empty}</p>}
+              </div>
+            </section>
           )}
         </main>
       </div>
 
-      <footer className="border-t border-white/10 py-6 px-4 text-center text-xs text-white/40 font-mono">
-        Hotaru Project. Released under GNU Affero General Public License v3.0 (AGPLv3).
+      <footer className="border-t border-rule">
+        <div className="max-w-container mx-auto px-[var(--gutter)] py-[var(--space-lg)] text-sm text-muted">
+          {content.footer.copyright}
+        </div>
       </footer>
     </div>
   );
