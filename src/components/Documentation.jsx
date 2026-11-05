@@ -56,7 +56,7 @@ export function Documentation({ content, onOpenDocs }) {
         <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs font-mono text-white/50">
             <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            <span>CLONE_NEWNS SANDBOX • OPTIONAL TYPING • AGPLv3</span>
+            <span>Изоляция процессов • Опциональная типизация • AGPLv3</span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
