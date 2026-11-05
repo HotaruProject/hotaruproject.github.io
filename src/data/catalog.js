@@ -31,8 +31,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.toggleTodoCompleted. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.toggleTodoCompleted. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.toggleTodoCompleted. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.toggleTodoCompleted. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "add_poll_answer",
@@ -60,8 +60,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.addPollAnswer. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.addPollAnswer. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.addPollAnswer. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.addPollAnswer. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_poll_answer",
@@ -89,8 +89,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deletePollAnswer. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deletePollAnswer. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deletePollAnswer. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deletePollAnswer. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "unread_poll_votes",
@@ -142,8 +142,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getUnreadPollVotes. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getUnreadPollVotes. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getUnreadPollVotes. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getUnreadPollVotes. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_poll_votes_read",
@@ -165,8 +165,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.readPollVotes. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.readPollVotes. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.readPollVotes. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.readPollVotes. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "poll_statistics",
@@ -194,8 +194,8 @@ export const CATALOG_METHODS = [
         "default": "$message"
       }
     ],
-    "desc_en": "Wraps Telegram stats.getPollStats. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stats.getPollStats. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stats.getPollStats. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stats.getPollStats. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "scheduled_messages",
@@ -217,8 +217,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getScheduledHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getScheduledHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getScheduledHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getScheduledHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "scheduled_by_ids",
@@ -240,8 +240,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getScheduledMessages. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getScheduledMessages. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getScheduledMessages. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getScheduledMessages. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "publish_scheduled",
@@ -263,8 +263,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.sendScheduledMessages. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.sendScheduledMessages. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.sendScheduledMessages. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.sendScheduledMessages. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "cancel_scheduled",
@@ -286,8 +286,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteScheduledMessages. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteScheduledMessages. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteScheduledMessages. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteScheduledMessages. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "configure_chat_reactions",
@@ -321,8 +321,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.setChatAvailableReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.setChatAvailableReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.setChatAvailableReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.setChatAvailableReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "available_reactions",
@@ -338,8 +338,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getAvailableReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getAvailableReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getAvailableReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getAvailableReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_default_reaction",
@@ -355,8 +355,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.setDefaultReaction. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.setDefaultReaction. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.setDefaultReaction. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.setDefaultReaction. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "unread_reactions",
@@ -414,8 +414,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getUnreadReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getUnreadReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getUnreadReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getUnreadReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_reactions_read",
@@ -443,8 +443,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.readReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.readReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.readReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.readReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "popular_reactions",
@@ -466,8 +466,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getTopReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getTopReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getTopReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getTopReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "recent_reactions",
@@ -489,8 +489,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getRecentReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getRecentReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getRecentReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getRecentReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_recent_reactions",
@@ -499,8 +499,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.clear_recent_reactions()",
     "returns": "bool",
     "params": [],
-    "desc_en": "Wraps Telegram messages.clearRecentReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.clearRecentReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.clearRecentReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.clearRecentReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_member_reactions",
@@ -522,8 +522,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteParticipantReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteParticipantReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteParticipantReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteParticipantReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_member_message_reaction",
@@ -551,8 +551,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteParticipantReaction. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteParticipantReaction. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteParticipantReaction. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteParticipantReaction. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "saved_dialogs",
@@ -604,8 +604,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSavedDialogs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSavedDialogs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSavedDialogs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSavedDialogs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "saved_history",
@@ -669,8 +669,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSavedHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSavedHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSavedHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSavedHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_saved_history",
@@ -710,8 +710,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteSavedHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteSavedHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteSavedHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteSavedHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "pinned_saved_dialogs",
@@ -720,8 +720,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.pinned_saved_dialogs()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram messages.getPinnedSavedDialogs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getPinnedSavedDialogs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getPinnedSavedDialogs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getPinnedSavedDialogs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_saved_dialog_pinned",
@@ -743,8 +743,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.toggleSavedDialogPin. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.toggleSavedDialogPin. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.toggleSavedDialogPin. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.toggleSavedDialogPin. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_saved_pins",
@@ -766,8 +766,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.reorderPinnedSavedDialogs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.reorderPinnedSavedDialogs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.reorderPinnedSavedDialogs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.reorderPinnedSavedDialogs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "saved_reaction_tags",
@@ -789,8 +789,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSavedReactionTags. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSavedReactionTags. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSavedReactionTags. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSavedReactionTags. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "rename_saved_tag",
@@ -812,8 +812,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.updateSavedReactionTag. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.updateSavedReactionTag. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.updateSavedReactionTag. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.updateSavedReactionTag. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "suggested_saved_tags",
@@ -829,8 +829,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getDefaultTagReactions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getDefaultTagReactions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getDefaultTagReactions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getDefaultTagReactions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "saved_dialogs_by_peers",
@@ -852,8 +852,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSavedDialogsByID. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSavedDialogsByID. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSavedDialogsByID. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSavedDialogsByID. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_saved_history_read",
@@ -881,8 +881,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.readSavedHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.readSavedHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.readSavedHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.readSavedHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "forum_topics",
@@ -928,8 +928,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getForumTopics. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getForumTopics. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getForumTopics. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getForumTopics. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "forum_topics_by_ids",
@@ -951,8 +951,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getForumTopicsByID. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getForumTopicsByID. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getForumTopicsByID. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getForumTopicsByID. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_forum_topic",
@@ -998,8 +998,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editForumTopic. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editForumTopic. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editForumTopic. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editForumTopic. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_forum_topic_pinned",
@@ -1027,8 +1027,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.updatePinnedForumTopic. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.updatePinnedForumTopic. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.updatePinnedForumTopic. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.updatePinnedForumTopic. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_forum_pins",
@@ -1056,8 +1056,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.reorderPinnedForumTopics. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.reorderPinnedForumTopics. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.reorderPinnedForumTopics. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.reorderPinnedForumTopics. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "create_forum_topic",
@@ -1109,8 +1109,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.createForumTopic. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.createForumTopic. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.createForumTopic. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.createForumTopic. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_forum_topic",
@@ -1132,8 +1132,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteTopicHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteTopicHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteTopicHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteTopicHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_forum_enabled",
@@ -1161,8 +1161,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleForum. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleForum. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleForum. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleForum. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_forum_message_view",
@@ -1184,8 +1184,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleViewForumAsMessages. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleViewForumAsMessages. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleViewForumAsMessages. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleViewForumAsMessages. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_posting_quota",
@@ -1201,8 +1201,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.canSendStory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.canSendStory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.canSendStory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.canSendStory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "post_story",
@@ -1302,8 +1302,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.sendStory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.sendStory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.sendStory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.sendStory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_story",
@@ -1361,8 +1361,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.editStory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.editStory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.editStory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.editStory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "delete_stories",
@@ -1384,8 +1384,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.deleteStories. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.deleteStories. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.deleteStories. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.deleteStories. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_stories_on_profile",
@@ -1413,8 +1413,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.togglePinned. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.togglePinned. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.togglePinned. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.togglePinned. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_feed",
@@ -1442,8 +1442,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.getAllStories. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getAllStories. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getAllStories. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getAllStories. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "profile_stories",
@@ -1471,8 +1471,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stories.getPinnedStories. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getPinnedStories. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getPinnedStories. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getPinnedStories. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "archived_stories",
@@ -1500,8 +1500,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stories.getStoriesArchive. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getStoriesArchive. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getStoriesArchive. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getStoriesArchive. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "stories_by_ids",
@@ -1523,8 +1523,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.getStoriesByID. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getStoriesByID. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getStoriesByID. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getStoriesByID. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_stories_read",
@@ -1546,8 +1546,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram stories.readStories. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.readStories. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.readStories. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.readStories. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_viewers",
@@ -1605,8 +1605,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stories.getStoryViewsList. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getStoryViewsList. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getStoryViewsList. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getStoryViewsList. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_view_counts",
@@ -1628,8 +1628,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.getStoriesViews. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getStoriesViews. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getStoriesViews. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getStoriesViews. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_link",
@@ -1651,8 +1651,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.exportStoryLink. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.exportStoryLink. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.exportStoryLink. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.exportStoryLink. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "activate_story_stealth",
@@ -1674,8 +1674,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.activateStealthMode. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.activateStealthMode. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.activateStealthMode. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.activateStealthMode. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "react_to_story",
@@ -1709,8 +1709,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.sendReaction. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.sendReaction. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.sendReaction. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.sendReaction. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "peer_stories",
@@ -1726,8 +1726,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.getPeerStories. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getPeerStories. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getPeerStories. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getPeerStories. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_read_markers",
@@ -1736,8 +1736,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.story_read_markers()",
     "returns": "bool",
     "params": [],
-    "desc_en": "Wraps Telegram stories.getAllReadPeerStories. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getAllReadPeerStories. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getAllReadPeerStories. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getAllReadPeerStories. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "peer_latest_story_ids",
@@ -1753,8 +1753,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.getPeerMaxIDs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getPeerMaxIDs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getPeerMaxIDs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getPeerMaxIDs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_posting_chats",
@@ -1763,8 +1763,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.story_posting_chats()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram stories.getChatsToSend. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getChatsToSend. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getChatsToSend. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getChatsToSend. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_peer_stories_hidden",
@@ -1786,8 +1786,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.togglePeerStoriesHidden. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.togglePeerStoriesHidden. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.togglePeerStoriesHidden. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.togglePeerStoriesHidden. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_reaction_senders",
@@ -1833,8 +1833,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stories.getStoryReactionsList. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getStoryReactionsList. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getStoryReactionsList. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getStoryReactionsList. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_profile_story_pins",
@@ -1856,8 +1856,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.togglePinnedToTop. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.togglePinnedToTop. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.togglePinnedToTop. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.togglePinnedToTop. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_stories",
@@ -1897,8 +1897,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stories.searchPosts. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.searchPosts. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.searchPosts. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.searchPosts. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "create_story_album",
@@ -1926,8 +1926,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.createAlbum. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.createAlbum. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.createAlbum. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.createAlbum. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_story_album",
@@ -1973,8 +1973,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.updateAlbum. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.updateAlbum. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.updateAlbum. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.updateAlbum. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_story_albums",
@@ -1996,8 +1996,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.reorderAlbums. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.reorderAlbums. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.reorderAlbums. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.reorderAlbums. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_story_album",
@@ -2019,8 +2019,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stories.deleteAlbum. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.deleteAlbum. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.deleteAlbum. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.deleteAlbum. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_albums",
@@ -2042,8 +2042,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram stories.getAlbums. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getAlbums. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getAlbums. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getAlbums. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_album_items",
@@ -2077,8 +2077,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stories.getAlbumStories. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stories.getAlbumStories. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stories.getAlbumStories. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stories.getAlbumStories. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "stickers_for_emoji",
@@ -2100,8 +2100,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "installed_sticker_sets",
@@ -2117,8 +2117,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getAllStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getAllStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getAllStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getAllStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "sticker_set",
@@ -2140,8 +2140,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getStickerSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getStickerSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getStickerSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getStickerSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "install_sticker_set",
@@ -2163,8 +2163,8 @@ export const CATALOG_METHODS = [
         "default": "False"
       }
     ],
-    "desc_en": "Wraps Telegram messages.installStickerSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.installStickerSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.installStickerSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.installStickerSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "uninstall_sticker_set",
@@ -2180,8 +2180,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.uninstallStickerSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.uninstallStickerSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.uninstallStickerSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.uninstallStickerSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_sticker_sets",
@@ -2209,8 +2209,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.reorderStickerSets. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.reorderStickerSets. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.reorderStickerSets. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.reorderStickerSets. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "saved_gifs",
@@ -2226,8 +2226,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSavedGifs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSavedGifs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSavedGifs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSavedGifs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_gif_saved",
@@ -2249,8 +2249,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.saveGif. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.saveGif. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.saveGif. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.saveGif. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "featured_sticker_sets",
@@ -2266,8 +2266,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getFeaturedStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getFeaturedStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getFeaturedStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getFeaturedStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_featured_stickers_seen",
@@ -2283,8 +2283,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.readFeaturedStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.readFeaturedStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.readFeaturedStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.readFeaturedStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "recent_stickers",
@@ -2306,8 +2306,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getRecentStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getRecentStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getRecentStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getRecentStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_sticker_recent",
@@ -2335,8 +2335,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.saveRecentSticker. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.saveRecentSticker. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.saveRecentSticker. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.saveRecentSticker. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_recent_stickers",
@@ -2352,8 +2352,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.clearRecentStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.clearRecentStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.clearRecentStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.clearRecentStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "archived_sticker_sets",
@@ -2387,8 +2387,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getArchivedStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getArchivedStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getArchivedStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getArchivedStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "installed_masks",
@@ -2404,8 +2404,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getMaskStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getMaskStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getMaskStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getMaskStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "media_sticker_sets",
@@ -2421,8 +2421,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getAttachedStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getAttachedStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getAttachedStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getAttachedStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "favorite_stickers",
@@ -2438,8 +2438,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getFavedStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getFavedStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getFavedStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getFavedStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_sticker_favorite",
@@ -2461,8 +2461,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.faveSticker. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.faveSticker. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.faveSticker. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.faveSticker. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_sticker_sets",
@@ -2490,8 +2490,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.searchStickerSets. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.searchStickerSets. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.searchStickerSets. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.searchStickerSets. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "bulk_sticker_set_action",
@@ -2525,8 +2525,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.toggleStickerSets. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.toggleStickerSets. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.toggleStickerSets. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.toggleStickerSets. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "older_featured_sticker_sets",
@@ -2554,8 +2554,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getOldFeaturedStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getOldFeaturedStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getOldFeaturedStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getOldFeaturedStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "custom_emoji_documents",
@@ -2571,8 +2571,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getCustomEmojiDocuments. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getCustomEmojiDocuments. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getCustomEmojiDocuments. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getCustomEmojiDocuments. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "installed_emoji_sets",
@@ -2588,8 +2588,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getEmojiStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getEmojiStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getEmojiStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getEmojiStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "featured_emoji_sets",
@@ -2605,8 +2605,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getFeaturedEmojiStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getFeaturedEmojiStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getFeaturedEmojiStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getFeaturedEmojiStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_custom_emoji",
@@ -2628,8 +2628,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.searchCustomEmoji. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.searchCustomEmoji. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.searchCustomEmoji. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.searchCustomEmoji. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_emoji_sets",
@@ -2657,8 +2657,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.searchEmojiStickerSets. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.searchEmojiStickerSets. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.searchEmojiStickerSets. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.searchEmojiStickerSets. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "owned_sticker_sets",
@@ -2680,8 +2680,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getMyStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getMyStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getMyStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getMyStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_stickers",
@@ -2733,8 +2733,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.searchStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.searchStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.searchStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.searchStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "create_sticker_set",
@@ -2798,8 +2798,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.createStickerSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.createStickerSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.createStickerSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.createStickerSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_sticker",
@@ -2815,8 +2815,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.removeStickerFromSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.removeStickerFromSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.removeStickerFromSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.removeStickerFromSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "move_sticker",
@@ -2838,8 +2838,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.changeStickerPosition. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.changeStickerPosition. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.changeStickerPosition. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.changeStickerPosition. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "add_sticker",
@@ -2861,8 +2861,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.addStickerToSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.addStickerToSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.addStickerToSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.addStickerToSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_sticker_set_thumbnail",
@@ -2890,8 +2890,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.setStickerSetThumb. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.setStickerSetThumb. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.setStickerSetThumb. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.setStickerSetThumb. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "check_sticker_set_name",
@@ -2907,8 +2907,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.checkShortName. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.checkShortName. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.checkShortName. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.checkShortName. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "suggest_sticker_set_name",
@@ -2924,8 +2924,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.suggestShortName. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.suggestShortName. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.suggestShortName. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.suggestShortName. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_sticker_metadata",
@@ -2959,8 +2959,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.changeSticker. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.changeSticker. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.changeSticker. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.changeSticker. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "rename_sticker_set",
@@ -2982,8 +2982,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.renameStickerSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.renameStickerSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.renameStickerSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.renameStickerSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_sticker_set",
@@ -2999,8 +2999,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.deleteStickerSet. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.deleteStickerSet. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.deleteStickerSet. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.deleteStickerSet. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "replace_sticker",
@@ -3022,8 +3022,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stickers.replaceSticker. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stickers.replaceSticker. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stickers.replaceSticker. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stickers.replaceSticker. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "contact_ids",
@@ -3039,8 +3039,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram contacts.getContactIDs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.getContactIDs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.getContactIDs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.getContactIDs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "contact_statuses",
@@ -3049,8 +3049,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.contact_statuses()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram contacts.getStatuses. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.getStatuses. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.getStatuses. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.getStatuses. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "contacts_list",
@@ -3066,8 +3066,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram contacts.getContacts. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.getContacts. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.getContacts. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.getContacts. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "import_contacts",
@@ -3083,8 +3083,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.importContacts. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.importContacts. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.importContacts. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.importContacts. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_contacts",
@@ -3100,8 +3100,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.deleteContacts. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.deleteContacts. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.deleteContacts. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.deleteContacts. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_contacts_by_phone",
@@ -3117,8 +3117,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.deleteByPhones. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.deleteByPhones. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.deleteByPhones. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.deleteByPhones. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "block_peer",
@@ -3140,8 +3140,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.block. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.block. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.block. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.block. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "unblock_peer",
@@ -3163,8 +3163,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.unblock. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.unblock. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.unblock. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.unblock. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "blocked_peers",
@@ -3192,8 +3192,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram contacts.getBlocked. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.getBlocked. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.getBlocked. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.getBlocked. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_public_peers",
@@ -3227,8 +3227,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram contacts.search. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.search. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.search. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.search. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "frequent_peers",
@@ -3316,8 +3316,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram contacts.getTopPeers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.getTopPeers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.getTopPeers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.getTopPeers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reset_peer_rating",
@@ -3339,8 +3339,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.resetTopPeerRating. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.resetTopPeerRating. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.resetTopPeerRating. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.resetTopPeerRating. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_imported_contacts",
@@ -3349,8 +3349,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.clear_imported_contacts()",
     "returns": "bool",
     "params": [],
-    "desc_en": "Wraps Telegram contacts.resetSaved. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.resetSaved. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.resetSaved. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.resetSaved. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "imported_contacts",
@@ -3359,8 +3359,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.imported_contacts()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram contacts.getSaved. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.getSaved. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.getSaved. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.getSaved. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_frequent_peers_enabled",
@@ -3376,8 +3376,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.toggleTopPeers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.toggleTopPeers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.toggleTopPeers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.toggleTopPeers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "add_contact",
@@ -3423,8 +3423,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.addContact. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.addContact. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.addContact. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.addContact. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "accept_contact",
@@ -3440,8 +3440,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.acceptContact. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.acceptContact. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.acceptContact. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.acceptContact. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_close_friends",
@@ -3457,8 +3457,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.editCloseFriends. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.editCloseFriends. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.editCloseFriends. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.editCloseFriends. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "replace_blocklist",
@@ -3486,8 +3486,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram contacts.setBlocked. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.setBlocked. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.setBlocked. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.setBlocked. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "contact_birthdays",
@@ -3496,8 +3496,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.contact_birthdays()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram contacts.getBirthdays. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.getBirthdays. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.getBirthdays. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.getBirthdays. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_contact_note",
@@ -3519,8 +3519,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram contacts.updateContactNote. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram contacts.updateContactNote. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram contacts.updateContactNote. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram contacts.updateContactNote. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "dialogs",
@@ -3572,8 +3572,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getDialogs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getDialogs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getDialogs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getDialogs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "chat_history",
@@ -3631,8 +3631,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_chat_messages",
@@ -3732,8 +3732,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.search. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.search. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.search. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.search. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_chat_read",
@@ -3755,8 +3755,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.readHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.readHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.readHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.readHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_chat_history",
@@ -3802,8 +3802,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "peer_settings",
@@ -3819,8 +3819,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getPeerSettings. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getPeerSettings. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getPeerSettings. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getPeerSettings. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "basic_groups",
@@ -3836,8 +3836,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getChats. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getChats. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getChats. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getChats. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "basic_group_details",
@@ -3853,8 +3853,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getFullChat. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getFullChat. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getFullChat. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getFullChat. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "search_all_messages",
@@ -3942,8 +3942,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.searchGlobal. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.searchGlobal. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.searchGlobal. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.searchGlobal. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "message_editability",
@@ -3965,8 +3965,8 @@ export const CATALOG_METHODS = [
         "default": "$message"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getMessageEditData. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getMessageEditData. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getMessageEditData. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getMessageEditData. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "peer_dialogs",
@@ -3982,8 +3982,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getPeerDialogs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getPeerDialogs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getPeerDialogs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getPeerDialogs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "all_drafts",
@@ -3992,8 +3992,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.all_drafts()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram messages.getAllDrafts. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getAllDrafts. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getAllDrafts. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getAllDrafts. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mutual_groups",
@@ -4021,8 +4021,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getCommonChats. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getCommonChats. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getCommonChats. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getCommonChats. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_dialog_pinned",
@@ -4044,8 +4044,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.toggleDialogPin. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.toggleDialogPin. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.toggleDialogPin. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.toggleDialogPin. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_dialog_pins",
@@ -4073,8 +4073,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.reorderPinnedDialogs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.reorderPinnedDialogs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.reorderPinnedDialogs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.reorderPinnedDialogs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "pinned_dialogs",
@@ -4090,8 +4090,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getPinnedDialogs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getPinnedDialogs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getPinnedDialogs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getPinnedDialogs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "unread_mentions",
@@ -4143,8 +4143,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getUnreadMentions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getUnreadMentions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getUnreadMentions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getUnreadMentions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_mentions_read",
@@ -4166,8 +4166,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.readMentions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.readMentions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.readMentions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.readMentions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "recent_live_locations",
@@ -4195,8 +4195,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getRecentLocations. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getRecentLocations. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getRecentLocations. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getRecentLocations. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_dialog_unread",
@@ -4224,8 +4224,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.markDialogUnread. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.markDialogUnread. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.markDialogUnread. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.markDialogUnread. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "unread_dialog_marks",
@@ -4241,8 +4241,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getDialogUnreadMarks. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getDialogUnreadMarks. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getDialogUnreadMarks. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getDialogUnreadMarks. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_all_drafts",
@@ -4251,8 +4251,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.clear_all_drafts()",
     "returns": "bool",
     "params": [],
-    "desc_en": "Wraps Telegram messages.clearAllDrafts. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.clearAllDrafts. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.clearAllDrafts. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.clearAllDrafts. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "chat_online_count",
@@ -4268,8 +4268,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getOnlines. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getOnlines. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getOnlines. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getOnlines. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "message_type_counts",
@@ -4303,8 +4303,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSearchCounters. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSearchCounters. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSearchCounters. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSearchCounters. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "dismiss_peer_settings_bar",
@@ -4320,8 +4320,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram messages.hidePeerSettingsBar. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.hidePeerSettingsBar. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.hidePeerSettingsBar. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.hidePeerSettingsBar. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_discussion_read",
@@ -4349,8 +4349,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.readDiscussion. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.readDiscussion. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.readDiscussion. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.readDiscussion. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "unpin_all_chat_messages",
@@ -4378,8 +4378,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.unpinAllMessages. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.unpinAllMessages. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.unpinAllMessages. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.unpinAllMessages. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "message_readers",
@@ -4401,8 +4401,8 @@ export const CATALOG_METHODS = [
         "default": "$message"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getMessageReadParticipants. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getMessageReadParticipants. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getMessageReadParticipants. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getMessageReadParticipants. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "message_search_calendar",
@@ -4442,8 +4442,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSearchResultsCalendar. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSearchResultsCalendar. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSearchResultsCalendar. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSearchResultsCalendar. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "message_search_positions",
@@ -4483,8 +4483,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getSearchResultsPositions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSearchResultsPositions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSearchResultsPositions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSearchResultsPositions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_default_send_as",
@@ -4506,8 +4506,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.saveDefaultSendAs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.saveDefaultSendAs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.saveDefaultSendAs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.saveDefaultSendAs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "sent_media_search",
@@ -4535,8 +4535,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.searchSentMedia. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.searchSentMedia. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.searchSentMedia. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.searchSentMedia. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "outgoing_read_date",
@@ -4558,8 +4558,8 @@ export const CATALOG_METHODS = [
         "default": "$message"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getOutboxReadDate. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getOutboxReadDate. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getOutboxReadDate. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getOutboxReadDate. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "channel_message_author",
@@ -4581,8 +4581,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.getMessageAuthor. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getMessageAuthor. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getMessageAuthor. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getMessageAuthor. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "move_dialogs_to_archive",
@@ -4598,8 +4598,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram folders.editPeerFolders. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram folders.editPeerFolders. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram folders.editPeerFolders. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram folders.editPeerFolders. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "chat_folders",
@@ -4608,8 +4608,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.chat_folders()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram messages.getDialogFilters. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getDialogFilters. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getDialogFilters. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getDialogFilters. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "suggested_chat_folders",
@@ -4618,8 +4618,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.suggested_chat_folders()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram messages.getSuggestedDialogFilters. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getSuggestedDialogFilters. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getSuggestedDialogFilters. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getSuggestedDialogFilters. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "save_chat_folder",
@@ -4641,8 +4641,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.updateDialogFilter. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.updateDialogFilter. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.updateDialogFilter. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.updateDialogFilter. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_chat_folders",
@@ -4658,8 +4658,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.updateDialogFiltersOrder. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.updateDialogFiltersOrder. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.updateDialogFiltersOrder. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.updateDialogFiltersOrder. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_folder_tags_visible",
@@ -4675,8 +4675,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.toggleDialogFilterTags. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.toggleDialogFilterTags. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.toggleDialogFilterTags. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.toggleDialogFilterTags. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "share_chat_folder",
@@ -4704,8 +4704,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.exportChatlistInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.exportChatlistInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.exportChatlistInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.exportChatlistInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_folder_invite",
@@ -4727,8 +4727,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.deleteExportedInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.deleteExportedInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.deleteExportedInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.deleteExportedInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_folder_invite",
@@ -4762,8 +4762,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.editExportedInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.editExportedInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.editExportedInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.editExportedInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "folder_invites",
@@ -4779,8 +4779,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.getExportedInvites. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.getExportedInvites. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.getExportedInvites. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.getExportedInvites. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "inspect_folder_invite",
@@ -4796,8 +4796,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.checkChatlistInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.checkChatlistInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.checkChatlistInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.checkChatlistInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "join_folder_invite",
@@ -4819,8 +4819,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.joinChatlistInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.joinChatlistInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.joinChatlistInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.joinChatlistInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "folder_updates",
@@ -4836,8 +4836,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.getChatlistUpdates. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.getChatlistUpdates. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.getChatlistUpdates. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.getChatlistUpdates. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "accept_folder_updates",
@@ -4859,8 +4859,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.joinChatlistUpdates. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.joinChatlistUpdates. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.joinChatlistUpdates. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.joinChatlistUpdates. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "dismiss_folder_updates",
@@ -4876,8 +4876,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.hideChatlistUpdates. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.hideChatlistUpdates. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.hideChatlistUpdates. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.hideChatlistUpdates. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "folder_leave_suggestions",
@@ -4893,8 +4893,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.getLeaveChatlistSuggestions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.getLeaveChatlistSuggestions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.getLeaveChatlistSuggestions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.getLeaveChatlistSuggestions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "leave_shared_folder",
@@ -4916,8 +4916,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram chatlists.leaveChatlist. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram chatlists.leaveChatlist. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram chatlists.leaveChatlist. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram chatlists.leaveChatlist. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_profile",
@@ -4945,8 +4945,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updateProfile. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updateProfile. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updateProfile. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updateProfile. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_online_status",
@@ -4962,8 +4962,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updateStatus. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updateStatus. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updateStatus. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updateStatus. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "check_profile_username",
@@ -4979,8 +4979,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.checkUsername. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.checkUsername. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.checkUsername. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.checkUsername. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_profile_username",
@@ -4996,8 +4996,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updateUsername. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updateUsername. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updateUsername. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updateUsername. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "privacy_rules",
@@ -5013,8 +5013,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.getPrivacy. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getPrivacy. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getPrivacy. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getPrivacy. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "account_inactivity_ttl",
@@ -5023,8 +5023,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.account_inactivity_ttl()",
     "returns": "int",
     "params": [],
-    "desc_en": "Wraps Telegram account.getAccountTTL. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getAccountTTL. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getAccountTTL. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getAccountTTL. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_emoji_status",
@@ -5040,8 +5040,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updateEmojiStatus. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updateEmojiStatus. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updateEmojiStatus. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updateEmojiStatus. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "suggested_emoji_statuses",
@@ -5057,8 +5057,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram account.getDefaultEmojiStatuses. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getDefaultEmojiStatuses. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getDefaultEmojiStatuses. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getDefaultEmojiStatuses. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "recent_emoji_statuses",
@@ -5074,8 +5074,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram account.getRecentEmojiStatuses. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getRecentEmojiStatuses. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getRecentEmojiStatuses. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getRecentEmojiStatuses. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_recent_emoji_statuses",
@@ -5084,8 +5084,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.clear_recent_emoji_statuses()",
     "returns": "bool",
     "params": [],
-    "desc_en": "Wraps Telegram account.clearRecentEmojiStatuses. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.clearRecentEmojiStatuses. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.clearRecentEmojiStatuses. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.clearRecentEmojiStatuses. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_profile_usernames",
@@ -5101,8 +5101,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.reorderUsernames. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.reorderUsernames. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.reorderUsernames. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.reorderUsernames. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_profile_username_active",
@@ -5124,8 +5124,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.toggleUsername. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.toggleUsername. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.toggleUsername. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.toggleUsername. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "profile_photo_emojis",
@@ -5141,8 +5141,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram account.getDefaultProfilePhotoEmojis. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getDefaultProfilePhotoEmojis. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getDefaultProfilePhotoEmojis. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getDefaultProfilePhotoEmojis. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_profile_color",
@@ -5164,8 +5164,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updateColor. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updateColor. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updateColor. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updateColor. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_birthday",
@@ -5181,8 +5181,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updateBirthday. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updateBirthday. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updateBirthday. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updateBirthday. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_personal_channel",
@@ -5198,8 +5198,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updatePersonalChannel. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updatePersonalChannel. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updatePersonalChannel. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updatePersonalChannel. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_profile_tab",
@@ -5215,8 +5215,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.setMainProfileTab. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.setMainProfileTab. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.setMainProfileTab. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.setMainProfileTab. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_music_saved",
@@ -5244,8 +5244,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.saveMusic. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.saveMusic. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.saveMusic. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.saveMusic. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "saved_music_ids",
@@ -5261,8 +5261,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram account.getSavedMusicIds. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getSavedMusicIds. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getSavedMusicIds. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getSavedMusicIds. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "user_details",
@@ -5278,8 +5278,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram users.getFullUser. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram users.getFullUser. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram users.getFullUser. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram users.getFullUser. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "contact_requirements",
@@ -5295,8 +5295,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram users.getRequirementsToContact. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram users.getRequirementsToContact. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram users.getRequirementsToContact. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram users.getRequirementsToContact. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "user_music",
@@ -5330,8 +5330,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram users.getSavedMusic. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram users.getSavedMusic. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram users.getSavedMusic. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram users.getSavedMusic. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "user_music_by_documents",
@@ -5353,8 +5353,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram users.getSavedMusicByID. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram users.getSavedMusicByID. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram users.getSavedMusicByID. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram users.getSavedMusicByID. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "suggest_contact_birthday",
@@ -5376,8 +5376,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram users.suggestBirthday. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram users.suggestBirthday. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram users.suggestBirthday. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram users.suggestBirthday. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "select_profile_photo",
@@ -5405,8 +5405,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram photos.updateProfilePhoto. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram photos.updateProfilePhoto. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram photos.updateProfilePhoto. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram photos.updateProfilePhoto. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "upload_profile_photo",
@@ -5452,8 +5452,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram photos.uploadProfilePhoto. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram photos.uploadProfilePhoto. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram photos.uploadProfilePhoto. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram photos.uploadProfilePhoto. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_profile_photos",
@@ -5469,8 +5469,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram photos.deletePhotos. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram photos.deletePhotos. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram photos.deletePhotos. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram photos.deletePhotos. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "profile_photos",
@@ -5504,8 +5504,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram photos.getUserPhotos. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram photos.getUserPhotos. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram photos.getUserPhotos. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram photos.getUserPhotos. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_contact_photo",
@@ -5557,8 +5557,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram photos.uploadContactProfilePhoto. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram photos.uploadContactProfilePhoto. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram photos.uploadContactProfilePhoto. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram photos.uploadContactProfilePhoto. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "notification_settings",
@@ -5574,8 +5574,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.getNotifySettings. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getNotifySettings. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getNotifySettings. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getNotifySettings. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_notification_settings",
@@ -5597,8 +5597,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.updateNotifySettings. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.updateNotifySettings. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.updateNotifySettings. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.updateNotifySettings. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reset_notification_settings",
@@ -5607,8 +5607,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.reset_notification_settings()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram account.resetNotifySettings. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.resetNotifySettings. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.resetNotifySettings. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.resetNotifySettings. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "contact_signup_notifications",
@@ -5617,8 +5617,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.contact_signup_notifications()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram account.getContactSignUpNotification. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getContactSignUpNotification. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getContactSignUpNotification. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getContactSignUpNotification. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_contact_signup_notifications",
@@ -5634,8 +5634,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.setContactSignUpNotification. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.setContactSignUpNotification. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.setContactSignUpNotification. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.setContactSignUpNotification. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "notification_exceptions",
@@ -5663,8 +5663,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.getNotifyExceptions. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getNotifyExceptions. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getNotifyExceptions. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getNotifyExceptions. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reaction_notification_settings",
@@ -5673,8 +5673,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.reaction_notification_settings()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram account.getReactionsNotifySettings. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getReactionsNotifySettings. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getReactionsNotifySettings. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getReactionsNotifySettings. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_reaction_notification_settings",
@@ -5690,8 +5690,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.setReactionsNotifySettings. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.setReactionsNotifySettings. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.setReactionsNotifySettings. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.setReactionsNotifySettings. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "saved_notification_sounds",
@@ -5707,8 +5707,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram account.getSavedRingtones. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.getSavedRingtones. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.getSavedRingtones. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.getSavedRingtones. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_notification_sound_saved",
@@ -5730,8 +5730,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.saveRingtone. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.saveRingtone. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.saveRingtone. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.saveRingtone. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "upload_notification_sound",
@@ -5759,8 +5759,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram account.uploadRingtone. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram account.uploadRingtone. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram account.uploadRingtone. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram account.uploadRingtone. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "rename_basic_group",
@@ -5782,8 +5782,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editChatTitle. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editChatTitle. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editChatTitle. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editChatTitle. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_basic_group_photo",
@@ -5805,8 +5805,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editChatPhoto. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editChatPhoto. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editChatPhoto. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editChatPhoto. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "add_basic_group_member",
@@ -5834,8 +5834,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram messages.addChatUser. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.addChatUser. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.addChatUser. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.addChatUser. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_basic_group_member",
@@ -5863,8 +5863,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteChatUser. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteChatUser. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteChatUser. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteChatUser. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "create_basic_group",
@@ -5892,8 +5892,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.createChat. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.createChat. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.createChat. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.createChat. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_basic_group_admin",
@@ -5921,8 +5921,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editChatAdmin. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editChatAdmin. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editChatAdmin. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editChatAdmin. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "upgrade_basic_group",
@@ -5938,8 +5938,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.migrateChat. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.migrateChat. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.migrateChat. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.migrateChat. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_chat_description",
@@ -5961,8 +5961,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editChatAbout. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editChatAbout. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editChatAbout. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editChatAbout. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_default_member_restrictions",
@@ -5984,8 +5984,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editChatDefaultBannedRights. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editChatDefaultBannedRights. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editChatDefaultBannedRights. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editChatDefaultBannedRights. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_basic_group",
@@ -6001,8 +6001,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteChat. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteChat. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteChat. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteChat. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_chat_auto_delete",
@@ -6024,8 +6024,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.setHistoryTTL. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.setHistoryTTL. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.setHistoryTTL. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.setHistoryTTL. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_content_protection",
@@ -6053,8 +6053,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.toggleNoForwards. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.toggleNoForwards. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.toggleNoForwards. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.toggleNoForwards. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_channel_read",
@@ -6076,8 +6076,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.readHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.readHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.readHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.readHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "channel_members",
@@ -6117,8 +6117,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.getParticipants. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getParticipants. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getParticipants. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getParticipants. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "channel_member",
@@ -6140,8 +6140,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.getParticipant. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getParticipant. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getParticipant. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getParticipant. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "channel_details",
@@ -6157,8 +6157,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram channels.getFullChannel. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getFullChannel. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getFullChannel. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getFullChannel. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "create_channel",
@@ -6222,8 +6222,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.createChannel. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.createChannel. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.createChannel. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.createChannel. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_admin",
@@ -6257,8 +6257,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.editAdmin. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.editAdmin. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.editAdmin. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.editAdmin. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "rename_channel",
@@ -6280,8 +6280,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.editTitle. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.editTitle. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.editTitle. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.editTitle. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_photo",
@@ -6303,8 +6303,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.editPhoto. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.editPhoto. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.editPhoto. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.editPhoto. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "check_channel_username",
@@ -6326,8 +6326,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.checkUsername. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.checkUsername. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.checkUsername. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.checkUsername. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_username",
@@ -6349,8 +6349,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.updateUsername. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.updateUsername. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.updateUsername. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.updateUsername. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "join_channel",
@@ -6366,8 +6366,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram channels.joinChannel. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.joinChannel. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.joinChannel. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.joinChannel. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "leave_channel",
@@ -6383,8 +6383,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram channels.leaveChannel. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.leaveChannel. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.leaveChannel. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.leaveChannel. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "invite_channel_members",
@@ -6406,8 +6406,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.inviteToChannel. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.inviteToChannel. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.inviteToChannel. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.inviteToChannel. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_channel",
@@ -6423,8 +6423,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram channels.deleteChannel. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.deleteChannel. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.deleteChannel. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.deleteChannel. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_signatures",
@@ -6452,8 +6452,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleSignatures. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleSignatures. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleSignatures. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleSignatures. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "owned_public_channels",
@@ -6487,8 +6487,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.getAdminedPublicChannels. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getAdminedPublicChannels. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getAdminedPublicChannels. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getAdminedPublicChannels. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "restrict_channel_member",
@@ -6516,8 +6516,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.editBanned. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.editBanned. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.editBanned. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.editBanned. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "channel_admin_log",
@@ -6569,8 +6569,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram channels.getAdminLog. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getAdminLog. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getAdminLog. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getAdminLog. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_group_sticker_set",
@@ -6592,8 +6592,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.setStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.setStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.setStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.setStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "mark_channel_media_read",
@@ -6615,8 +6615,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.readMessageContents. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.readMessageContents. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.readMessageContents. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.readMessageContents. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "clear_channel_history",
@@ -6644,8 +6644,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.deleteHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.deleteHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.deleteHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.deleteHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_prehistory_hidden",
@@ -6667,8 +6667,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.togglePreHistoryHidden. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.togglePreHistoryHidden. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.togglePreHistoryHidden. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.togglePreHistoryHidden. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "left_channels",
@@ -6684,8 +6684,8 @@ export const CATALOG_METHODS = [
         "default": "0"
       }
     ],
-    "desc_en": "Wraps Telegram channels.getLeftChannels. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getLeftChannels. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getLeftChannels. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getLeftChannels. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "eligible_discussion_groups",
@@ -6694,8 +6694,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.eligible_discussion_groups()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram channels.getGroupsForDiscussion. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getGroupsForDiscussion. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getGroupsForDiscussion. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getGroupsForDiscussion. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_discussion_group",
@@ -6717,8 +6717,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.setDiscussionGroup. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.setDiscussionGroup. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.setDiscussionGroup. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.setDiscussionGroup. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_group_location",
@@ -6746,8 +6746,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.editLocation. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.editLocation. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.editLocation. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.editLocation. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_slow_mode",
@@ -6769,8 +6769,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleSlowMode. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleSlowMode. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleSlowMode. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleSlowMode. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "inactive_channels",
@@ -6779,8 +6779,8 @@ export const CATALOG_METHODS = [
     "signature": "await ctx.inactive_channels()",
     "returns": "dict[str, Any]",
     "params": [],
-    "desc_en": "Wraps Telegram channels.getInactiveChannels. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getInactiveChannels. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getInactiveChannels. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getInactiveChannels. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "send_as_identities",
@@ -6808,8 +6808,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram channels.getSendAs. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getSendAs. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getSendAs. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getSendAs. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_member_history",
@@ -6831,8 +6831,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.deleteParticipantHistory. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.deleteParticipantHistory. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.deleteParticipantHistory. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.deleteParticipantHistory. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_join_to_send",
@@ -6854,8 +6854,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleJoinToSend. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleJoinToSend. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleJoinToSend. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleJoinToSend. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_join_requests",
@@ -6889,8 +6889,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleJoinRequest. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleJoinRequest. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleJoinRequest. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleJoinRequest. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "reorder_channel_usernames",
@@ -6912,8 +6912,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.reorderUsernames. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.reorderUsernames. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.reorderUsernames. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.reorderUsernames. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_username_active",
@@ -6941,8 +6941,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleUsername. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleUsername. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleUsername. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleUsername. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "deactivate_channel_usernames",
@@ -6958,8 +6958,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram channels.deactivateAllUsernames. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.deactivateAllUsernames. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.deactivateAllUsernames. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.deactivateAllUsernames. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_antispam",
@@ -6981,8 +6981,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleAntiSpam. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleAntiSpam. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleAntiSpam. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleAntiSpam. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_members_hidden",
@@ -7004,8 +7004,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleParticipantsHidden. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleParticipantsHidden. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleParticipantsHidden. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleParticipantsHidden. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_color",
@@ -7039,8 +7039,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.updateColor. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.updateColor. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.updateColor. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.updateColor. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "related_channels",
@@ -7056,8 +7056,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.getChannelRecommendations. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.getChannelRecommendations. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.getChannelRecommendations. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.getChannelRecommendations. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_emoji_status",
@@ -7079,8 +7079,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.updateEmojiStatus. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.updateEmojiStatus. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.updateEmojiStatus. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.updateEmojiStatus. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_group_emoji_set",
@@ -7102,8 +7102,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.setEmojiStickers. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.setEmojiStickers. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.setEmojiStickers. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.setEmojiStickers. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_auto_translation",
@@ -7125,8 +7125,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.toggleAutotranslation. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.toggleAutotranslation. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.toggleAutotranslation. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.toggleAutotranslation. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "set_channel_profile_tab",
@@ -7148,8 +7148,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram channels.setMainProfileTab. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram channels.setMainProfileTab. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram channels.setMainProfileTab. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram channels.setMainProfileTab. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_member_rank",
@@ -7177,8 +7177,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editChatParticipantRank. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editChatParticipantRank. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editChatParticipantRank. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editChatParticipantRank. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "create_chat_invite",
@@ -7230,8 +7230,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.exportChatInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.exportChatInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.exportChatInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.exportChatInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "chat_invites",
@@ -7277,8 +7277,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getExportedChatInvites. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getExportedChatInvites. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getExportedChatInvites. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getExportedChatInvites. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "chat_invite_details",
@@ -7300,8 +7300,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.getExportedChatInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getExportedChatInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getExportedChatInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getExportedChatInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "edit_chat_invite",
@@ -7353,8 +7353,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.editExportedChatInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.editExportedChatInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.editExportedChatInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.editExportedChatInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "purge_revoked_chat_invites",
@@ -7376,8 +7376,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteRevokedExportedChatInvites. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteRevokedExportedChatInvites. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteRevokedExportedChatInvites. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteRevokedExportedChatInvites. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "remove_chat_invite",
@@ -7399,8 +7399,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.deleteExportedChatInvite. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.deleteExportedChatInvite. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.deleteExportedChatInvite. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.deleteExportedChatInvite. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "invite_admins",
@@ -7416,8 +7416,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getAdminsWithInvites. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getAdminsWithInvites. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getAdminsWithInvites. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getAdminsWithInvites. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "invite_joiners",
@@ -7475,8 +7475,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram messages.getChatInviteImporters. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.getChatInviteImporters. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.getChatInviteImporters. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.getChatInviteImporters. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "resolve_join_request",
@@ -7504,8 +7504,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.hideChatJoinRequest. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.hideChatJoinRequest. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.hideChatJoinRequest. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.hideChatJoinRequest. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "resolve_all_join_requests",
@@ -7533,8 +7533,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram messages.hideAllChatJoinRequests. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram messages.hideAllChatJoinRequests. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram messages.hideAllChatJoinRequests. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram messages.hideAllChatJoinRequests. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "channel_statistics",
@@ -7556,8 +7556,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram stats.getBroadcastStats. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stats.getBroadcastStats. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stats.getBroadcastStats. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stats.getBroadcastStats. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "supergroup_statistics",
@@ -7579,8 +7579,8 @@ export const CATALOG_METHODS = [
         "default": "$peer"
       }
     ],
-    "desc_en": "Wraps Telegram stats.getMegagroupStats. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stats.getMegagroupStats. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stats.getMegagroupStats. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stats.getMegagroupStats. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "message_statistics",
@@ -7608,8 +7608,8 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Wraps Telegram stats.getMessageStats. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stats.getMessageStats. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stats.getMessageStats. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stats.getMessageStats. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "message_public_forwards",
@@ -7643,8 +7643,8 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stats.getMessagePublicForwards. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stats.getMessagePublicForwards. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stats.getMessagePublicForwards. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stats.getMessagePublicForwards. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_statistics",
@@ -7672,8 +7672,8 @@ export const CATALOG_METHODS = [
         "default": "$message"
       }
     ],
-    "desc_en": "Wraps Telegram stats.getStoryStats. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stats.getStoryStats. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stats.getStoryStats. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stats.getStoryStats. Передает параметры и возвращает типизированный ответ."
   },
   {
     "name": "story_public_forwards",
@@ -7707,7 +7707,7 @@ export const CATALOG_METHODS = [
         "default": "50"
       }
     ],
-    "desc_en": "Wraps Telegram stats.getStoryPublicForwards. Dispatches typed parameters and returns structured payload.",
-    "desc_ru": "Обертка над вызовом Telegram stats.getStoryPublicForwards. Передает типизированные параметры и возвращает структуру данных."
+    "desc_en": "Calls Telegram stats.getStoryPublicForwards. Dispatches typed parameters and returns structured result.",
+    "desc_ru": "Вызывает метод Telegram stats.getStoryPublicForwards. Передает параметры и возвращает типизированный ответ."
   }
 ];
