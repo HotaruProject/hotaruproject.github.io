@@ -38,7 +38,7 @@ export function Hero({ content, lang, onOpenDocs }) {
             <p className="text-sm text-muted mb-[var(--space-xs)]">{t.installTitle}</p>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-[var(--space-xs)] min-w-0">
               <code className="flex-1 min-w-0 flex items-start min-h-[48px] px-[var(--space-md)] py-[var(--space-sm)] rounded-input bg-paper-2 text-ink font-mono text-sm leading-relaxed break-all select-all">
-                <span aria-hidden="true" className="text-accent mr-[var(--space-sm)] select-none">$</span>
+                <span aria-hidden="true" className="text-muted mr-[var(--space-sm)] select-none">$</span>
                 {installCmd}
               </code>
               <button
