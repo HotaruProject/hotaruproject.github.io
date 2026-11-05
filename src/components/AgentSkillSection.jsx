@@ -5,8 +5,8 @@ export function AgentSkillSection({ content }) {
   const t = content.skill;
 
   return (
-    <section id="agent-skill" className="py-20 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-white/[0.08]">
-      <div className="rounded-2xl sm:rounded-3xl border border-white/20 bg-gradient-to-b from-[#0e101a] to-[#07080d] p-6 sm:p-10 md:p-16 relative overflow-hidden shadow-2xl">
+    <section id="agent-skill" className="py-20 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-white/[0.08] w-full max-w-full overflow-hidden">
+      <div className="rounded-2xl sm:rounded-3xl border border-white/20 bg-gradient-to-b from-[#0c0d16] to-[#050508] p-6 sm:p-10 md:p-16 relative overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.6)]">
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-72 h-72 sm:w-80 sm:h-80 rounded-full bg-white/5 blur-3xl pointer-events-none" />
 
         <div className="max-w-3xl relative z-10">
@@ -36,7 +36,7 @@ export function AgentSkillSection({ content }) {
             <a
               href="./skill/SKILL.md"
               download="HOTARU_AGENT_SKILL.md"
-              className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm hover:bg-white/90 transition-all duration-200 shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+              className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-black font-bold text-xs sm:text-sm hover:bg-white/90 transition-all duration-200 shadow-[0_4px_24px_rgba(255,255,255,0.18)] active:scale-95"
             >
               <Download className="w-4 h-4" />
               <span>{t.downloadBtn}</span>
@@ -46,7 +46,7 @@ export function AgentSkillSection({ content }) {
               href="./skill/SKILL.md"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/5 border border-white/15 text-white font-medium text-xs sm:text-sm hover:bg-white/10 transition-all duration-200"
+              className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white/5 border border-white/20 text-white font-medium text-xs sm:text-sm hover:bg-white/10 transition-all duration-200 active:scale-95"
             >
               <FileText className="w-4 h-4" />
               <span>{t.previewBtn}</span>
