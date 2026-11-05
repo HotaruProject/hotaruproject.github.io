@@ -26,8 +26,8 @@ export function App() {
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  const openDocs = () => {
-    window.location.hash = '#docs';
+  const openDocs = (target) => {
+    window.location.hash = target === 'catalog' ? '#docs-catalog' : '#docs';
     setView('docs');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
