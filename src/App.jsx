@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Architecture } from './components/Architecture';
@@ -6,20 +6,62 @@ import { ModulePlayground } from './components/ModulePlayground';
 import { Documentation } from './components/Documentation';
 import { AgentSkillSection } from './components/AgentSkillSection';
 import { Footer } from './components/Footer';
-import { CONTENT } from './data/content';
+import { FumadocsView } from './components/FumadocsView';
+import { CONTENT } from './data/content.js';
 
 export function App() {
   const [lang, setLang] = useState('en');
+  const [view, setView] = useState(() => (window.location.hash.startsWith('#docs') ? 'docs' : 'home'));
   const currentContent = CONTENT[lang] || CONTENT.en;
 
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash.startsWith('#docs')) {
+        setView('docs');
+      } else {
+        setView('home');
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  const openDocs = () => {
+    window.location.hash = '#docs';
+    setView('docs');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const backHome = () => {
+    window.location.hash = '';
+    setView('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (view === 'docs') {
+    return (
+      <FumadocsView
+        content={currentContent}
+        lang={lang}
+        setLang={setLang}
+        onBackToHome={backHome}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#050508] text-white flex flex-col font-sans">
-      <Navbar lang={lang} setLang={setLang} content={currentContent} />
-      <main className="flex-grow">
-        <Hero content={currentContent} />
+    <div className="min-h-screen bg-[#050508] text-white flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+      <Navbar
+        lang={lang}
+        setLang={setLang}
+        content={currentContent}
+        onOpenDocs={openDocs}
+      />
+      <main className="flex-grow w-full max-w-full overflow-x-hidden">
+        <Hero content={currentContent} onOpenDocs={openDocs} />
         <Architecture content={currentContent} />
         <ModulePlayground content={currentContent} />
-        <Documentation content={currentContent} />
+        <Documentation content={currentContent} onOpenDocs={openDocs} />
         <AgentSkillSection content={currentContent} />
       </main>
       <Footer content={currentContent} />

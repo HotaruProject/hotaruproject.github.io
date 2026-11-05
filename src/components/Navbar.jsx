@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Shield, BookOpen, Terminal, Sparkles, Menu, X, Globe, Download } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
 
-export function Navbar({ lang, setLang, content }) {
+export function Navbar({ lang, setLang, content, onOpenDocs }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const t = content.nav;
 
@@ -11,6 +11,15 @@ export function Navbar({ lang, setLang, content }) {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleDocsClick = () => {
+    setMobileOpen(false);
+    if (onOpenDocs) {
+      onOpenDocs();
+    } else {
+      scrollTo('documentation');
     }
   };
 
@@ -28,7 +37,7 @@ export function Navbar({ lang, setLang, content }) {
             </div>
           </button>
           <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-white/70">
-            v1.0.0
+            AGPLv3
           </span>
         </div>
 
@@ -39,8 +48,9 @@ export function Navbar({ lang, setLang, content }) {
           <button onClick={() => scrollTo('modules')} className="text-xs font-mono text-white/70 hover:text-white transition-colors">
             {t.modules}
           </button>
-          <button onClick={() => scrollTo('documentation')} className="text-xs font-mono text-white/70 hover:text-white transition-colors">
-            {t.docs}
+          <button onClick={handleDocsClick} className="text-xs font-mono text-white/70 hover:text-white transition-colors flex items-center gap-1.5">
+            <BookOpen className="w-3.5 h-3.5 text-white/90" />
+            <span>{t.docs}</span>
           </button>
           <button onClick={() => scrollTo('agent-skill')} className="text-xs font-mono text-white/70 hover:text-white transition-colors flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-white/90" />
@@ -110,10 +120,13 @@ export function Navbar({ lang, setLang, content }) {
             {t.modules}
           </button>
           <button
-            onClick={() => scrollTo('documentation')}
-            className="text-left text-sm py-2.5 text-white/80 hover:text-white border-b border-white/5"
+            onClick={handleDocsClick}
+            className="text-left text-sm py-2.5 text-white/80 hover:text-white border-b border-white/5 flex items-center justify-between"
           >
-            {t.docs}
+            <span>{t.docs}</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-white/70">
+              Full Manual
+            </span>
           </button>
           <button
             onClick={() => scrollTo('agent-skill')}
@@ -138,7 +151,7 @@ export function Navbar({ lang, setLang, content }) {
               className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-white/20 text-white text-sm"
             >
               <GithubIcon className="w-4 h-4" />
-              <span>GitHub</span>
+              <span>GitHub (AGPLv3)</span>
             </a>
           </div>
         </div>

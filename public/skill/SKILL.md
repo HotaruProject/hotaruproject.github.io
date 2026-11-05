@@ -1,1055 +1,1733 @@
 ---
 name: hotaru-module-developer
-description: Exhaustive engineering specification and agent reference for authoring secure .hmod modules for the Hotaru Telegram userbot with Linux namespace sandboxing, capability enforcement, and complete ModuleContext API reference.
+description: Exhaustive engineering specification and agent reference for authoring secure .hmod modules for the Hotaru Telegram userbot with Linux namespace sandboxing, capability enforcement, lifecycle hooks, template fields, watchers, tasks, and complete reference for all 292 ModuleContext MTProto methods.
+license: GNU AGPLv3
 ---
 
 # Hotaru Module Developer Reference & Agent Skill
 
 Hotaru is a security-first Telegram userbot operating from a primary user account. Unlike legacy userbot platforms that load third-party scripts directly into the interpreter alongside Telegram authentication sessions, Hotaru enforces process isolation and hardware-assisted capability sandboxing.
 
-Modules (.hmod files) execute under strict Linux namespace boundaries:
-- CLONE_NEWNS (Mount Namespace): Private filesystem table. /root, /home, /etc, sanctuary/ are concealed or read-only. Temporary files reside in ephemeral tmpfs.
-- CLONE_NEWIPC (IPC Namespace): Isolated message queues and shared memory.
-- CLONE_NEWUTS (Hostname Namespace): Isolated hostname identifiers.
-- CLONE_NEWNET (Network Namespace): Network stack isolation. Modules without the 'net' capability have only a down loopback device.
-- Privilege Dropping: Effective UID/GID set to nobody/nogroup (65534). prctl(PR_SET_NO_NEW_PRIVS, 1) enforced.
-- Zero Comments Rule: Hotaru production code and .hmod modules must contain zero comments.
+### Core Architectural Invariants
 
-## 1. Core Architecture & Linux Namespace Isolation
+1. First-Statement Rule:
+The assignment `HOTARU = { ... }` must be the very first statement in the .hmod file. Preceding imports or code trigger ModuleValidationError.
 
-Hotaru is a security-first Telegram userbot operating from a primary user account. Unlike legacy userbot platforms that load third-party scripts directly into the interpreter alongside Telegram authentication sessions, Hotaru enforces process isolation and hardware-assisted capability sandboxing.
+2. Process Isolation & Linux Namespaces:
+Modules execute in dedicated worker processes isolated via `CLONE_NEWNS`, `CLONE_NEWIPC`, `CLONE_NEWUTS`, and `CLONE_NEWNET`. Unprivileged worker UID/GID is set to `nobody:nogroup` (65534). `prctl(PR_SET_NO_NEW_PRIVS, 1)` prevents privilege escalation.
 
-### Subsystem Topology
+3. Optional Type Annotations:
+Type annotations are completely optional in Hotaru modules. Python 3.13 dynamically executes handlers whether typed or untyped.
 
-The Hotaru repository is divided into four distinct security tiers:
+4. Zero Comments Invariant:
+Production Hotaru code and .hmod files contain zero comments.
 
-1. hotaru/ (Kernel Core):
-The privileged supervisor managing account sessions, the encrypted master vault (AES-GCM), event dispatching, command registries, and interactive screen rendering. It never executes unverified third-party code in its process space.
+5. License:
+Hotaru is open-source software licensed under the GNU Affero General Public License v3.0 (AGPLv3).
 
-2. relay/ (Capability Firewall):
-The security boundary mediating all communication between external modules and the Telegram MTProto transport. The relay contains capability definitions (relay/caps.py), network egress proxies (relay/proxies.py), filesystem isolation gates (relay/files.py), and the RPC denylist (relay/denylist.py).
-
-3. constellations/ (Built-in Modules):
-System extensions implemented in the .hmod format (accounts, acl, backups, catalyst, executor, genesis, help, info, logger, power, settings, shield, singularity, translations, updater). Built-in modules are core components and their triggers are reserved.
-
-4. sanctuary/ (Private Runtime State):
-Encrypted user data directory containing session credentials (sanctuary/hotaru.vault), SQLite state databases, and audit logs. This directory is strictly inaccessible to third-party modules.
-
-### Linux Namespace Isolation Model
-
-When Hotaru loads a third-party .hmod module, it launches an isolated worker process configured with four Linux kernel namespaces:
-
-• CLONE_NEWNS (Mount Namespace):
-The worker process receives a private mount table. Critical directories (/root, /home, /etc, /proc/keys, and sanctuary/) are either concealed or mounted read-only. Temporary files reside in an ephemeral tmpfs mount discarded on process exit.
-
-• CLONE_NEWIPC (IPC Namespace):
-Isolates System V IPC and POSIX message queues, preventing shared-memory snooping or signal hijacking between modules.
-
-• CLONE_NEWUTS (Hostname Namespace):
-Isolates UTS system identifiers and hostname information.
-
-• CLONE_NEWNET (Network Namespace):
-Isolates the network stack. Unless a module explicitly declares the 'net' capability in its manifest, its network namespace contains only a down loopback device. Raw socket calls, DNS queries, and HTTP requests fail at the OS syscall boundary with ENETUNREACH or EPERM.
-
-### Privilege Dropping & Syscall Control
-
-Before executing module code, the worker drops root privileges:
-• Switches effective UID to nobody (65534) and GID to nogroup (65534).
-• Enforces prctl(PR_SET_NO_NEW_PRIVS, 1) to prevent privilege escalation via setuid binaries.
-• Channels all I/O through unidirectional UNIX pipes and typed JSON/TLV RPC serialization.
-
-## 2. The .hmod Module Specification & Lifecycle
-
-A Hotaru module is a self-contained Python source file ending with the .hmod extension. The runtime loads modules dynamically through the sandboxed runner.
-
-### Manifest Schema: HOTARU Dictionary
-
-Every .hmod module must expose a top-level module dictionary named HOTARU:
+## 1. Complete Manifest Schema (HOTARU Dictionary)
 
 ```python
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hotaru.response import ModuleContext
-
-async def qr_command(ctx: ModuleContext) -> None:
-    text = ctx.raw_args.strip()
-    if not text:
-        await ctx.respond(ctx.t("missing_text"))
-        return
-    url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={text}"
-    response = await ctx.net(url)
-    await ctx.reply_photo(response.content, caption=ctx.t("generated"))
-
 HOTARU = {
     "id": "qr_tool",
-    "name": "QR Generator",
     "version": "1.0.0",
-    "author": "Security Engineering",
-    "description": "Renders high resolution QR codes directly in chat.",
-    "capabilities": ["mt", "net"],
     "commands": {
-        "qr": qr_command,
+        "qr": "qr_command",
+    },
+    "capabilities": ["mt", "net"],
+    "watchers": ["message_watcher"],
+    "tasks": {
+        "sync_loop": "sync_worker",
+    },
+    "aliases": {
+        "qrcode": "qr",
+    },
+    "config_schema": {
+        "api_key": {
+            "type": "string",
+            "default": "",
+            "description": "Optional API key",
+        },
     },
     "lexicon": {
         "en": {
-            "missing_text": "Please provide text or a URL after .qr",
-            "generated": "Here is your generated QR code.",
+            "missing": "Please provide text after .qr",
+            "done": "QR code generated.",
         },
         "ru": {
-            "missing_text": "Укажите текст или ссылку после .qr",
-            "generated": "Ваш QR-код успешно сгенерирован.",
+            "missing": "Укажите текст после .qr",
+            "done": "QR-код сгенерирован.",
         },
     },
+    "requires": ["common_lib"],
+    "after": ["accounts", "shield"],
+    "inline_commands": ["qr_inline"],
+    "rise": "on_startup",
+    "fade": "on_shutdown",
+    "template_fields": {
+        "qr_counter": {
+            "scope": "global",
+            "provider": "qr_counter",
+        },
+    },
+    "banner": "https://example.com/banner.png",
+    "bot_commands": ["qr"],
 }
 ```
 
-### Manifest Fields Reference
-
-• id (str, required): Unique lowercase identifier containing alphanumeric characters and underscores (e.g. 'qr_tool', 'notes_mgr', 'crypto_ticker').
-• name (str, required): Human-readable display name.
-• version (str, required): Semantic version string (MAJOR.MINOR.PATCH).
-• author (str, optional): Author handle or organization.
-• description (str, optional): Functional summary of the module.
-• capabilities (list[str], required): Set of hardware and network capabilities requested by the module.
-• commands (dict[str, Callable], required): Mapping of command triggers to asynchronous handler coroutines. Every handler receives ctx: ModuleContext as its single argument.
-• tasks (dict[str, Callable], optional): Long-running background coroutines supervised by the core engine.
-• lexicon (dict[str, dict[str, str]], optional): Localization dictionary supporting 'en', 'ru', 'uk', 'ja', 'kz', and 'zh'.
-
-### Reserved Kernel Triggers
-
-Hotaru reserves all command triggers utilized by built-in constellation modules. A third-party module attempting to bind any of the following triggers will fail validation at load time:
-accounts, acl, backups, catalyst, executor, genesis, help, info, logger, power, settings, shield, singularity, translations, updater, ping, dash, restart, config, backup.
-
-## 3. Capability System & RPC Firewall
-
-Hotaru adheres to the principle of least privilege. By default, an isolated module has zero permissions: no network egress, no filesystem read or write outside its tmpfs mount, and no direct MTProto invocation.
-
-### Available Capabilities
-
-1. mt:
-Grants mediated access to Telegram MTProto RPC calls via ctx.mt(method, **kwargs) and high-level messaging helpers. All RPC calls are intercepted by relay/firewall.py and verified against relay/denylist.py.
-
-2. net:
-Enables the network namespace egress interface. Allows outgoing HTTP, HTTPS, and TCP socket requests through ctx.net(url) and ctx.stream(host, port). Modules lacking this capability cannot communicate over the Internet.
-
-3. state:
-Provides persistent key-value storage scoped strictly to the module id. Backed by SQLite in a secured namespace. Modules cannot inspect or modify state entries belonging to other modules.
-
-4. files:
-Grants read and write access inside the module's ephemeral tmpfs scratch directory. Path traversal attempts (such as ../../sanctuary) are trapped and terminated with a security exception.
-
-5. accounts:
-Allows read-only introspection of configured userbot accounts via ctx.accounts.
-
-6. screens:
-Enables the interactive UI screen rendering engine (ctx.screens) for terminal and message-based navigation.
-
-### The RPC Denylist
-
-When a module with the 'mt' capability issues raw RPC calls, relay/denylist.py evaluates the method name against destructive Telegram operations. The following methods are strictly forbidden:
-
-• Authentication and session revocation:
-auth.logOut, auth.resetAuthorizations, auth.dropTempAuthKeys
-
-• Account destruction:
-account.deleteAccount
-
-• Two-factor password modification:
-account.updatePasswordSettings
-
-If a module attempts to invoke a denylisted method, the relay immediately intercepts the packet, drops the worker process, logs the violation, and revokes all module capabilities.
-
-## 4. ModuleContext: Complete Properties Catalog
-
-The ModuleContext instance passed to command handlers and background tasks provides real-time event metadata and execution state.
-
-### Properties Reference Table
-
-• ctx.module_id -> str
-Returns the unique identifier of the executing module.
-Example:
-assert ctx.module_id == "qr_tool"
-
-• ctx.chat_id -> int
-Telegram ID of the dialog, group, or channel where the command was triggered.
-Example:
-chat = ctx.chat_id
-
-• ctx.sender_id / ctx.user_id -> int | None
-Telegram user ID of the individual who sent the triggering message. Returns None if the message originated from an anonymous channel.
-Example:
-sender = ctx.sender_id or 0
-
-• ctx.topic_id -> int | None
-Thread ID when the message is posted inside a forum supergroup topic. Returns None in regular chats.
-Example:
-if ctx.topic_id is not None:
-    await ctx.respond(f"Executed in topic {ctx.topic_id}")
-
-• ctx.is_me / ctx.out -> bool
-Boolean indicating whether the triggering message was sent by the userbot account itself.
-Example:
-if not ctx.is_me:
-    return
-
-• ctx.message -> ModuleMessage
-The underlying message object containing text, entities, reply references, and raw flags.
-Example:
-raw_id = ctx.message.id
-
-• ctx.has_media -> bool
-Evaluates to True if the triggering message contains an attached photo, video, document, audio, sticker, voice note, or animation.
-Example:
-if not ctx.has_media:
-    await ctx.respond("Please attach a file.")
-    return
-
-• ctx.media / ctx.attachment -> Attachment | None
-Represents the media payload attached to the current message. Exposes .file_id, .size, .mime_type, and .filename.
-Example:
-if ctx.attachment:
-    size_mb = ctx.attachment.size / (1024 * 1024)
-
-• ctx.reply_message -> ModuleMessage | None
-If the command was executed in reply to another message, returns that referenced message. Otherwise returns None.
-Example:
-if ctx.reply_message:
-    target_author = ctx.reply_message.sender_id
-
-• ctx.reply_attachment -> Attachment | None
-The media attachment present on the replied-to message.
-Example:
-if ctx.reply_attachment:
-    data = await ctx.download(ctx.reply_attachment)
-
-• ctx.args -> list[str]
-List of command arguments split by whitespace, excluding the prefix and command trigger.
-Example:
-if len(ctx.args) < 2:
-    await ctx.respond("Usage: .calc <number> <operator>")
-
-• ctx.raw_args -> str
-The complete, unparsed string following the command trigger. Preserves leading and trailing whitespace.
-Example:
-query = ctx.raw_args.strip()
-
-• ctx.prefix -> str
-The specific prefix character used to trigger the command (e.g. '.' or '!').
-Example:
-pfx = ctx.prefix
-
-• ctx.uptime -> float
-The uptime of the Hotaru supervisor process in seconds.
-Example:
-up_hours = ctx.uptime / 3600.0
-
-• ctx.memory / ctx.ram -> int
-The resident set size (RSS) memory consumption of the worker process in bytes.
-Example:
-mb_used = ctx.memory / (1024 * 1024)
-
-• ctx.version -> str
-The Hotaru core version string.
-Example:
-current_ver = ctx.version
-
-• ctx.is_stopping -> bool
-Flag indicating whether the userbot has initiated shutdown. Checked by background tasks to perform graceful cleanup.
-Example:
-while not ctx.is_stopping:
-    await asyncio.sleep(1)
-
-## 5. ModuleContext: Messaging & Editing Methods
-
-ModuleContext provides methods to create, edit, forward, react to, and delete messages.
-
-### ctx.reply
-Signature:
-`await ctx.reply(text: str, *, parse_mode: str = "html", link_preview: bool = False, silent: bool = False, schedule_date: int | None = None) -> ModuleMessage`
-Description:
-Sends a message into the current chat in explicit reply to the triggering message.
-Parameters:
-• text (str): The body text to transmit.
-• parse_mode (str): Entity parser ('html', 'md', or None). Defaults to 'html'.
-• link_preview (bool): Enables or disables rich URL preview cards.
-• silent (bool): Delivers the notification without sound.
-• schedule_date (int | None): Unix timestamp for scheduled delivery.
-Returns:
-ModuleMessage instance of the sent message.
-Exceptions:
-Raises TelegramError on flood wait or chat restrictions.
-Example:
-```python
-await ctx.reply("Calculation result: <b>42</b>", parse_mode="html")
-```
-
-### ctx.respond
-Signature:
-`await ctx.respond(text: str, *, parse_mode: str = "html", link_preview: bool = False) -> ModuleMessage`
-Description:
-If the triggering message was sent by the userbot account (ctx.is_me is True), edits that message in place. If the message was sent by another user, sends a fresh reply.
-Returns:
-ModuleMessage instance.
-Example:
-```python
-msg = await ctx.respond("Processing dataset...")
-await msg.edit("Processing complete.")
-```
-
-### ctx.edit
-Signature:
-`await ctx.edit(text: str, *, parse_mode: str = "html", link_preview: bool = False) -> ModuleMessage`
-Description:
-Edits the content of the triggering message. Fails if the message was not authored by the userbot.
-Exceptions:
-Raises PermissionError if ctx.is_me is False.
-Example:
-```python
-await ctx.edit("Status: <b>Updated</b>")
-```
-
-### ctx.delete
-Signature:
-`await ctx.delete(*, revoke: bool = True) -> bool`
-Description:
-Deletes the triggering message.
-Parameters:
-• revoke (bool): When True, deletes the message for all chat participants.
-Returns:
-bool indicating success.
-Example:
-```python
-await ctx.delete(revoke=True)
-```
-
-### ctx.pin
-Signature:
-`await ctx.pin(*, silent: bool = False, unpin_both: bool = False) -> bool`
-Description:
-Pins the triggering message in the current chat.
-Example:
-```python
-await ctx.pin(silent=True)
-```
-
-### ctx.unpin
-Signature:
-`await ctx.unpin() -> bool`
-Description:
-Unpins the triggering message.
-Example:
-```python
-await ctx.unpin()
-```
-
-### ctx.react
-Signature:
-`await ctx.react(emoji: str, *, big: bool = False) -> bool`
-Description:
-Applies an emoji reaction to the triggering message.
-Parameters:
-• emoji (str): Unicode emoji character (e.g. '🔥', '👍', '❤️').
-• big (bool): Displays full-screen reaction animation.
-Example:
-```python
-await ctx.react("🔥", big=True)
-```
-
-### ctx.unreact
-Signature:
-`await ctx.unreact() -> bool`
-Description:
-Removes any previously set reaction by the userbot on the current message.
-Example:
-```python
-await ctx.unreact()
-```
-
-### ctx.forward_to
-Signature:
-`await ctx.forward_to(target_chat_id: int, *, silent: bool = False) -> ModuleMessage`
-Description:
-Forwards the triggering message to the specified target chat or user.
-Example:
-```python
-await ctx.forward_to(123456789, silent=True)
-```
-
-### ctx.copy_to
-Signature:
-`await ctx.copy_to(target_chat_id: int, *, caption: str | None = None) -> ModuleMessage`
-Description:
-Sends a duplicate copy of the triggering message without the forwarded header.
-Example:
-```python
-await ctx.copy_to(123456789, caption="Copied snippet")
-```
-
-### ctx.save
-Signature:
-`await ctx.save() -> ModuleMessage`
-Description:
-Forwards the message directly to Saved Messages ('me').
-Example:
-```python
-await ctx.save()
-```
-
-### ctx.typing
-Signature:
-`await ctx.typing(action: str = "typing") -> None`
-Description:
-Sends a chat action notification to indicate activity.
-Supported actions: 'typing', 'upload_photo', 'record_video', 'upload_video', 'record_audio', 'upload_audio', 'upload_document', 'choose_sticker'.
-Example:
-```python
-await ctx.typing("upload_document")
-```
-
-### ctx.read & ctx.mark_read
-Signature:
-`await ctx.read() -> bool`
-Description:
-Marks all incoming messages in the current dialog up to the current message as read.
-Example:
-```python
-await ctx.read()
-```
-
-## 6. ModuleContext: Media & File Operations
-
-Hotaru handles media upload, transmission, and download through high-level streaming helpers that bypass disk storage when operating with memory buffers.
-
-### ctx.send_file & ctx.reply_file
-Signature:
-`await ctx.reply_file(file: bytes | str | BinaryIO, *, caption: str | None = None, force_document: bool = False, filename: str | None = None) -> ModuleMessage`
-Description:
-Transmits an arbitrary binary payload, local file, or memory stream as a file attachment.
-Parameters:
-• file: Raw bytes, string path, or file-like object.
-• caption: Optional descriptive text.
-• force_document: Forces document delivery even for photos or audio.
-• filename: Explicit filename when transmitting raw bytes.
-Example:
-```python
-data = b"ID,Name\n1,Alpha\n2,Beta"
-await ctx.reply_file(data, filename="report.csv", caption="Weekly Export")
-```
-
-### ctx.send_photo & ctx.reply_photo
-Signature:
-`await ctx.reply_photo(photo: bytes | str | BinaryIO, *, caption: str | None = None, parse_mode: str = "html") -> ModuleMessage`
-Description:
-Sends a JPEG, PNG, or WEBP image formatted as a compressed Telegram photo.
-Example:
-```python
-with open("chart.png", "rb") as f:
-    await ctx.reply_photo(f.read(), caption="System Metrics")
-```
-
-### ctx.send_video & ctx.reply_video
-Signature:
-`await ctx.reply_video(video: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None, width: int | None = None, height: int | None = None) -> ModuleMessage`
-Description:
-Transmits an MP4 or MOV video container with dimensions and playback duration metadata.
-Example:
-```python
-await ctx.reply_video("capture.mp4", duration=14, caption="Recorded stream")
-```
-
-### ctx.send_audio & ctx.reply_audio
-Signature:
-`await ctx.reply_audio(audio: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None, performer: str | None = None, title: str | None = None) -> ModuleMessage`
-Description:
-Transmits an MP3, FLAC, or OGG music track with track title and performer tags.
-Example:
-```python
-await ctx.reply_audio(audio_data, title="Synthesized Wave", performer="Hotaru")
-```
-
-### ctx.send_voice & ctx.reply_voice
-Signature:
-`await ctx.reply_voice(voice: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None) -> ModuleMessage`
-Description:
-Transmits an Opus-encoded audio stream as a voice waveform note.
-Example:
-```python
-await ctx.reply_voice(opus_bytes, duration=5)
-```
-
-### ctx.send_animation & ctx.reply_animation
-Signature:
-`await ctx.reply_animation(animation: bytes | str | BinaryIO, *, caption: str | None = None) -> ModuleMessage`
-Description:
-Transmits a silent looping MP4 or GIF file as an in-chat animated sticker.
-Example:
-```python
-await ctx.reply_animation("radar.mp4")
-```
-
-### ctx.send_dice & ctx.reply_dice
-Signature:
-`await ctx.reply_dice(emoji: str = "🎲") -> ModuleMessage`
-Description:
-Rolls an animated Telegram dice. Supported emojis: '🎲', '🎯', '🏀', '⚽', '🎳', '🎰'.
-Example:
-```python
-await ctx.reply_dice("🎯")
-```
-
-### ctx.edit_media
-Signature:
-`await ctx.edit_media(media: bytes | str | BinaryIO, *, caption: str | None = None, parse_mode: str = "html") -> ModuleMessage`
-Description:
-Replaces the media attachment of an existing message without re-sending the message entity.
-Example:
-```python
-await ctx.edit_media(updated_chart_bytes, caption="Updated at 12:00 UTC")
-```
-
-### ctx.edit_caption
-Signature:
-`await ctx.edit_caption(caption: str, *, parse_mode: str = "html") -> ModuleMessage`
-Description:
-Updates the text caption of an existing media message without re-uploading the underlying file.
-Example:
-```python
-await ctx.edit_caption("Archived capture")
-```
-
-### ctx.download & ctx.download_media
-Signature:
-`await ctx.download(attachment: Attachment | None = None, destination: str | None = None) -> bytes | str`
-Description:
-Downloads the attachment associated with the triggering message or replied message. If destination is provided, streams the file to disk and returns the string path. If destination is None, buffers the complete file into memory and returns bytes.
-Example:
-```python
-if ctx.reply_attachment:
-    file_bytes = await ctx.download(ctx.reply_attachment)
-    assert isinstance(file_bytes, bytes)
-```
-
-## 7. ModuleContext: Buttons, Polls & Checklists
-
-Hotaru enables deep interaction with inline buttons, Telegram polls, and native checklists.
-
-### Inline Button Operations
-
-• ctx.buttons -> list[list[MessageButton]]
-Matrix of inline buttons present on the triggering message. Each button exposes .text, .data, and .url.
-
-• ctx.button_count -> int
-Total count of inline buttons on the message.
-
-• await ctx.click(row: int, col: int) -> Any
-Simulates tapping an inline button at the specified matrix coordinate.
-
-• await ctx.click_button(text: str | None = None, data: bytes | None = None) -> Any
-Searches for an inline button matching the label or callback payload and triggers it.
-Example:
-```python
-await ctx.click_button(text="Confirm")
-```
-
-• await ctx.edit_buttons(buttons: list[list[dict[str, str]]]) -> None
-Updates or replaces the inline keyboard markup of the current message.
-Example:
-```python
-markup = [
-    [{"text": "Refresh", "data": "ref_1"}, {"text": "Dismiss", "data": "dis_1"}]
-]
-await ctx.edit_buttons(markup)
-```
-
-• await ctx.remove_buttons() -> None
-Strips all inline keyboard buttons from the message while keeping its text intact.
-Example:
-```python
-await ctx.remove_buttons()
-```
-
-### Native Poll Operations
-
-• await ctx.send_poll(question: str, answers: list[str], *, multiple_choice: bool = False, quiz: bool = False, correct_id: int | None = None) -> ModuleMessage
-Sends an interactive poll into the chat.
-Parameters:
-• question: The inquiry heading (up to 255 characters).
-• answers: List of 2 to 10 option strings.
-• multiple_choice: Permits selecting multiple answers.
-• quiz: Sets quiz mode requiring a single correct answer.
-• correct_id: Zero-indexed position of the correct answer in quiz mode.
-Example:
-```python
-await ctx.send_poll(
-    "Choose target deployment region:",
-    ["Frankfurt", "Tokyo", "Virginia"],
-    multiple_choice=False,
-)
-```
-
-• await ctx.close_poll() -> Any
-Closes voting on the poll contained in the current message.
-Example:
-```python
-await ctx.close_poll()
-```
-
-• await ctx.vote(answers: list[int]) -> Any
-Casts a vote on the poll for the specified answer indices.
-Example:
-```python
-await ctx.vote([0])
-```
-
-• await ctx.retract_vote() -> Any
-Retracts the userbot's cast vote from the poll.
-Example:
-```python
-await ctx.retract_vote()
-```
-
-• await ctx.get_poll_results() -> dict[str, Any]
-Retrieves aggregated vote totals and percentages for the poll.
-
-### Native Telegram Checklists
-
-• await ctx.send_todo(title: str, items: list[str], *, others_can_append: bool = False, others_can_complete: bool = False) -> ModuleMessage
-Transmits a native Telegram checklist with checkable boxes.
-Example:
-```python
-await ctx.send_todo(
-    "Deployment Checklist",
-    ["Run migrations", "Flush cache", "Verify health check"],
-    others_can_complete=True,
-)
-```
-
-• await ctx.append_todo(items: list[str]) -> Any
-Appends additional task items to an existing checklist message.
-Example:
-```python
-await ctx.append_todo(["Verify DNS propagation"])
-```
-
-• await ctx.set_checklist_completed(completed: list[int], incompleted: list[int]) -> Any
-Toggles the checked state of checklist items by index.
-
-## 8. Extended Telegram Subsystem Catalog
-
-The Hotaru relay provides direct access to over 290 granular Telegram methods through ctx. These methods are type-checked, sanitized, and bound to the current peer.
-
-### Forum Topics Management
-
-• await ctx.create_forum_topic(title: str, icon_color: int | None = None, icon_emoji_id: int | None = None) -> Any
-Creates a discussion thread inside a forum supergroup.
-Example:
-```python
-topic = await ctx.create_forum_topic("Incident #402", icon_color=0x6FB9F0)
-```
-
-• await ctx.edit_forum_topic(topic_id: int, title: str | None = None, closed: bool | None = None) -> Any
-Modifies topic title or toggles closed status.
-
-• await ctx.set_forum_topic_pinned(topic_id: int, pinned: bool) -> Any
-Pins or unpins a topic in the forum index.
-
-• await ctx.remove_forum_topic(topic_id: int) -> Any
-Deletes a forum topic and its complete message history.
-
-• await ctx.forum_topics(offset_date: int = 0, limit: int = 50) -> Any
-Lists forum topics in the current channel.
-
-### Channel Administration
-
-• await ctx.channel_details() -> Any
-Fetches metadata, participant count, and description for the current channel.
-
-• await ctx.channel_members(limit: int = 50) -> Any
-Retrieves participant records for the channel.
-
-• await ctx.set_channel_admin(user_id: int, is_admin: bool, rank: str = "") -> Any
-Promotes or demotes an administrator with a custom badge title.
-
-• await ctx.restrict_channel_member(user_id: int, send_messages: bool = False) -> Any
-Restricts specific permissions of a member.
-
-• await ctx.channel_admin_log(limit: int = 50) -> Any
-Extracts audit log events including member bans, message deletions, and role changes.
-
-• await ctx.set_slow_mode(seconds: int) -> Any
-Configures slow mode interval in seconds (0 to disable).
-
-• await ctx.set_antispam(enabled: bool) -> Any
-Toggles Telegram native aggressive anti-spam protection.
-
-### Reactions & Scheduled History
-
-• await ctx.configure_chat_reactions(available_reactions: list[str]) -> Any
-Restricts allowed reaction emojis in a group or channel.
-
-• await ctx.scheduled_messages() -> list[Any]
-Retrieves pending scheduled messages in the current chat.
-
-• await ctx.cancel_scheduled(ids: list[int]) -> Any
-Cancels and removes scheduled messages by their identifier.
-
-## 9. State Storage & Network Stream Engine
-
-Hotaru isolates persistence and network I/O behind dedicated capability proxies.
-
-### Persistent Key-Value State (ctx.state)
-
-Requires capability: 'state'
-State is backed by an encrypted SQLite engine. Keys are scoped strictly to the calling module ID, guaranteeing isolation between modules.
-
-Methods:
-• await ctx.state.get(key: str, default: Any = None) -> Any
-Retrieves the value associated with key. If absent, returns default.
-
-• await ctx.state.set(key: str, value: Any) -> None
-Persists a JSON-serializable value (dict, list, int, float, str, bool).
-
-• await ctx.state.delete(key: str) -> bool
-Removes key from storage. Returns True if the key existed.
-
-• await ctx.state.clear() -> None
-Purges all key-value entries belonging to this module.
-
-• await ctx.state.all() -> dict[str, Any]
-Dumps the entire key-value space of the module.
-
-Usage Example:
-```python
-async def counter_command(ctx: ModuleContext) -> None:
-    current = await ctx.state.get("invocations", 0)
-    current += 1
-    await ctx.state.set("invocations", current)
-    await ctx.respond(f"Command executed {current} times.")
-```
-
-### Network Client & TCP Streaming (ctx.net & ctx.stream)
-
-Requires capability: 'net'
-All egress traffic passes through a proxy gateway enforcing TLS validation and connection rate limiting.
-
-1. HTTP Requests (ctx.net):
-Signature:
-`await ctx.net(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, data: bytes | None = None, json: Any | None = None, timeout: float = 10.0) -> HttpResponse`
-Properties on HttpResponse:
-• .status_code (int): HTTP response status code (e.g. 200, 404).
-• .text (str): Decoded unicode response body.
-• .content (bytes): Raw binary response body.
-• .headers (dict[str, str]): HTTP response headers.
-
-Usage Example:
-```python
-async def weather_command(ctx: ModuleContext) -> None:
-    city = ctx.raw_args.strip() or "London"
-    url = f"https://wttr.in/{city}?format=j1"
-    response = await ctx.net(url)
-    if response.status_code == 200:
-        data = json.loads(response.text)
-        temp = data["current_condition"][0]["temp_C"]
-        await ctx.respond(f"Temperature in {city}: {temp}°C")
-```
-
-2. Raw TCP Streaming (ctx.stream):
-Signature:
-`stream = await ctx.stream(host: str, port: int, *, ssl: bool = True) -> NetStream`
-Methods on NetStream:
-• await stream.send(data: bytes) -> None
-• await stream.recv(size: int = 4096) -> bytes
-• await stream.close() -> None
-
-## 10. Interactive Screens, Navigation & Form Engine
-
-The Hotaru Screens engine (ctx.screens) enables developers to create stateful interactive menus and terminal screens within Telegram messages.
-
-### Screen Components Reference
-
-• await ctx.screens.show(title: str, body: str, *, buttons: list[list[Any]] | None = None, pager: Any | None = None) -> FormHandle
-Renders a structured message screen with header, content body, and inline keyboard controls.
-
-• ctx.screens.button(text: str, callback: Callable[[FormHandle], Awaitable[None]], style: str = "default")
-Creates an interactive button bound to an asynchronous callback coroutine.
-
-• ctx.screens.primary(text: str, callback: Callable)
-Creates a visually highlighted primary action button.
-
-• ctx.screens.danger(text: str, callback: Callable)
-Creates a destructive warning button (red accent).
-
-• ctx.screens.success(text: str, callback: Callable)
-Creates an affirmative action button (green accent).
-
-• ctx.screens.pager(current_page: int, total_pages: int, on_page_change: Callable[[int], Awaitable[None]])
-Constructs a pagination bar with previous, index, and next triggers.
-
-• ctx.screens.table(headers: list[str], rows: list[list[str]], page: int = 1, page_size: int = 5) -> str
-Renders an aligned ASCII table formatted for mobile monospaced display.
-
-• ctx.screens.close()
-Creates a dismissal button that cleanly tears down the interactive screen.
-
-### Stateful Navigation Example
+## 2. Module Lifecycle Hooks: rise and fade
+
+Declare asynchronous lifecycle hooks directly in HOTARU:
+- `rise`: Coroutine executed immediately after module load and sandbox initialization.
+- `fade`: Coroutine executed during module unload or userbot shutdown.
 
 ```python
-async def notes_menu(ctx: ModuleContext) -> None:
-    notes = await ctx.state.get("notes_list", [])
-
-    async def render_view(page: int = 0) -> None:
-        items_per_page = 3
-        total = max(1, (len(notes) + items_per_page - 1) // items_per_page)
-        slice_items = notes[page * items_per_page:(page + 1) * items_per_page]
-        
-        body_lines = [f"{i+1}. {item}" for i, item in enumerate(slice_items)]
-        body = "\n".join(body_lines) or "No notes saved yet."
-
-        rows = []
-        if total > 1:
-            pager_row = []
-            if page > 0:
-                pager_row.append(ctx.screens.button("Prev", lambda h: render_view(page - 1)))
-            pager_row.append(ctx.screens.button(f"{page + 1}/{total}", lambda h: None))
-            if page < total - 1:
-                pager_row.append(ctx.screens.button("Next", lambda h: render_view(page + 1)))
-            rows.append(pager_row)
-
-        rows.append([
-            ctx.screens.success("Add Note", add_note_flow),
-            ctx.screens.danger("Clear All", clear_notes_flow),
-        ])
-
-        await ctx.screens.show("Notes Manager", body, buttons=rows)
-
-    async def add_note_flow(handle: FormHandle) -> None:
-        notes.append(f"Note recorded at {int(ctx.uptime)}s")
-        await ctx.state.set("notes_list", notes)
-        await render_view(0)
-
-    async def clear_notes_flow(handle: FormHandle) -> None:
-        notes.clear()
-        await ctx.state.set("notes_list", [])
-        await render_view(0)
-
-    await render_view(0)
-```
-
-## 11. Background Supervisor Tasks & Lifecycle
-
-Modules can run background tasks that persist throughout the userbot runtime. Declare tasks in the tasks mapping of the HOTARU dictionary.
-
-### Background Task Lifecycle
-
-1. Registration:
-During module startup, Hotaru registers every coroutine declared in HOTARU['tasks'].
-
-2. Supervisor Monitoring:
-Tasks run inside the module's sandboxed worker process. If a task crashes due to an unhandled exception, the Hotaru supervisor restarts it with exponential backoff (up to 5 attempts).
-
-3. Graceful Termination:
-During bot shutdown or module unloading, ctx.is_stopping is set to True. The task is given a 5-second grace period to flush buffers, close open files, and exit cleanly before SIGKILL.
-
-### Background Worker Pattern
-
-```python
-import asyncio
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hotaru.response import ModuleContext
-
-async def reminder_worker(ctx: ModuleContext) -> None:
-    while not ctx.is_stopping:
-        try:
-            reminders = await ctx.state.get("pending_reminders", [])
-            now = int(asyncio.get_event_loop().time())
-            active = []
-            for r in reminders:
-                if r["timestamp"] <= now:
-                    await ctx.tg.send_message(r["chat_id"], f"Reminder: {r['text']}")
-                else:
-                    active.append(r)
-            if len(active) != len(reminders):
-                await ctx.state.set("pending_reminders", active)
-        except Exception:
-            pass
-        
-        for _ in range(10):
-            if ctx.is_stopping:
-                break
-            await asyncio.sleep(1)
-
 HOTARU = {
-    "id": "reminders",
-    "name": "Background Reminder",
+    "id": "vault_sync",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "commands": {
+        "status": "status_cmd",
+    },
+    "rise": "on_startup",
+    "fade": "on_shutdown",
+}
+
+async def on_startup(ctx):
+    initialized = await ctx.state.get("init", False)
+    if not initialized:
+        await ctx.state.set("init", True)
+
+async def on_shutdown(ctx):
+    await ctx.state.set("last_shutdown", int(ctx.uptime))
+
+async def status_cmd(ctx):
+    await ctx.respond("Vault synced.")
+```
+
+## 3. Event Watchers & Message Interceptors
+
+Declare background message listeners in the `watchers` array of HOTARU:
+
+```python
+HOTARU = {
+    "id": "anti_phish",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "commands": {},
+    "watchers": ["inspect_incoming"],
+}
+
+async def inspect_incoming(ctx):
+    if ctx.out:
+        return
+    text = ctx.message.text or ""
+    if "t.me/claim" in text:
+        await ctx.save()
+```
+
+## 4. Background Tasks & Supervisor Watchdog
+
+Declare background worker loops in `tasks`:
+
+```python
+HOTARU = {
+    "id": "cleaner",
     "version": "1.0.0",
     "capabilities": ["mt", "state"],
     "commands": {},
     "tasks": {
-        "checker": reminder_worker,
+        "sweep": "sweep_worker",
     },
 }
+
+import asyncio
+
+async def sweep_worker(ctx):
+    while not ctx.is_stopping:
+        try:
+            count = await ctx.state.get("sweeps", 0)
+            await ctx.state.set("sweeps", count + 1)
+        except Exception:
+            pass
+        for _ in range(60):
+            if ctx.is_stopping:
+                break
+            await asyncio.sleep(1)
 ```
 
-## 12. Internationalization & Lexicons
+## 5. Dynamic Template Fields & Scopes
 
-Hotaru user interfaces adapt dynamically to the user's configured language. Hardcoding user-facing strings in command handlers is strictly prohibited.
-
-### Lexicon Schema
-
-Declare a lexicon dictionary in the module manifest containing language sub-dictionaries:
+Publish dynamic placeholders using `template_fields`:
+- Scopes: `private`, `shared`, `global`
+- Provider function signature: `async def template_<provider_name>(ctx)`
 
 ```python
-"lexicon": {
-    "en": {
-        "welcome": "Welcome back, {user}!",
-        "error_empty": "Query cannot be empty.",
-    },
-    "ru": {
-        "welcome": "С возвращением, {user}!",
-        "error_empty": "Запрос не может быть пустым.",
-    },
-    "uk": {
-        "welcome": "З поверненням, {user}!",
-        "error_empty": "Запит не може бути порожнім.",
-    },
-}
-```
-
-### Retrieving Localized Strings: ctx.t
-
-Signature:
-`ctx.t(key: str, **kwargs) -> str`
-
-Behavior:
-1. Checks the user's active language setting.
-2. If the key exists in that language, returns the translated string formatted with **kwargs.
-3. If absent, falls back to the English ('en') translation.
-4. If missing from English, returns the raw key literal as a safety measure.
-
-Usage Example:
-```python
-greeting = ctx.t("welcome", user="Alice")
-await ctx.respond(greeting)
-```
-
-## 13. Security Audit Checklist & Semgrep Rules
-
-Before any module is distributed or loaded into Hotaru, it must satisfy strict static security requirements.
-
-### Semgrep Security Verification
-
-The repository enforces Semgrep rules located in .semgrep/hotaru-security.yml:
-
-1. No Credentials Leakage (hotaru-no-vault-leak):
-Modules must never attempt to open, read, or transmit files located in sanctuary/, including hotaru.vault, runtime.db, or session files.
-
-2. No Private Namespace Access (hotaru-no-private-escape):
-Modules must never inspect or modify private attributes of the core engine (__class__, __subclasses__, __globals__, or sys.modules).
-
-3. No Unsandboxed Network Sockets (hotaru-no-raw-socket):
-Direct import of socket, urllib, or requests is blocked by the runtime. All network traffic must use ctx.net or ctx.stream with the 'net' capability declared.
-
-4. No System Shell Execution (hotaru-no-shell-exec):
-Calls to os.system, subprocess.Popen, os.popen, or pty.spawn are trapped by seccomp filters and result in immediate worker SIGKILL.
-
-5. Zero Comments in Production Code:
-In accordance with Hotaru code purity standards, production .hmod files contain zero comment lines. Code must be self-documenting through precise type annotations and explicit naming.
-
-## 14. Complete Production Module Blueprints
-
-The following production blueprints demonstrate real-world, secure module design. Notice that neither ping nor any kernel command is used.
-
-### Blueprint 1: Text Encryption Tool (.cipher)
-
-```python
-from __future__ import annotations
-import base64
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hotaru.response import ModuleContext
-
-async def cipher_command(ctx: ModuleContext) -> None:
-    text = ctx.raw_args.strip()
-    if not text:
-        await ctx.respond(ctx.t("missing_input"))
-        return
-    encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
-    await ctx.respond(f"<code>{encoded}</code>", parse_mode="html")
-
 HOTARU = {
-    "id": "b64_cipher",
-    "name": "Base64 Cipher",
+    "id": "stats_provider",
     "version": "1.0.0",
-    "capabilities": ["mt"],
-    "commands": {
-        "cipher": cipher_command,
-    },
-    "lexicon": {
-        "en": {
-            "missing_input": "Usage: .cipher <text to encode>",
-        },
-        "ru": {
-            "missing_input": "Использование: .cipher <текст для кодирования>",
+    "capabilities": ["mt", "state"],
+    "commands": {},
+    "template_fields": {
+        "stat_val": {
+            "scope": "global",
+            "provider": "stat_val",
         },
     },
 }
+
+async def template_stat_val(ctx):
+    return "Operational"
 ```
 
-### Blueprint 2: Persistent Paste Bin (.paste)
+## 6. Complete ModuleContext API Reference
 
-```python
-from __future__ import annotations
-import json
-from typing import TYPE_CHECKING
+The ModuleContext object exposes both high-level helpers and the complete catalog of 292 extended MTProto operations.
 
-if TYPE_CHECKING:
-    from hotaru.response import ModuleContext
+### Core Properties
+- `ctx.module_id` -> str
+- `ctx.chat_id` -> int
+- `ctx.user_id` / `ctx.sender_id` -> int | None
+- `ctx.topic_id` -> int | None
+- `ctx.is_me` / `ctx.out` -> bool
+- `ctx.message` -> ModuleMessage
+- `ctx.has_media` -> bool
+- `ctx.media` / `ctx.attachment` -> Attachment | None
+- `ctx.reply_message` -> ModuleMessage | None
+- `ctx.reply_attachment` -> Attachment | None
+- `ctx.args` -> list[str]
+- `ctx.raw_args` -> str
+- `ctx.prefix` -> str
+- `ctx.uptime` -> float
+- `ctx.memory` / `ctx.ram` -> int
+- `ctx.version` -> str
+- `ctx.is_stopping` -> bool
 
-async def paste_command(ctx: ModuleContext) -> None:
-    content = ctx.raw_args.strip()
-    if not content and ctx.reply_message:
-        content = ctx.reply_message.message.text
-    if not content:
-        await ctx.respond(ctx.t("empty_paste"))
-        return
-    await ctx.typing("upload_document")
-    payload = json.dumps({"content": content, "extension": "txt"}).encode("utf-8")
-    res = await ctx.net(
-        "https://paste.rs",
-        method="POST",
-        headers={"Content-Type": "text/plain"},
-        data=content.encode("utf-8"),
-    )
-    if res.status_code in (200, 201):
-        url = res.text.strip()
-        await ctx.respond(ctx.t("paste_success", url=url))
-    else:
-        await ctx.respond(ctx.t("paste_error"))
+### Primary Messaging & Editing
+- `await ctx.reply(text, parse_mode="html", link_preview=False, silent=False, schedule_date=None)`
+- `await ctx.respond(text, parse_mode="html", link_preview=False)`
+- `await ctx.edit(text, parse_mode="html", link_preview=False)`
+- `await ctx.delete(revoke=True)`
+- `await ctx.pin(silent=False, unpin_both=False)`
+- `await ctx.unpin()`
+- `await ctx.react(emoji, big=False)`
+- `await ctx.unreact()`
+- `await ctx.forward_to(target_chat_id, silent=False)`
+- `await ctx.copy_to(target_chat_id, caption=None)`
+- `await ctx.save()`
+- `await ctx.schedule(schedule_date, text=None)`
+- `await ctx.typing(action="typing")`
+- `await ctx.read()`
+- `await ctx.mark_read()`
 
-HOTARU = {
-    "id": "paste_bin",
-    "name": "Paste Bin Uploader",
-    "version": "1.0.0",
-    "capabilities": ["mt", "net"],
-    "commands": {
-        "paste": paste_command,
-    },
-    "lexicon": {
-        "en": {
-            "empty_paste": "Provide text or reply to a message with .paste",
-            "paste_success": "Uploaded to pastebin: {url}",
-            "paste_error": "Failed to upload snippet.",
-        },
-        "ru": {
-            "empty_paste": "Укажите текст или ответьте на сообщение через .paste",
-            "paste_success": "Сниппет опубликован: {url}",
-            "paste_error": "Ошибка при публикации сниппета.",
-        },
-    },
-}
-```
+### Peer & Message Inspection
+- `await ctx.get_sender()` -> User dict
+- `await ctx.get_chat()` -> Chat/Channel dict
+- `await ctx.get_input_chat()` -> InputPeer dict
+- `await ctx.get_input_sender()` -> InputPeer dict
+- `await ctx.get_input_channel()` -> InputChannel dict
+- `await ctx.get_reply_message()` -> ModuleMessage | None
+- `await ctx.get_reactions()` -> list[dict]
+- `await ctx.get_reactors(limit=50)` -> list[dict]
+- `await ctx.get_views()` -> int
+- `await ctx.get_replies()` -> int
+- `await ctx.get_discussion()` -> dict
+- `await ctx.get_link()` -> str
+- `await ctx.check_restrictions()` -> dict
+
+### Media & Files
+- `await ctx.reply_file(file, caption=None, force_document=False, filename=None)`
+- `await ctx.reply_photo(photo, caption=None, parse_mode="html")`
+- `await ctx.reply_video(video, caption=None, duration=None, width=None, height=None)`
+- `await ctx.reply_audio(audio, caption=None, duration=None, performer=None, title=None)`
+- `await ctx.reply_voice(voice, caption=None, duration=None)`
+- `await ctx.reply_animation(animation, caption=None)`
+- `await ctx.reply_dice(emoji="🎲")`
+- `await ctx.edit_media(media, caption=None)`
+- `await ctx.edit_caption(caption, parse_mode="html")`
+- `await ctx.download(attachment=None, destination=None)`
+
+### State & TCP Stream
+- `await ctx.state.get(key, default=None)`
+- `await ctx.state.set(key, value)`
+- `await ctx.state.delete(key)`
+- `await ctx.state.clear()`
+- `await ctx.state.all()`
+- `await ctx.net(url, method="GET", headers=None, data=None, timeout=10.0)`
+- `stream = await ctx.stream(host, port, ssl=True)`
+
+### Interactive Screens
+- `await ctx.screens.show(title, body, buttons=None, pager=None)`
+- `ctx.screens.button(text, callback)`
+- `ctx.screens.primary(text, callback)`
+- `ctx.screens.danger(text, callback)`
+- `ctx.screens.success(text, callback)`
+- `ctx.screens.pager(current_page, total_pages, on_page_change)`
+- `ctx.screens.table(headers, rows, page=1, page_size=5)`
+- `ctx.screens.details(items)`
+- `ctx.screens.back(on_back)`
+- `ctx.screens.close()`
+
+## 7. Complete Catalog: All 292 Extended MTProto Methods
+
+Every method is directly callable on `ctx` when the 'mt' capability is declared. Defaults such as current chat (`$peer`) and current message ID (`$message`) are automatically resolved by the relay.
+
+### ctx.set_checklist_completed
+- Signature: `await ctx.set_checklist_completed(peer: InputPeer, msg_id: int, completed: Vector<int>, incompleted: Vector<int>)`
+- MTProto RPC: `messages.toggleTodoCompleted`
+- Returns: `bool`
+
+### ctx.add_poll_answer
+- Signature: `await ctx.add_poll_answer(peer: InputPeer, msg_id: int, answer: PollAnswer)`
+- MTProto RPC: `messages.addPollAnswer`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_poll_answer
+- Signature: `await ctx.remove_poll_answer(peer: InputPeer, msg_id: int, option: bytes)`
+- MTProto RPC: `messages.deletePollAnswer`
+- Returns: `bool`
+
+### ctx.unread_poll_votes
+- Signature: `await ctx.unread_poll_votes(peer: InputPeer, top_msg_id: flags.0?int = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)`
+- MTProto RPC: `messages.getUnreadPollVotes`
+- Returns: `bool`
+
+### ctx.mark_poll_votes_read
+- Signature: `await ctx.mark_poll_votes_read(peer: InputPeer, top_msg_id: flags.0?int = None)`
+- MTProto RPC: `messages.readPollVotes`
+- Returns: `bool`
+
+### ctx.poll_statistics
+- Signature: `await ctx.poll_statistics(dark: flags.0?true = None, peer: InputPeer, msg_id: int)`
+- MTProto RPC: `stats.getPollStats`
+- Returns: `dict[str, Any]`
+
+### ctx.scheduled_messages
+- Signature: `await ctx.scheduled_messages(peer: InputPeer, hash: long)`
+- MTProto RPC: `messages.getScheduledHistory`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.scheduled_by_ids
+- Signature: `await ctx.scheduled_by_ids(peer: InputPeer, id: Vector<int>)`
+- MTProto RPC: `messages.getScheduledMessages`
+- Returns: `dict[str, Any]`
+
+### ctx.publish_scheduled
+- Signature: `await ctx.publish_scheduled(peer: InputPeer, id: Vector<int>)`
+- MTProto RPC: `messages.sendScheduledMessages`
+- Returns: `dict[str, Any]`
+
+### ctx.cancel_scheduled
+- Signature: `await ctx.cancel_scheduled(peer: InputPeer, id: Vector<int>)`
+- MTProto RPC: `messages.deleteScheduledMessages`
+- Returns: `dict[str, Any]`
+
+### ctx.configure_chat_reactions
+- Signature: `await ctx.configure_chat_reactions(peer: InputPeer, available_reactions: ChatReactions, reactions_limit: flags.0?int = None, paid_enabled: flags.1?Bool = None)`
+- MTProto RPC: `messages.setChatAvailableReactions`
+- Returns: `dict[str, Any]`
+
+### ctx.available_reactions
+- Signature: `await ctx.available_reactions(hash: int)`
+- MTProto RPC: `messages.getAvailableReactions`
+- Returns: `dict[str, Any]`
+
+### ctx.set_default_reaction
+- Signature: `await ctx.set_default_reaction(reaction: Reaction)`
+- MTProto RPC: `messages.setDefaultReaction`
+- Returns: `dict[str, Any]`
+
+### ctx.unread_reactions
+- Signature: `await ctx.unread_reactions(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)`
+- MTProto RPC: `messages.getUnreadReactions`
+- Returns: `bool`
+
+### ctx.mark_reactions_read
+- Signature: `await ctx.mark_reactions_read(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None)`
+- MTProto RPC: `messages.readReactions`
+- Returns: `bool`
+
+### ctx.popular_reactions
+- Signature: `await ctx.popular_reactions(limit: int, hash: long)`
+- MTProto RPC: `messages.getTopReactions`
+- Returns: `dict[str, Any]`
+
+### ctx.recent_reactions
+- Signature: `await ctx.recent_reactions(limit: int, hash: long)`
+- MTProto RPC: `messages.getRecentReactions`
+- Returns: `dict[str, Any]`
+
+### ctx.clear_recent_reactions
+- Signature: `await ctx.clear_recent_reactions()`
+- MTProto RPC: `messages.clearRecentReactions`
+- Returns: `bool`
+
+### ctx.remove_member_reactions
+- Signature: `await ctx.remove_member_reactions(peer: InputPeer, participant: InputPeer)`
+- MTProto RPC: `messages.deleteParticipantReactions`
+- Returns: `bool`
+
+### ctx.remove_member_message_reaction
+- Signature: `await ctx.remove_member_message_reaction(peer: InputPeer, msg_id: int, participant: InputPeer)`
+- MTProto RPC: `messages.deleteParticipantReaction`
+- Returns: `bool`
+
+### ctx.saved_dialogs
+- Signature: `await ctx.saved_dialogs(exclude_pinned: flags.0?true = None, parent_peer: flags.1?InputPeer = None, offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)`
+- MTProto RPC: `messages.getSavedDialogs`
+- Returns: `dict[str, Any]`
+
+### ctx.saved_history
+- Signature: `await ctx.saved_history(parent_peer: flags.0?InputPeer = None, peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)`
+- MTProto RPC: `messages.getSavedHistory`
+- Returns: `dict[str, Any]`
+
+### ctx.clear_saved_history
+- Signature: `await ctx.clear_saved_history(parent_peer: flags.0?InputPeer = None, peer: InputPeer, max_id: int, min_date: flags.2?int = None, max_date: flags.3?int = None)`
+- MTProto RPC: `messages.deleteSavedHistory`
+- Returns: `bool`
+
+### ctx.pinned_saved_dialogs
+- Signature: `await ctx.pinned_saved_dialogs()`
+- MTProto RPC: `messages.getPinnedSavedDialogs`
+- Returns: `dict[str, Any]`
+
+### ctx.set_saved_dialog_pinned
+- Signature: `await ctx.set_saved_dialog_pinned(pinned: flags.0?true = None, peer: InputDialogPeer)`
+- MTProto RPC: `messages.toggleSavedDialogPin`
+- Returns: `bool`
+
+### ctx.reorder_saved_pins
+- Signature: `await ctx.reorder_saved_pins(force: flags.0?true = None, order: Vector<InputDialogPeer>)`
+- MTProto RPC: `messages.reorderPinnedSavedDialogs`
+- Returns: `dict[str, Any]`
+
+### ctx.saved_reaction_tags
+- Signature: `await ctx.saved_reaction_tags(peer: flags.0?InputPeer = None, hash: long)`
+- MTProto RPC: `messages.getSavedReactionTags`
+- Returns: `dict[str, Any]`
+
+### ctx.rename_saved_tag
+- Signature: `await ctx.rename_saved_tag(reaction: Reaction, title: flags.0?string = None)`
+- MTProto RPC: `messages.updateSavedReactionTag`
+- Returns: `dict[str, Any]`
+
+### ctx.suggested_saved_tags
+- Signature: `await ctx.suggested_saved_tags(hash: long)`
+- MTProto RPC: `messages.getDefaultTagReactions`
+- Returns: `dict[str, Any]`
+
+### ctx.saved_dialogs_by_peers
+- Signature: `await ctx.saved_dialogs_by_peers(parent_peer: flags.1?InputPeer = None, ids: Vector<InputPeer>)`
+- MTProto RPC: `messages.getSavedDialogsByID`
+- Returns: `dict[str, Any]`
+
+### ctx.mark_saved_history_read
+- Signature: `await ctx.mark_saved_history_read(parent_peer: InputPeer, peer: InputPeer, max_id: int)`
+- MTProto RPC: `messages.readSavedHistory`
+- Returns: `bool`
+
+### ctx.forum_topics
+- Signature: `await ctx.forum_topics(peer: InputPeer, q: flags.0?string = None, offset_date: int, offset_id: int, offset_topic: int, limit: int)`
+- MTProto RPC: `messages.getForumTopics`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.forum_topics_by_ids
+- Signature: `await ctx.forum_topics_by_ids(peer: InputPeer, topics: Vector<int>)`
+- MTProto RPC: `messages.getForumTopicsByID`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.edit_forum_topic
+- Signature: `await ctx.edit_forum_topic(peer: InputPeer, topic_id: int, title: flags.0?string = None, icon_emoji_id: flags.1?long = None, closed: flags.2?Bool = None, hidden: flags.3?Bool = None)`
+- MTProto RPC: `messages.editForumTopic`
+- Returns: `dict[str, Any]`
+
+### ctx.set_forum_topic_pinned
+- Signature: `await ctx.set_forum_topic_pinned(peer: InputPeer, topic_id: int, pinned: Bool)`
+- MTProto RPC: `messages.updatePinnedForumTopic`
+- Returns: `dict[str, Any]`
+
+### ctx.reorder_forum_pins
+- Signature: `await ctx.reorder_forum_pins(force: flags.0?true = None, peer: InputPeer, order: Vector<int>)`
+- MTProto RPC: `messages.reorderPinnedForumTopics`
+- Returns: `dict[str, Any]`
+
+### ctx.create_forum_topic
+- Signature: `await ctx.create_forum_topic(title_missing: flags.4?true = None, peer: InputPeer, title: string, icon_color: flags.0?int = None, icon_emoji_id: flags.3?long = None, random_id: long, send_as: flags.2?InputPeer = None)`
+- MTProto RPC: `messages.createForumTopic`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_forum_topic
+- Signature: `await ctx.remove_forum_topic(peer: InputPeer, top_msg_id: int)`
+- MTProto RPC: `messages.deleteTopicHistory`
+- Returns: `bool`
+
+### ctx.set_forum_enabled
+- Signature: `await ctx.set_forum_enabled(channel: InputChannel, enabled: Bool, tabs: Bool)`
+- MTProto RPC: `channels.toggleForum`
+- Returns: `bool`
+
+### ctx.set_forum_message_view
+- Signature: `await ctx.set_forum_message_view(channel: InputChannel, enabled: Bool)`
+- MTProto RPC: `channels.toggleViewForumAsMessages`
+- Returns: `bool`
+
+### ctx.story_posting_quota
+- Signature: `await ctx.story_posting_quota(peer: InputPeer)`
+- MTProto RPC: `stories.canSendStory`
+- Returns: `int`
+
+### ctx.post_story
+- Signature: `await ctx.post_story(pinned: flags.2?true = None, noforwards: flags.4?true = None, fwd_modified: flags.7?true = None, peer: InputPeer, media: InputMedia, media_areas: flags.5?Vector<MediaArea> = None, caption: flags.0?string = None, entities: flags.1?Vector<MessageEntity> = None, privacy_rules: Vector<InputPrivacyRule>, random_id: long, period: flags.3?int = None, fwd_from_id: flags.6?InputPeer = None, fwd_from_story: flags.6?int = None, albums: flags.8?Vector<int> = None, music: flags.9?InputDocument = None)`
+- MTProto RPC: `stories.sendStory`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_story
+- Signature: `await ctx.edit_story(peer: InputPeer, id: int, media: flags.0?InputMedia = None, media_areas: flags.3?Vector<MediaArea> = None, caption: flags.1?string = None, entities: flags.1?Vector<MessageEntity> = None, privacy_rules: flags.2?Vector<InputPrivacyRule> = None, music: flags.4?InputDocument = None)`
+- MTProto RPC: `stories.editStory`
+- Returns: `dict[str, Any]`
+
+### ctx.delete_stories
+- Signature: `await ctx.delete_stories(peer: InputPeer, id: Vector<int>)`
+- MTProto RPC: `stories.deleteStories`
+- Returns: `bool`
+
+### ctx.set_stories_on_profile
+- Signature: `await ctx.set_stories_on_profile(peer: InputPeer, id: Vector<int>, pinned: Bool)`
+- MTProto RPC: `stories.togglePinned`
+- Returns: `bool`
+
+### ctx.story_feed
+- Signature: `await ctx.story_feed(next: flags.1?true = None, hidden: flags.2?true = None, state: flags.0?string = None)`
+- MTProto RPC: `stories.getAllStories`
+- Returns: `dict[str, Any]`
+
+### ctx.profile_stories
+- Signature: `await ctx.profile_stories(peer: InputPeer, offset_id: int, limit: int)`
+- MTProto RPC: `stories.getPinnedStories`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.archived_stories
+- Signature: `await ctx.archived_stories(peer: InputPeer, offset_id: int, limit: int)`
+- MTProto RPC: `stories.getStoriesArchive`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.stories_by_ids
+- Signature: `await ctx.stories_by_ids(peer: InputPeer, id: Vector<int>)`
+- MTProto RPC: `stories.getStoriesByID`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.mark_stories_read
+- Signature: `await ctx.mark_stories_read(peer: InputPeer, max_id: int)`
+- MTProto RPC: `stories.readStories`
+- Returns: `bool`
+
+### ctx.story_viewers
+- Signature: `await ctx.story_viewers(just_contacts: flags.0?true = None, reactions_first: flags.2?true = None, forwards_first: flags.3?true = None, peer: InputPeer, q: flags.1?string = None, id: int, offset: string, limit: int)`
+- MTProto RPC: `stories.getStoryViewsList`
+- Returns: `dict[str, Any]`
+
+### ctx.story_view_counts
+- Signature: `await ctx.story_view_counts(peer: InputPeer, id: Vector<int>)`
+- MTProto RPC: `stories.getStoriesViews`
+- Returns: `int`
+
+### ctx.story_link
+- Signature: `await ctx.story_link(peer: InputPeer, id: int)`
+- MTProto RPC: `stories.exportStoryLink`
+- Returns: `dict[str, Any]`
+
+### ctx.activate_story_stealth
+- Signature: `await ctx.activate_story_stealth(past: flags.0?true = None, future: flags.1?true = None)`
+- MTProto RPC: `stories.activateStealthMode`
+- Returns: `dict[str, Any]`
+
+### ctx.react_to_story
+- Signature: `await ctx.react_to_story(add_to_recent: flags.0?true = None, peer: InputPeer, story_id: int, reaction: Reaction)`
+- MTProto RPC: `stories.sendReaction`
+- Returns: `dict[str, Any]`
+
+### ctx.peer_stories
+- Signature: `await ctx.peer_stories(peer: InputPeer)`
+- MTProto RPC: `stories.getPeerStories`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.story_read_markers
+- Signature: `await ctx.story_read_markers()`
+- MTProto RPC: `stories.getAllReadPeerStories`
+- Returns: `bool`
+
+### ctx.peer_latest_story_ids
+- Signature: `await ctx.peer_latest_story_ids(id: Vector<InputPeer>)`
+- MTProto RPC: `stories.getPeerMaxIDs`
+- Returns: `dict[str, Any]`
+
+### ctx.story_posting_chats
+- Signature: `await ctx.story_posting_chats()`
+- MTProto RPC: `stories.getChatsToSend`
+- Returns: `dict[str, Any]`
+
+### ctx.set_peer_stories_hidden
+- Signature: `await ctx.set_peer_stories_hidden(peer: InputPeer, hidden: Bool)`
+- MTProto RPC: `stories.togglePeerStoriesHidden`
+- Returns: `bool`
+
+### ctx.story_reaction_senders
+- Signature: `await ctx.story_reaction_senders(forwards_first: flags.2?true = None, peer: InputPeer, id: int, reaction: flags.0?Reaction = None, offset: flags.1?string = None, limit: int)`
+- MTProto RPC: `stories.getStoryReactionsList`
+- Returns: `dict[str, Any]`
+
+### ctx.reorder_profile_story_pins
+- Signature: `await ctx.reorder_profile_story_pins(peer: InputPeer, id: Vector<int>)`
+- MTProto RPC: `stories.togglePinnedToTop`
+- Returns: `bool`
+
+### ctx.search_stories
+- Signature: `await ctx.search_stories(hashtag: flags.0?string = None, area: flags.1?MediaArea = None, peer: flags.2?InputPeer = None, offset: string, limit: int)`
+- MTProto RPC: `stories.searchPosts`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.create_story_album
+- Signature: `await ctx.create_story_album(peer: InputPeer, title: string, stories: Vector<int>)`
+- MTProto RPC: `stories.createAlbum`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_story_album
+- Signature: `await ctx.edit_story_album(peer: InputPeer, album_id: int, title: flags.0?string = None, delete_stories: flags.1?Vector<int> = None, add_stories: flags.2?Vector<int> = None, order: flags.3?Vector<int> = None)`
+- MTProto RPC: `stories.updateAlbum`
+- Returns: `dict[str, Any]`
+
+### ctx.reorder_story_albums
+- Signature: `await ctx.reorder_story_albums(peer: InputPeer, order: Vector<int>)`
+- MTProto RPC: `stories.reorderAlbums`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_story_album
+- Signature: `await ctx.remove_story_album(peer: InputPeer, album_id: int)`
+- MTProto RPC: `stories.deleteAlbum`
+- Returns: `bool`
+
+### ctx.story_albums
+- Signature: `await ctx.story_albums(peer: InputPeer, hash: long)`
+- MTProto RPC: `stories.getAlbums`
+- Returns: `dict[str, Any]`
+
+### ctx.story_album_items
+- Signature: `await ctx.story_album_items(peer: InputPeer, album_id: int, offset: int, limit: int)`
+- MTProto RPC: `stories.getAlbumStories`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.stickers_for_emoji
+- Signature: `await ctx.stickers_for_emoji(emoticon: string, hash: long)`
+- MTProto RPC: `messages.getStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.installed_sticker_sets
+- Signature: `await ctx.installed_sticker_sets(hash: long)`
+- MTProto RPC: `messages.getAllStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.sticker_set
+- Signature: `await ctx.sticker_set(stickerset: InputStickerSet, hash: int)`
+- MTProto RPC: `messages.getStickerSet`
+- Returns: `dict[str, Any]`
+
+### ctx.install_sticker_set
+- Signature: `await ctx.install_sticker_set(stickerset: InputStickerSet, archived: Bool)`
+- MTProto RPC: `messages.installStickerSet`
+- Returns: `dict[str, Any]`
+
+### ctx.uninstall_sticker_set
+- Signature: `await ctx.uninstall_sticker_set(stickerset: InputStickerSet)`
+- MTProto RPC: `messages.uninstallStickerSet`
+- Returns: `dict[str, Any]`
+
+### ctx.reorder_sticker_sets
+- Signature: `await ctx.reorder_sticker_sets(masks: flags.0?true = None, emojis: flags.1?true = None, order: Vector<long>)`
+- MTProto RPC: `messages.reorderStickerSets`
+- Returns: `dict[str, Any]`
+
+### ctx.saved_gifs
+- Signature: `await ctx.saved_gifs(hash: long)`
+- MTProto RPC: `messages.getSavedGifs`
+- Returns: `dict[str, Any]`
+
+### ctx.set_gif_saved
+- Signature: `await ctx.set_gif_saved(id: InputDocument, unsave: Bool)`
+- MTProto RPC: `messages.saveGif`
+- Returns: `dict[str, Any]`
+
+### ctx.featured_sticker_sets
+- Signature: `await ctx.featured_sticker_sets(hash: long)`
+- MTProto RPC: `messages.getFeaturedStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.mark_featured_stickers_seen
+- Signature: `await ctx.mark_featured_stickers_seen(id: Vector<long>)`
+- MTProto RPC: `messages.readFeaturedStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.recent_stickers
+- Signature: `await ctx.recent_stickers(attached: flags.0?true = None, hash: long)`
+- MTProto RPC: `messages.getRecentStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.set_sticker_recent
+- Signature: `await ctx.set_sticker_recent(attached: flags.0?true = None, id: InputDocument, unsave: Bool)`
+- MTProto RPC: `messages.saveRecentSticker`
+- Returns: `dict[str, Any]`
+
+### ctx.clear_recent_stickers
+- Signature: `await ctx.clear_recent_stickers(attached: flags.0?true = None)`
+- MTProto RPC: `messages.clearRecentStickers`
+- Returns: `bool`
+
+### ctx.archived_sticker_sets
+- Signature: `await ctx.archived_sticker_sets(masks: flags.0?true = None, emojis: flags.1?true = None, offset_id: long, limit: int)`
+- MTProto RPC: `messages.getArchivedStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.installed_masks
+- Signature: `await ctx.installed_masks(hash: long)`
+- MTProto RPC: `messages.getMaskStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.media_sticker_sets
+- Signature: `await ctx.media_sticker_sets(media: InputStickeredMedia)`
+- MTProto RPC: `messages.getAttachedStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.favorite_stickers
+- Signature: `await ctx.favorite_stickers(hash: long)`
+- MTProto RPC: `messages.getFavedStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.set_sticker_favorite
+- Signature: `await ctx.set_sticker_favorite(id: InputDocument, unfave: Bool)`
+- MTProto RPC: `messages.faveSticker`
+- Returns: `dict[str, Any]`
+
+### ctx.search_sticker_sets
+- Signature: `await ctx.search_sticker_sets(exclude_featured: flags.0?true = None, q: string, hash: long)`
+- MTProto RPC: `messages.searchStickerSets`
+- Returns: `dict[str, Any]`
+
+### ctx.bulk_sticker_set_action
+- Signature: `await ctx.bulk_sticker_set_action(uninstall: flags.0?true = None, archive: flags.1?true = None, unarchive: flags.2?true = None, stickersets: Vector<InputStickerSet>)`
+- MTProto RPC: `messages.toggleStickerSets`
+- Returns: `bool`
+
+### ctx.older_featured_sticker_sets
+- Signature: `await ctx.older_featured_sticker_sets(offset: int, limit: int, hash: long)`
+- MTProto RPC: `messages.getOldFeaturedStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.custom_emoji_documents
+- Signature: `await ctx.custom_emoji_documents(document_id: Vector<long>)`
+- MTProto RPC: `messages.getCustomEmojiDocuments`
+- Returns: `dict[str, Any]`
+
+### ctx.installed_emoji_sets
+- Signature: `await ctx.installed_emoji_sets(hash: long)`
+- MTProto RPC: `messages.getEmojiStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.featured_emoji_sets
+- Signature: `await ctx.featured_emoji_sets(hash: long)`
+- MTProto RPC: `messages.getFeaturedEmojiStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.search_custom_emoji
+- Signature: `await ctx.search_custom_emoji(emoticon: string, hash: long)`
+- MTProto RPC: `messages.searchCustomEmoji`
+- Returns: `dict[str, Any]`
+
+### ctx.search_emoji_sets
+- Signature: `await ctx.search_emoji_sets(exclude_featured: flags.0?true = None, q: string, hash: long)`
+- MTProto RPC: `messages.searchEmojiStickerSets`
+- Returns: `dict[str, Any]`
+
+### ctx.owned_sticker_sets
+- Signature: `await ctx.owned_sticker_sets(offset_id: long, limit: int)`
+- MTProto RPC: `messages.getMyStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.search_stickers
+- Signature: `await ctx.search_stickers(emojis: flags.0?true = None, q: string, emoticon: string, lang_code: Vector<string>, offset: int, limit: int, hash: long)`
+- MTProto RPC: `messages.searchStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.create_sticker_set
+- Signature: `await ctx.create_sticker_set(masks: flags.0?true = None, emojis: flags.5?true = None, text_color: flags.6?true = None, user_id: InputUser, title: string, short_name: string, thumb: flags.2?InputDocument = None, stickers: Vector<InputStickerSetItem>, software: flags.3?string = None)`
+- MTProto RPC: `stickers.createStickerSet`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_sticker
+- Signature: `await ctx.remove_sticker(sticker: InputDocument)`
+- MTProto RPC: `stickers.removeStickerFromSet`
+- Returns: `bool`
+
+### ctx.move_sticker
+- Signature: `await ctx.move_sticker(sticker: InputDocument, position: int)`
+- MTProto RPC: `stickers.changeStickerPosition`
+- Returns: `dict[str, Any]`
+
+### ctx.add_sticker
+- Signature: `await ctx.add_sticker(stickerset: InputStickerSet, sticker: InputStickerSetItem)`
+- MTProto RPC: `stickers.addStickerToSet`
+- Returns: `dict[str, Any]`
+
+### ctx.set_sticker_set_thumbnail
+- Signature: `await ctx.set_sticker_set_thumbnail(stickerset: InputStickerSet, thumb: flags.0?InputDocument = None, thumb_document_id: flags.1?long = None)`
+- MTProto RPC: `stickers.setStickerSetThumb`
+- Returns: `dict[str, Any]`
+
+### ctx.check_sticker_set_name
+- Signature: `await ctx.check_sticker_set_name(short_name: string)`
+- MTProto RPC: `stickers.checkShortName`
+- Returns: `dict[str, Any]`
+
+### ctx.suggest_sticker_set_name
+- Signature: `await ctx.suggest_sticker_set_name(title: string)`
+- MTProto RPC: `stickers.suggestShortName`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_sticker_metadata
+- Signature: `await ctx.edit_sticker_metadata(sticker: InputDocument, emoji: flags.0?string = None, mask_coords: flags.1?MaskCoords = None, keywords: flags.2?string = None)`
+- MTProto RPC: `stickers.changeSticker`
+- Returns: `dict[str, Any]`
+
+### ctx.rename_sticker_set
+- Signature: `await ctx.rename_sticker_set(stickerset: InputStickerSet, title: string)`
+- MTProto RPC: `stickers.renameStickerSet`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_sticker_set
+- Signature: `await ctx.remove_sticker_set(stickerset: InputStickerSet)`
+- MTProto RPC: `stickers.deleteStickerSet`
+- Returns: `bool`
+
+### ctx.replace_sticker
+- Signature: `await ctx.replace_sticker(sticker: InputDocument, new_sticker: InputStickerSetItem)`
+- MTProto RPC: `stickers.replaceSticker`
+- Returns: `dict[str, Any]`
+
+### ctx.contact_ids
+- Signature: `await ctx.contact_ids(hash: long)`
+- MTProto RPC: `contacts.getContactIDs`
+- Returns: `dict[str, Any]`
+
+### ctx.contact_statuses
+- Signature: `await ctx.contact_statuses()`
+- MTProto RPC: `contacts.getStatuses`
+- Returns: `dict[str, Any]`
+
+### ctx.contacts_list
+- Signature: `await ctx.contacts_list(hash: long)`
+- MTProto RPC: `contacts.getContacts`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.import_contacts
+- Signature: `await ctx.import_contacts(contacts: Vector<InputContact>)`
+- MTProto RPC: `contacts.importContacts`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_contacts
+- Signature: `await ctx.remove_contacts(id: Vector<InputUser>)`
+- MTProto RPC: `contacts.deleteContacts`
+- Returns: `bool`
+
+### ctx.remove_contacts_by_phone
+- Signature: `await ctx.remove_contacts_by_phone(phones: Vector<string>)`
+- MTProto RPC: `contacts.deleteByPhones`
+- Returns: `bool`
+
+### ctx.block_peer
+- Signature: `await ctx.block_peer(my_stories_from: flags.0?true = None, id: InputPeer)`
+- MTProto RPC: `contacts.block`
+- Returns: `dict[str, Any]`
+
+### ctx.unblock_peer
+- Signature: `await ctx.unblock_peer(my_stories_from: flags.0?true = None, id: InputPeer)`
+- MTProto RPC: `contacts.unblock`
+- Returns: `dict[str, Any]`
+
+### ctx.blocked_peers
+- Signature: `await ctx.blocked_peers(my_stories_from: flags.0?true = None, offset: int, limit: int)`
+- MTProto RPC: `contacts.getBlocked`
+- Returns: `dict[str, Any]`
+
+### ctx.search_public_peers
+- Signature: `await ctx.search_public_peers(broadcasts: flags.0?true = None, bots: flags.1?true = None, q: string, limit: int)`
+- MTProto RPC: `contacts.search`
+- Returns: `dict[str, Any]`
+
+### ctx.frequent_peers
+- Signature: `await ctx.frequent_peers(correspondents: flags.0?true = None, bots_pm: flags.1?true = None, bots_inline: flags.2?true = None, phone_calls: flags.3?true = None, forward_users: flags.4?true = None, forward_chats: flags.5?true = None, groups: flags.10?true = None, channels: flags.15?true = None, bots_app: flags.16?true = None, bots_guestchat: flags.17?true = None, offset: int, limit: int, hash: long)`
+- MTProto RPC: `contacts.getTopPeers`
+- Returns: `dict[str, Any]`
+
+### ctx.reset_peer_rating
+- Signature: `await ctx.reset_peer_rating(category: TopPeerCategory, peer: InputPeer)`
+- MTProto RPC: `contacts.resetTopPeerRating`
+- Returns: `dict[str, Any]`
+
+### ctx.clear_imported_contacts
+- Signature: `await ctx.clear_imported_contacts()`
+- MTProto RPC: `contacts.resetSaved`
+- Returns: `bool`
+
+### ctx.imported_contacts
+- Signature: `await ctx.imported_contacts()`
+- MTProto RPC: `contacts.getSaved`
+- Returns: `dict[str, Any]`
+
+### ctx.set_frequent_peers_enabled
+- Signature: `await ctx.set_frequent_peers_enabled(enabled: Bool)`
+- MTProto RPC: `contacts.toggleTopPeers`
+- Returns: `bool`
+
+### ctx.add_contact
+- Signature: `await ctx.add_contact(add_phone_privacy_exception: flags.0?true = None, id: InputUser, first_name: string, last_name: string, phone: string, note: flags.1?TextWithEntities = None)`
+- MTProto RPC: `contacts.addContact`
+- Returns: `dict[str, Any]`
+
+### ctx.accept_contact
+- Signature: `await ctx.accept_contact(id: InputUser)`
+- MTProto RPC: `contacts.acceptContact`
+- Returns: `dict[str, Any]`
+
+### ctx.set_close_friends
+- Signature: `await ctx.set_close_friends(id: Vector<long>)`
+- MTProto RPC: `contacts.editCloseFriends`
+- Returns: `dict[str, Any]`
+
+### ctx.replace_blocklist
+- Signature: `await ctx.replace_blocklist(my_stories_from: flags.0?true = None, id: Vector<InputPeer>, limit: int)`
+- MTProto RPC: `contacts.setBlocked`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.contact_birthdays
+- Signature: `await ctx.contact_birthdays()`
+- MTProto RPC: `contacts.getBirthdays`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_contact_note
+- Signature: `await ctx.edit_contact_note(id: InputUser, note: TextWithEntities)`
+- MTProto RPC: `contacts.updateContactNote`
+- Returns: `dict[str, Any]`
+
+### ctx.dialogs
+- Signature: `await ctx.dialogs(exclude_pinned: flags.0?true = None, folder_id: flags.1?int = None, offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)`
+- MTProto RPC: `messages.getDialogs`
+- Returns: `dict[str, Any]`
+
+### ctx.chat_history
+- Signature: `await ctx.chat_history(peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)`
+- MTProto RPC: `messages.getHistory`
+- Returns: `dict[str, Any]`
+
+### ctx.search_chat_messages
+- Signature: `await ctx.search_chat_messages(peer: InputPeer, q: string, from_id: flags.0?InputPeer = None, saved_peer_id: flags.2?InputPeer = None, saved_reaction: flags.3?Vector<Reaction> = None, top_msg_id: flags.1?int = None, filter: MessagesFilter, min_date: int, max_date: int, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)`
+- MTProto RPC: `messages.search`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.mark_chat_read
+- Signature: `await ctx.mark_chat_read(peer: InputPeer, max_id: int)`
+- MTProto RPC: `messages.readHistory`
+- Returns: `bool`
+
+### ctx.clear_chat_history
+- Signature: `await ctx.clear_chat_history(just_clear: flags.0?true = None, revoke: flags.1?true = None, peer: InputPeer, max_id: int, min_date: flags.2?int = None, max_date: flags.3?int = None)`
+- MTProto RPC: `messages.deleteHistory`
+- Returns: `bool`
+
+### ctx.peer_settings
+- Signature: `await ctx.peer_settings(peer: InputPeer)`
+- MTProto RPC: `messages.getPeerSettings`
+- Returns: `dict[str, Any]`
+
+### ctx.basic_groups
+- Signature: `await ctx.basic_groups(id: Vector<long>)`
+- MTProto RPC: `messages.getChats`
+- Returns: `dict[str, Any]`
+
+### ctx.basic_group_details
+- Signature: `await ctx.basic_group_details(chat_id: long)`
+- MTProto RPC: `messages.getFullChat`
+- Returns: `dict[str, Any]`
+
+### ctx.search_all_messages
+- Signature: `await ctx.search_all_messages(broadcasts_only: flags.1?true = None, groups_only: flags.2?true = None, users_only: flags.3?true = None, folder_id: flags.0?int = None, community: flags.4?InputChannel = None, q: string, filter: MessagesFilter, min_date: int, max_date: int, offset_rate: int, offset_peer: InputPeer, offset_id: int, limit: int)`
+- MTProto RPC: `messages.searchGlobal`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.message_editability
+- Signature: `await ctx.message_editability(peer: InputPeer, id: int)`
+- MTProto RPC: `messages.getMessageEditData`
+- Returns: `dict[str, Any]`
+
+### ctx.peer_dialogs
+- Signature: `await ctx.peer_dialogs(peers: Vector<InputDialogPeer>)`
+- MTProto RPC: `messages.getPeerDialogs`
+- Returns: `dict[str, Any]`
+
+### ctx.all_drafts
+- Signature: `await ctx.all_drafts()`
+- MTProto RPC: `messages.getAllDrafts`
+- Returns: `dict[str, Any]`
+
+### ctx.mutual_groups
+- Signature: `await ctx.mutual_groups(user_id: InputUser, max_id: long, limit: int)`
+- MTProto RPC: `messages.getCommonChats`
+- Returns: `dict[str, Any]`
+
+### ctx.set_dialog_pinned
+- Signature: `await ctx.set_dialog_pinned(pinned: flags.0?true = None, peer: InputDialogPeer)`
+- MTProto RPC: `messages.toggleDialogPin`
+- Returns: `bool`
+
+### ctx.reorder_dialog_pins
+- Signature: `await ctx.reorder_dialog_pins(force: flags.0?true = None, folder_id: int, order: Vector<InputDialogPeer>)`
+- MTProto RPC: `messages.reorderPinnedDialogs`
+- Returns: `dict[str, Any]`
+
+### ctx.pinned_dialogs
+- Signature: `await ctx.pinned_dialogs(folder_id: int)`
+- MTProto RPC: `messages.getPinnedDialogs`
+- Returns: `dict[str, Any]`
+
+### ctx.unread_mentions
+- Signature: `await ctx.unread_mentions(peer: InputPeer, top_msg_id: flags.0?int = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)`
+- MTProto RPC: `messages.getUnreadMentions`
+- Returns: `bool`
+
+### ctx.mark_mentions_read
+- Signature: `await ctx.mark_mentions_read(peer: InputPeer, top_msg_id: flags.0?int = None)`
+- MTProto RPC: `messages.readMentions`
+- Returns: `bool`
+
+### ctx.recent_live_locations
+- Signature: `await ctx.recent_live_locations(peer: InputPeer, limit: int, hash: long)`
+- MTProto RPC: `messages.getRecentLocations`
+- Returns: `dict[str, Any]`
+
+### ctx.set_dialog_unread
+- Signature: `await ctx.set_dialog_unread(unread: flags.0?true = None, parent_peer: flags.1?InputPeer = None, peer: InputDialogPeer)`
+- MTProto RPC: `messages.markDialogUnread`
+- Returns: `bool`
+
+### ctx.unread_dialog_marks
+- Signature: `await ctx.unread_dialog_marks(parent_peer: flags.0?InputPeer = None)`
+- MTProto RPC: `messages.getDialogUnreadMarks`
+- Returns: `bool`
+
+### ctx.clear_all_drafts
+- Signature: `await ctx.clear_all_drafts()`
+- MTProto RPC: `messages.clearAllDrafts`
+- Returns: `bool`
+
+### ctx.chat_online_count
+- Signature: `await ctx.chat_online_count(peer: InputPeer)`
+- MTProto RPC: `messages.getOnlines`
+- Returns: `int`
+
+### ctx.message_type_counts
+- Signature: `await ctx.message_type_counts(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, top_msg_id: flags.0?int = None, filters: Vector<MessagesFilter>)`
+- MTProto RPC: `messages.getSearchCounters`
+- Returns: `int`
+
+### ctx.dismiss_peer_settings_bar
+- Signature: `await ctx.dismiss_peer_settings_bar(peer: InputPeer)`
+- MTProto RPC: `messages.hidePeerSettingsBar`
+- Returns: `dict[str, Any]`
+
+### ctx.mark_discussion_read
+- Signature: `await ctx.mark_discussion_read(peer: InputPeer, msg_id: int, read_max_id: int)`
+- MTProto RPC: `messages.readDiscussion`
+- Returns: `bool`
+
+### ctx.unpin_all_chat_messages
+- Signature: `await ctx.unpin_all_chat_messages(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None)`
+- MTProto RPC: `messages.unpinAllMessages`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.message_readers
+- Signature: `await ctx.message_readers(peer: InputPeer, msg_id: int)`
+- MTProto RPC: `messages.getMessageReadParticipants`
+- Returns: `bool`
+
+### ctx.message_search_calendar
+- Signature: `await ctx.message_search_calendar(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, filter: MessagesFilter, offset_id: int, offset_date: int)`
+- MTProto RPC: `messages.getSearchResultsCalendar`
+- Returns: `dict[str, Any]`
+
+### ctx.message_search_positions
+- Signature: `await ctx.message_search_positions(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, filter: MessagesFilter, offset_id: int, limit: int)`
+- MTProto RPC: `messages.getSearchResultsPositions`
+- Returns: `dict[str, Any]`
+
+### ctx.set_default_send_as
+- Signature: `await ctx.set_default_send_as(peer: InputPeer, send_as: InputPeer)`
+- MTProto RPC: `messages.saveDefaultSendAs`
+- Returns: `dict[str, Any]`
+
+### ctx.sent_media_search
+- Signature: `await ctx.sent_media_search(q: string, filter: MessagesFilter, limit: int)`
+- MTProto RPC: `messages.searchSentMedia`
+- Returns: `dict[str, Any]`
+
+### ctx.outgoing_read_date
+- Signature: `await ctx.outgoing_read_date(peer: InputPeer, msg_id: int)`
+- MTProto RPC: `messages.getOutboxReadDate`
+- Returns: `bool`
+
+### ctx.channel_message_author
+- Signature: `await ctx.channel_message_author(channel: InputChannel, id: int)`
+- MTProto RPC: `channels.getMessageAuthor`
+- Returns: `dict[str, Any]`
+
+### ctx.move_dialogs_to_archive
+- Signature: `await ctx.move_dialogs_to_archive(folder_peers: Vector<InputFolderPeer>)`
+- MTProto RPC: `folders.editPeerFolders`
+- Returns: `dict[str, Any]`
+
+### ctx.chat_folders
+- Signature: `await ctx.chat_folders()`
+- MTProto RPC: `messages.getDialogFilters`
+- Returns: `dict[str, Any]`
+
+### ctx.suggested_chat_folders
+- Signature: `await ctx.suggested_chat_folders()`
+- MTProto RPC: `messages.getSuggestedDialogFilters`
+- Returns: `dict[str, Any]`
+
+### ctx.save_chat_folder
+- Signature: `await ctx.save_chat_folder(id: int, filter: flags.0?DialogFilter = None)`
+- MTProto RPC: `messages.updateDialogFilter`
+- Returns: `dict[str, Any]`
+
+### ctx.reorder_chat_folders
+- Signature: `await ctx.reorder_chat_folders(order: Vector<int>)`
+- MTProto RPC: `messages.updateDialogFiltersOrder`
+- Returns: `dict[str, Any]`
+
+### ctx.set_folder_tags_visible
+- Signature: `await ctx.set_folder_tags_visible(enabled: Bool)`
+- MTProto RPC: `messages.toggleDialogFilterTags`
+- Returns: `bool`
+
+### ctx.share_chat_folder
+- Signature: `await ctx.share_chat_folder(chatlist: InputChatlist, title: string, peers: Vector<InputPeer>)`
+- MTProto RPC: `chatlists.exportChatlistInvite`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_folder_invite
+- Signature: `await ctx.remove_folder_invite(chatlist: InputChatlist, slug: string)`
+- MTProto RPC: `chatlists.deleteExportedInvite`
+- Returns: `bool`
+
+### ctx.edit_folder_invite
+- Signature: `await ctx.edit_folder_invite(chatlist: InputChatlist, slug: string, title: flags.1?string = None, peers: flags.2?Vector<InputPeer> = None)`
+- MTProto RPC: `chatlists.editExportedInvite`
+- Returns: `dict[str, Any]`
+
+### ctx.folder_invites
+- Signature: `await ctx.folder_invites(chatlist: InputChatlist)`
+- MTProto RPC: `chatlists.getExportedInvites`
+- Returns: `dict[str, Any]`
+
+### ctx.inspect_folder_invite
+- Signature: `await ctx.inspect_folder_invite(slug: string)`
+- MTProto RPC: `chatlists.checkChatlistInvite`
+- Returns: `dict[str, Any]`
+
+### ctx.join_folder_invite
+- Signature: `await ctx.join_folder_invite(slug: string, peers: Vector<InputPeer>)`
+- MTProto RPC: `chatlists.joinChatlistInvite`
+- Returns: `dict[str, Any]`
+
+### ctx.folder_updates
+- Signature: `await ctx.folder_updates(chatlist: InputChatlist)`
+- MTProto RPC: `chatlists.getChatlistUpdates`
+- Returns: `dict[str, Any]`
+
+### ctx.accept_folder_updates
+- Signature: `await ctx.accept_folder_updates(chatlist: InputChatlist, peers: Vector<InputPeer>)`
+- MTProto RPC: `chatlists.joinChatlistUpdates`
+- Returns: `dict[str, Any]`
+
+### ctx.dismiss_folder_updates
+- Signature: `await ctx.dismiss_folder_updates(chatlist: InputChatlist)`
+- MTProto RPC: `chatlists.hideChatlistUpdates`
+- Returns: `dict[str, Any]`
+
+### ctx.folder_leave_suggestions
+- Signature: `await ctx.folder_leave_suggestions(chatlist: InputChatlist)`
+- MTProto RPC: `chatlists.getLeaveChatlistSuggestions`
+- Returns: `dict[str, Any]`
+
+### ctx.leave_shared_folder
+- Signature: `await ctx.leave_shared_folder(chatlist: InputChatlist, peers: Vector<InputPeer>)`
+- MTProto RPC: `chatlists.leaveChatlist`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_profile
+- Signature: `await ctx.edit_profile(first_name: flags.0?string = None, last_name: flags.1?string = None, about: flags.2?string = None)`
+- MTProto RPC: `account.updateProfile`
+- Returns: `dict[str, Any]`
+
+### ctx.set_online_status
+- Signature: `await ctx.set_online_status(offline: Bool)`
+- MTProto RPC: `account.updateStatus`
+- Returns: `dict[str, Any]`
+
+### ctx.check_profile_username
+- Signature: `await ctx.check_profile_username(username: string)`
+- MTProto RPC: `account.checkUsername`
+- Returns: `dict[str, Any]`
+
+### ctx.set_profile_username
+- Signature: `await ctx.set_profile_username(username: string)`
+- MTProto RPC: `account.updateUsername`
+- Returns: `dict[str, Any]`
+
+### ctx.privacy_rules
+- Signature: `await ctx.privacy_rules(key: InputPrivacyKey)`
+- MTProto RPC: `account.getPrivacy`
+- Returns: `dict[str, Any]`
+
+### ctx.account_inactivity_ttl
+- Signature: `await ctx.account_inactivity_ttl()`
+- MTProto RPC: `account.getAccountTTL`
+- Returns: `int`
+
+### ctx.set_emoji_status
+- Signature: `await ctx.set_emoji_status(emoji_status: EmojiStatus)`
+- MTProto RPC: `account.updateEmojiStatus`
+- Returns: `dict[str, Any]`
+
+### ctx.suggested_emoji_statuses
+- Signature: `await ctx.suggested_emoji_statuses(hash: long)`
+- MTProto RPC: `account.getDefaultEmojiStatuses`
+- Returns: `dict[str, Any]`
+
+### ctx.recent_emoji_statuses
+- Signature: `await ctx.recent_emoji_statuses(hash: long)`
+- MTProto RPC: `account.getRecentEmojiStatuses`
+- Returns: `dict[str, Any]`
+
+### ctx.clear_recent_emoji_statuses
+- Signature: `await ctx.clear_recent_emoji_statuses()`
+- MTProto RPC: `account.clearRecentEmojiStatuses`
+- Returns: `bool`
+
+### ctx.reorder_profile_usernames
+- Signature: `await ctx.reorder_profile_usernames(order: Vector<string>)`
+- MTProto RPC: `account.reorderUsernames`
+- Returns: `dict[str, Any]`
+
+### ctx.set_profile_username_active
+- Signature: `await ctx.set_profile_username_active(username: string, active: Bool)`
+- MTProto RPC: `account.toggleUsername`
+- Returns: `bool`
+
+### ctx.profile_photo_emojis
+- Signature: `await ctx.profile_photo_emojis(hash: long)`
+- MTProto RPC: `account.getDefaultProfilePhotoEmojis`
+- Returns: `dict[str, Any]`
+
+### ctx.set_profile_color
+- Signature: `await ctx.set_profile_color(for_profile: flags.1?true = None, color: flags.2?PeerColor = None)`
+- MTProto RPC: `account.updateColor`
+- Returns: `dict[str, Any]`
+
+### ctx.set_birthday
+- Signature: `await ctx.set_birthday(birthday: flags.0?Birthday = None)`
+- MTProto RPC: `account.updateBirthday`
+- Returns: `dict[str, Any]`
+
+### ctx.set_personal_channel
+- Signature: `await ctx.set_personal_channel(channel: InputChannel)`
+- MTProto RPC: `account.updatePersonalChannel`
+- Returns: `dict[str, Any]`
+
+### ctx.set_profile_tab
+- Signature: `await ctx.set_profile_tab(tab: ProfileTab)`
+- MTProto RPC: `account.setMainProfileTab`
+- Returns: `dict[str, Any]`
+
+### ctx.set_music_saved
+- Signature: `await ctx.set_music_saved(unsave: flags.0?true = None, id: InputDocument, after_id: flags.1?InputDocument = None)`
+- MTProto RPC: `account.saveMusic`
+- Returns: `dict[str, Any]`
+
+### ctx.saved_music_ids
+- Signature: `await ctx.saved_music_ids(hash: long)`
+- MTProto RPC: `account.getSavedMusicIds`
+- Returns: `dict[str, Any]`
+
+### ctx.user_details
+- Signature: `await ctx.user_details(id: InputUser)`
+- MTProto RPC: `users.getFullUser`
+- Returns: `dict[str, Any]`
+
+### ctx.contact_requirements
+- Signature: `await ctx.contact_requirements(id: Vector<InputUser>)`
+- MTProto RPC: `users.getRequirementsToContact`
+- Returns: `dict[str, Any]`
+
+### ctx.user_music
+- Signature: `await ctx.user_music(id: InputUser, offset: int, limit: int, hash: long)`
+- MTProto RPC: `users.getSavedMusic`
+- Returns: `dict[str, Any]`
+
+### ctx.user_music_by_documents
+- Signature: `await ctx.user_music_by_documents(id: InputUser, documents: Vector<InputDocument>)`
+- MTProto RPC: `users.getSavedMusicByID`
+- Returns: `dict[str, Any]`
+
+### ctx.suggest_contact_birthday
+- Signature: `await ctx.suggest_contact_birthday(id: InputUser, birthday: Birthday)`
+- MTProto RPC: `users.suggestBirthday`
+- Returns: `dict[str, Any]`
+
+### ctx.select_profile_photo
+- Signature: `await ctx.select_profile_photo(fallback: flags.0?true = None, bot: flags.1?InputUser = None, id: InputPhoto)`
+- MTProto RPC: `photos.updateProfilePhoto`
+- Returns: `dict[str, Any]`
+
+### ctx.upload_profile_photo
+- Signature: `await ctx.upload_profile_photo(fallback: flags.3?true = None, bot: flags.5?InputUser = None, file: flags.0?InputFile = None, video: flags.1?InputFile = None, video_start_ts: flags.2?double = None, video_emoji_markup: flags.4?VideoSize = None)`
+- MTProto RPC: `photos.uploadProfilePhoto`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_profile_photos
+- Signature: `await ctx.remove_profile_photos(id: Vector<InputPhoto>)`
+- MTProto RPC: `photos.deletePhotos`
+- Returns: `bool`
+
+### ctx.profile_photos
+- Signature: `await ctx.profile_photos(user_id: InputUser, offset: int, max_id: long, limit: int)`
+- MTProto RPC: `photos.getUserPhotos`
+- Returns: `dict[str, Any]`
+
+### ctx.set_contact_photo
+- Signature: `await ctx.set_contact_photo(suggest: flags.3?true = None, save: flags.4?true = None, user_id: InputUser, file: flags.0?InputFile = None, video: flags.1?InputFile = None, video_start_ts: flags.2?double = None, video_emoji_markup: flags.5?VideoSize = None)`
+- MTProto RPC: `photos.uploadContactProfilePhoto`
+- Returns: `dict[str, Any]`
+
+### ctx.notification_settings
+- Signature: `await ctx.notification_settings(peer: InputNotifyPeer)`
+- MTProto RPC: `account.getNotifySettings`
+- Returns: `dict[str, Any]`
+
+### ctx.set_notification_settings
+- Signature: `await ctx.set_notification_settings(peer: InputNotifyPeer, settings: InputPeerNotifySettings)`
+- MTProto RPC: `account.updateNotifySettings`
+- Returns: `dict[str, Any]`
+
+### ctx.reset_notification_settings
+- Signature: `await ctx.reset_notification_settings()`
+- MTProto RPC: `account.resetNotifySettings`
+- Returns: `dict[str, Any]`
+
+### ctx.contact_signup_notifications
+- Signature: `await ctx.contact_signup_notifications()`
+- MTProto RPC: `account.getContactSignUpNotification`
+- Returns: `dict[str, Any]`
+
+### ctx.set_contact_signup_notifications
+- Signature: `await ctx.set_contact_signup_notifications(silent: Bool)`
+- MTProto RPC: `account.setContactSignUpNotification`
+- Returns: `dict[str, Any]`
+
+### ctx.notification_exceptions
+- Signature: `await ctx.notification_exceptions(compare_sound: flags.1?true = None, compare_stories: flags.2?true = None, peer: flags.0?InputNotifyPeer = None)`
+- MTProto RPC: `account.getNotifyExceptions`
+- Returns: `dict[str, Any]`
+
+### ctx.reaction_notification_settings
+- Signature: `await ctx.reaction_notification_settings()`
+- MTProto RPC: `account.getReactionsNotifySettings`
+- Returns: `dict[str, Any]`
+
+### ctx.set_reaction_notification_settings
+- Signature: `await ctx.set_reaction_notification_settings(settings: ReactionsNotifySettings)`
+- MTProto RPC: `account.setReactionsNotifySettings`
+- Returns: `dict[str, Any]`
+
+### ctx.saved_notification_sounds
+- Signature: `await ctx.saved_notification_sounds(hash: long)`
+- MTProto RPC: `account.getSavedRingtones`
+- Returns: `dict[str, Any]`
+
+### ctx.set_notification_sound_saved
+- Signature: `await ctx.set_notification_sound_saved(id: InputDocument, unsave: Bool)`
+- MTProto RPC: `account.saveRingtone`
+- Returns: `dict[str, Any]`
+
+### ctx.upload_notification_sound
+- Signature: `await ctx.upload_notification_sound(file: InputFile, file_name: string, mime_type: string)`
+- MTProto RPC: `account.uploadRingtone`
+- Returns: `dict[str, Any]`
+
+### ctx.rename_basic_group
+- Signature: `await ctx.rename_basic_group(chat_id: long, title: string)`
+- MTProto RPC: `messages.editChatTitle`
+- Returns: `dict[str, Any]`
+
+### ctx.set_basic_group_photo
+- Signature: `await ctx.set_basic_group_photo(chat_id: long, photo: InputChatPhoto)`
+- MTProto RPC: `messages.editChatPhoto`
+- Returns: `dict[str, Any]`
+
+### ctx.add_basic_group_member
+- Signature: `await ctx.add_basic_group_member(chat_id: long, user_id: InputUser, fwd_limit: int)`
+- MTProto RPC: `messages.addChatUser`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_basic_group_member
+- Signature: `await ctx.remove_basic_group_member(revoke_history: flags.0?true = None, chat_id: long, user_id: InputUser)`
+- MTProto RPC: `messages.deleteChatUser`
+- Returns: `bool`
+
+### ctx.create_basic_group
+- Signature: `await ctx.create_basic_group(users: Vector<InputUser>, title: string, ttl_period: flags.0?int = None)`
+- MTProto RPC: `messages.createChat`
+- Returns: `dict[str, Any]`
+
+### ctx.set_basic_group_admin
+- Signature: `await ctx.set_basic_group_admin(chat_id: long, user_id: InputUser, is_admin: Bool)`
+- MTProto RPC: `messages.editChatAdmin`
+- Returns: `dict[str, Any]`
+
+### ctx.upgrade_basic_group
+- Signature: `await ctx.upgrade_basic_group(chat_id: long)`
+- MTProto RPC: `messages.migrateChat`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_chat_description
+- Signature: `await ctx.edit_chat_description(peer: InputPeer, about: string)`
+- MTProto RPC: `messages.editChatAbout`
+- Returns: `dict[str, Any]`
+
+### ctx.set_default_member_restrictions
+- Signature: `await ctx.set_default_member_restrictions(peer: InputPeer, banned_rights: ChatBannedRights)`
+- MTProto RPC: `messages.editChatDefaultBannedRights`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_basic_group
+- Signature: `await ctx.remove_basic_group(chat_id: long)`
+- MTProto RPC: `messages.deleteChat`
+- Returns: `bool`
+
+### ctx.set_chat_auto_delete
+- Signature: `await ctx.set_chat_auto_delete(peer: InputPeer, period: int)`
+- MTProto RPC: `messages.setHistoryTTL`
+- Returns: `bool`
+
+### ctx.set_content_protection
+- Signature: `await ctx.set_content_protection(peer: InputPeer, enabled: Bool, request_msg_id: flags.0?int = None)`
+- MTProto RPC: `messages.toggleNoForwards`
+- Returns: `bool`
+
+### ctx.mark_channel_read
+- Signature: `await ctx.mark_channel_read(channel: InputChannel, max_id: int)`
+- MTProto RPC: `channels.readHistory`
+- Returns: `bool`
+
+### ctx.channel_members
+- Signature: `await ctx.channel_members(channel: InputChannel, filter: ChannelParticipantsFilter, offset: int, limit: int, hash: long)`
+- MTProto RPC: `channels.getParticipants`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.channel_member
+- Signature: `await ctx.channel_member(channel: InputChannel, participant: InputPeer)`
+- MTProto RPC: `channels.getParticipant`
+- Returns: `dict[str, Any]`
+
+### ctx.channel_details
+- Signature: `await ctx.channel_details(channel: InputChannel)`
+- MTProto RPC: `channels.getFullChannel`
+- Returns: `dict[str, Any]`
+
+### ctx.create_channel
+- Signature: `await ctx.create_channel(broadcast: flags.0?true = None, megagroup: flags.1?true = None, for_import: flags.3?true = None, forum: flags.5?true = None, title: string, about: string, geo_point: flags.2?InputGeoPoint = None, address: flags.2?string = None, ttl_period: flags.4?int = None)`
+- MTProto RPC: `channels.createChannel`
+- Returns: `dict[str, Any]`
+
+### ctx.set_channel_admin
+- Signature: `await ctx.set_channel_admin(channel: InputChannel, user_id: InputUser, admin_rights: ChatAdminRights, rank: flags.0?string = None)`
+- MTProto RPC: `channels.editAdmin`
+- Returns: `dict[str, Any]`
+
+### ctx.rename_channel
+- Signature: `await ctx.rename_channel(channel: InputChannel, title: string)`
+- MTProto RPC: `channels.editTitle`
+- Returns: `dict[str, Any]`
+
+### ctx.set_channel_photo
+- Signature: `await ctx.set_channel_photo(channel: InputChannel, photo: InputChatPhoto)`
+- MTProto RPC: `channels.editPhoto`
+- Returns: `dict[str, Any]`
+
+### ctx.check_channel_username
+- Signature: `await ctx.check_channel_username(channel: InputChannel, username: string)`
+- MTProto RPC: `channels.checkUsername`
+- Returns: `dict[str, Any]`
+
+### ctx.set_channel_username
+- Signature: `await ctx.set_channel_username(channel: InputChannel, username: string)`
+- MTProto RPC: `channels.updateUsername`
+- Returns: `dict[str, Any]`
+
+### ctx.join_channel
+- Signature: `await ctx.join_channel(channel: InputChannel)`
+- MTProto RPC: `channels.joinChannel`
+- Returns: `dict[str, Any]`
+
+### ctx.leave_channel
+- Signature: `await ctx.leave_channel(channel: InputChannel)`
+- MTProto RPC: `channels.leaveChannel`
+- Returns: `dict[str, Any]`
+
+### ctx.invite_channel_members
+- Signature: `await ctx.invite_channel_members(channel: InputChannel, users: Vector<InputUser>)`
+- MTProto RPC: `channels.inviteToChannel`
+- Returns: `list[dict[str, Any]]`
+
+### ctx.remove_channel
+- Signature: `await ctx.remove_channel(channel: InputChannel)`
+- MTProto RPC: `channels.deleteChannel`
+- Returns: `bool`
+
+### ctx.set_channel_signatures
+- Signature: `await ctx.set_channel_signatures(signatures_enabled: flags.0?true = None, profiles_enabled: flags.1?true = None, channel: InputChannel)`
+- MTProto RPC: `channels.toggleSignatures`
+- Returns: `bool`
+
+### ctx.owned_public_channels
+- Signature: `await ctx.owned_public_channels(by_location: flags.0?true = None, check_limit: flags.1?true = None, for_personal: flags.2?true = None, for_community_peer: flags.3?true = None)`
+- MTProto RPC: `channels.getAdminedPublicChannels`
+- Returns: `dict[str, Any]`
+
+### ctx.restrict_channel_member
+- Signature: `await ctx.restrict_channel_member(channel: InputChannel, participant: InputPeer, banned_rights: ChatBannedRights)`
+- MTProto RPC: `channels.editBanned`
+- Returns: `dict[str, Any]`
+
+### ctx.channel_admin_log
+- Signature: `await ctx.channel_admin_log(channel: InputChannel, q: string, events_filter: flags.0?ChannelAdminLogEventsFilter = None, admins: flags.1?Vector<InputUser> = None, max_id: long, min_id: long, limit: int)`
+- MTProto RPC: `channels.getAdminLog`
+- Returns: `dict[str, Any]`
+
+### ctx.set_group_sticker_set
+- Signature: `await ctx.set_group_sticker_set(channel: InputChannel, stickerset: InputStickerSet)`
+- MTProto RPC: `channels.setStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.mark_channel_media_read
+- Signature: `await ctx.mark_channel_media_read(channel: InputChannel, id: Vector<int>)`
+- MTProto RPC: `channels.readMessageContents`
+- Returns: `bool`
+
+### ctx.clear_channel_history
+- Signature: `await ctx.clear_channel_history(for_everyone: flags.0?true = None, channel: InputChannel, max_id: int)`
+- MTProto RPC: `channels.deleteHistory`
+- Returns: `bool`
+
+### ctx.set_prehistory_hidden
+- Signature: `await ctx.set_prehistory_hidden(channel: InputChannel, enabled: Bool)`
+- MTProto RPC: `channels.togglePreHistoryHidden`
+- Returns: `bool`
+
+### ctx.left_channels
+- Signature: `await ctx.left_channels(offset: int)`
+- MTProto RPC: `channels.getLeftChannels`
+- Returns: `dict[str, Any]`
+
+### ctx.eligible_discussion_groups
+- Signature: `await ctx.eligible_discussion_groups()`
+- MTProto RPC: `channels.getGroupsForDiscussion`
+- Returns: `dict[str, Any]`
+
+### ctx.set_discussion_group
+- Signature: `await ctx.set_discussion_group(broadcast: InputChannel, group: InputChannel)`
+- MTProto RPC: `channels.setDiscussionGroup`
+- Returns: `dict[str, Any]`
+
+### ctx.set_group_location
+- Signature: `await ctx.set_group_location(channel: InputChannel, geo_point: InputGeoPoint, address: string)`
+- MTProto RPC: `channels.editLocation`
+- Returns: `dict[str, Any]`
+
+### ctx.set_slow_mode
+- Signature: `await ctx.set_slow_mode(channel: InputChannel, seconds: int)`
+- MTProto RPC: `channels.toggleSlowMode`
+- Returns: `bool`
+
+### ctx.inactive_channels
+- Signature: `await ctx.inactive_channels()`
+- MTProto RPC: `channels.getInactiveChannels`
+- Returns: `dict[str, Any]`
+
+### ctx.send_as_identities
+- Signature: `await ctx.send_as_identities(for_paid_reactions: flags.0?true = None, for_live_stories: flags.1?true = None, peer: InputPeer)`
+- MTProto RPC: `channels.getSendAs`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_member_history
+- Signature: `await ctx.remove_member_history(channel: InputChannel, participant: InputPeer)`
+- MTProto RPC: `channels.deleteParticipantHistory`
+- Returns: `bool`
+
+### ctx.set_join_to_send
+- Signature: `await ctx.set_join_to_send(channel: InputChannel, enabled: Bool)`
+- MTProto RPC: `channels.toggleJoinToSend`
+- Returns: `bool`
+
+### ctx.set_join_requests
+- Signature: `await ctx.set_join_requests(apply_to_invites: flags.1?true = None, channel: InputChannel, enabled: Bool, guard_bot: flags.0?InputUser = None)`
+- MTProto RPC: `channels.toggleJoinRequest`
+- Returns: `bool`
+
+### ctx.reorder_channel_usernames
+- Signature: `await ctx.reorder_channel_usernames(channel: InputChannel, order: Vector<string>)`
+- MTProto RPC: `channels.reorderUsernames`
+- Returns: `dict[str, Any]`
+
+### ctx.set_channel_username_active
+- Signature: `await ctx.set_channel_username_active(channel: InputChannel, username: string, active: Bool)`
+- MTProto RPC: `channels.toggleUsername`
+- Returns: `bool`
+
+### ctx.deactivate_channel_usernames
+- Signature: `await ctx.deactivate_channel_usernames(channel: InputChannel)`
+- MTProto RPC: `channels.deactivateAllUsernames`
+- Returns: `dict[str, Any]`
+
+### ctx.set_antispam
+- Signature: `await ctx.set_antispam(channel: InputChannel, enabled: Bool)`
+- MTProto RPC: `channels.toggleAntiSpam`
+- Returns: `bool`
+
+### ctx.set_members_hidden
+- Signature: `await ctx.set_members_hidden(channel: InputChannel, enabled: Bool)`
+- MTProto RPC: `channels.toggleParticipantsHidden`
+- Returns: `bool`
+
+### ctx.set_channel_color
+- Signature: `await ctx.set_channel_color(for_profile: flags.1?true = None, channel: InputChannel, color: flags.2?int = None, background_emoji_id: flags.0?long = None)`
+- MTProto RPC: `channels.updateColor`
+- Returns: `dict[str, Any]`
+
+### ctx.related_channels
+- Signature: `await ctx.related_channels(channel: flags.0?InputChannel = None)`
+- MTProto RPC: `channels.getChannelRecommendations`
+- Returns: `dict[str, Any]`
+
+### ctx.set_channel_emoji_status
+- Signature: `await ctx.set_channel_emoji_status(channel: InputChannel, emoji_status: EmojiStatus)`
+- MTProto RPC: `channels.updateEmojiStatus`
+- Returns: `dict[str, Any]`
+
+### ctx.set_group_emoji_set
+- Signature: `await ctx.set_group_emoji_set(channel: InputChannel, stickerset: InputStickerSet)`
+- MTProto RPC: `channels.setEmojiStickers`
+- Returns: `dict[str, Any]`
+
+### ctx.set_channel_auto_translation
+- Signature: `await ctx.set_channel_auto_translation(channel: InputChannel, enabled: Bool)`
+- MTProto RPC: `channels.toggleAutotranslation`
+- Returns: `bool`
+
+### ctx.set_channel_profile_tab
+- Signature: `await ctx.set_channel_profile_tab(channel: InputChannel, tab: ProfileTab)`
+- MTProto RPC: `channels.setMainProfileTab`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_member_rank
+- Signature: `await ctx.edit_member_rank(peer: InputPeer, participant: InputPeer, rank: string)`
+- MTProto RPC: `messages.editChatParticipantRank`
+- Returns: `dict[str, Any]`
+
+### ctx.create_chat_invite
+- Signature: `await ctx.create_chat_invite(legacy_revoke_permanent: flags.2?true = None, request_needed: flags.3?true = None, peer: InputPeer, expire_date: flags.0?int = None, usage_limit: flags.1?int = None, title: flags.4?string = None, subscription_pricing: flags.5?StarsSubscriptionPricing = None)`
+- MTProto RPC: `messages.exportChatInvite`
+- Returns: `dict[str, Any]`
+
+### ctx.chat_invites
+- Signature: `await ctx.chat_invites(revoked: flags.3?true = None, peer: InputPeer, admin_id: InputUser, offset_date: flags.2?int = None, offset_link: flags.2?string = None, limit: int)`
+- MTProto RPC: `messages.getExportedChatInvites`
+- Returns: `dict[str, Any]`
+
+### ctx.chat_invite_details
+- Signature: `await ctx.chat_invite_details(peer: InputPeer, link: string)`
+- MTProto RPC: `messages.getExportedChatInvite`
+- Returns: `dict[str, Any]`
+
+### ctx.edit_chat_invite
+- Signature: `await ctx.edit_chat_invite(revoked: flags.2?true = None, peer: InputPeer, link: string, expire_date: flags.0?int = None, usage_limit: flags.1?int = None, request_needed: flags.3?Bool = None, title: flags.4?string = None)`
+- MTProto RPC: `messages.editExportedChatInvite`
+- Returns: `dict[str, Any]`
+
+### ctx.purge_revoked_chat_invites
+- Signature: `await ctx.purge_revoked_chat_invites(peer: InputPeer, admin_id: InputUser)`
+- MTProto RPC: `messages.deleteRevokedExportedChatInvites`
+- Returns: `dict[str, Any]`
+
+### ctx.remove_chat_invite
+- Signature: `await ctx.remove_chat_invite(peer: InputPeer, link: string)`
+- MTProto RPC: `messages.deleteExportedChatInvite`
+- Returns: `bool`
+
+### ctx.invite_admins
+- Signature: `await ctx.invite_admins(peer: InputPeer)`
+- MTProto RPC: `messages.getAdminsWithInvites`
+- Returns: `dict[str, Any]`
+
+### ctx.invite_joiners
+- Signature: `await ctx.invite_joiners(requested: flags.0?true = None, subscription_expired: flags.3?true = None, peer: InputPeer, link: flags.1?string = None, q: flags.2?string = None, offset_date: int, offset_user: InputUser, limit: int)`
+- MTProto RPC: `messages.getChatInviteImporters`
+- Returns: `dict[str, Any]`
+
+### ctx.resolve_join_request
+- Signature: `await ctx.resolve_join_request(approved: flags.0?true = None, peer: InputPeer, user_id: InputUser)`
+- MTProto RPC: `messages.hideChatJoinRequest`
+- Returns: `dict[str, Any]`
+
+### ctx.resolve_all_join_requests
+- Signature: `await ctx.resolve_all_join_requests(approved: flags.0?true = None, peer: InputPeer, link: flags.1?string = None)`
+- MTProto RPC: `messages.hideAllChatJoinRequests`
+- Returns: `dict[str, Any]`
+
+### ctx.channel_statistics
+- Signature: `await ctx.channel_statistics(dark: flags.0?true = None, channel: InputChannel)`
+- MTProto RPC: `stats.getBroadcastStats`
+- Returns: `dict[str, Any]`
+
+### ctx.supergroup_statistics
+- Signature: `await ctx.supergroup_statistics(dark: flags.0?true = None, channel: InputChannel)`
+- MTProto RPC: `stats.getMegagroupStats`
+- Returns: `dict[str, Any]`
+
+### ctx.message_statistics
+- Signature: `await ctx.message_statistics(dark: flags.0?true = None, channel: InputChannel, msg_id: int)`
+- MTProto RPC: `stats.getMessageStats`
+- Returns: `dict[str, Any]`
+
+### ctx.message_public_forwards
+- Signature: `await ctx.message_public_forwards(channel: InputChannel, msg_id: int, offset: string, limit: int)`
+- MTProto RPC: `stats.getMessagePublicForwards`
+- Returns: `dict[str, Any]`
+
+### ctx.story_statistics
+- Signature: `await ctx.story_statistics(dark: flags.0?true = None, peer: InputPeer, id: int)`
+- MTProto RPC: `stats.getStoryStats`
+- Returns: `dict[str, Any]`
+
+### ctx.story_public_forwards
+- Signature: `await ctx.story_public_forwards(peer: InputPeer, id: int, offset: string, limit: int)`
+- MTProto RPC: `stats.getStoryPublicForwards`
+- Returns: `dict[str, Any]`

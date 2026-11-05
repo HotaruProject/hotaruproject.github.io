@@ -98,7 +98,7 @@ HotaruWeb/
 
 ## License
 
-This project is open-source software licensed under the MIT License.
+This project is open-source software licensed under the GNU AGPLv3 License.
 
 [react-badge]: https://img.shields.io/badge/React-19.0-black?style=for-the-badge&logo=react
 [react-url]: https://react.dev/
@@ -108,7 +108,7 @@ This project is open-source software licensed under the MIT License.
 [tailwind-url]: https://tailwindcss.com/
 [pages-badge]: https://img.shields.io/badge/GitHub_Pages-Active-emerald?style=for-the-badge&logo=githubpages
 [pages-url]: https://hotaruproject.github.io/HotaruWeb/
-[license-badge]: https://img.shields.io/badge/License-MIT-white?style=for-the-badge
+[license-badge]: https://img.shields.io/badge/License-AGPL_v3-white?style=for-the-badge
 [license-url]: https://github.com/HotaruProject/HotaruWeb/blob/main/LICENSE
 [hotaru-badge]: https://img.shields.io/badge/Hotaru_Core-Repository-black?style=for-the-badge&logo=telegram
 [hotaru-url]: https://github.com/HotaruProject/Hotaru
