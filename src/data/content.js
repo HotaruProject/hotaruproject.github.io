@@ -89,7 +89,7 @@ export const CONTENT = {
     footer: {
       copyright: "Hotaru Project. Open-source software released under the GNU AGPLv3 License.",
       docsLink: "Documentation",
-      githubHotaru: "Hotaru Core",
+      githubHotaru: "Hotaru Userbot",
       githubWeb: "HotaruWeb",
       telegramCommunity: "Telegram",
     },
@@ -182,7 +182,7 @@ export const CONTENT = {
     footer: {
       copyright: "Hotaru Project. Открытое программное обеспечение под лицензией GNU AGPLv3.",
       docsLink: "Документация",
-      githubHotaru: "Hotaru Core",
+      githubHotaru: "Hotaru Userbot",
       githubWeb: "HotaruWeb",
       telegramCommunity: "Telegram",
     },
