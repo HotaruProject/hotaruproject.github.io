@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { RotateCcw, Play, Pause, Hand } from 'lucide-react';
+import { RotateCcw, Play, Pause } from 'lucide-react';
 
 const VERT_SRC = `
 attribute vec2 aPos;
@@ -20,6 +20,8 @@ uniform float uTime;
 uniform float uYaw;
 uniform float uPitch;
 uniform float uDist;
+uniform vec2 uCenter;
+uniform float uScale;
 
 float hash13(vec3 p3) {
   p3 = fract(p3 * 0.1031);
@@ -192,7 +194,7 @@ vec3 traceScene(vec2 uv) {
 
 void main() {
   float minDim = min(uRes.x, uRes.y);
-  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / minDim;
+  vec2 uv = (gl_FragCoord.xy - uCenter * uRes) / minDim * uScale;
   vec3 col = traceScene(uv);
   col = col / (1.0 + col);
   col = pow(col, vec3(0.86));
@@ -229,12 +231,18 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
-export function QuasarScene() {
+const LABELS = {
+  en: { hint: 'Drag to rotate, Ctrl and scroll to zoom', pause: 'Pause', spin: 'Spin', reset: 'Reset' },
+  ru: { hint: 'Тяните, чтобы вращать, Ctrl и колесо для зума', pause: 'Пауза', spin: 'Вращать', reset: 'Сброс' },
+};
+
+export function QuasarScene({ lang = 'en' }) {
+  const labels = LABELS[lang] || LABELS.en;
   const canvasRef = useRef(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const stateRef = useRef({
     yaw: 0.0,
-    pitch: 0.18,
+    pitch: 0.3,
     dist: 24.0,
     autoRotate: true,
     isDragging: false,
@@ -248,11 +256,16 @@ export function QuasarScene() {
 
   const resetCamera = useCallback(() => {
     stateRef.current.yaw = 0.0;
-    stateRef.current.pitch = 0.18;
+    stateRef.current.pitch = 0.3;
     stateRef.current.dist = 24.0;
     stateRef.current.yawVel = 0;
     stateRef.current.pitchVel = 0;
+    stateRef.current.wake?.();
   }, []);
+
+  useEffect(() => {
+    stateRef.current.wake?.();
+  }, [autoRotate]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -283,6 +296,12 @@ export function QuasarScene() {
     const uYaw = gl.getUniformLocation(prog, 'uYaw');
     const uPitch = gl.getUniformLocation(prog, 'uPitch');
     const uDist = gl.getUniformLocation(prog, 'uDist');
+    const uCenter = gl.getUniformLocation(prog, 'uCenter');
+    const uScale = gl.getUniformLocation(prog, 'uScale');
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let visible = true;
+    let running = false;
 
     let animId;
     let t0 = performance.now();
@@ -304,15 +323,16 @@ export function QuasarScene() {
       }
 
       const st = stateRef.current;
-      if (st.autoRotate && !st.isDragging) {
+      if (st.autoRotate && !st.isDragging && !reduceMotion.matches) {
         st.yaw += dt * 0.12;
       }
 
       if (!st.isDragging) {
         st.yaw += st.yawVel * dt;
         st.pitch += st.pitchVel * dt;
-        st.yawVel *= 0.92;
-        st.pitchVel *= 0.92;
+        const damp = Math.pow(0.92, dt * 60);
+        st.yawVel *= damp;
+        st.pitchVel *= damp;
       }
 
       st.pitch = Math.max(-0.65, Math.min(0.65, st.pitch));
@@ -327,12 +347,44 @@ export function QuasarScene() {
       gl.uniform1f(uYaw, st.yaw);
       gl.uniform1f(uPitch, st.pitch);
       gl.uniform1f(uDist, st.dist);
+      if (isMobile) {
+        gl.uniform2f(uCenter, 0.5, 0.64);
+        gl.uniform1f(uScale, 1.15);
+      } else {
+        // Fit the hole into the space right of the hero text: the text column ends
+        // about 760px into the capped 1440px container.
+        const cssW = rect.width;
+        const textRight = Math.max(0, (cssW - 1440) / 2) + 760;
+        const free = Math.max(cssW - textRight, 240);
+        const half = 0.4 * Math.min(rect.width, rect.height);
+        gl.uniform2f(uCenter, (textRight + free / 2) / cssW, 0.5);
+        gl.uniform1f(uScale, Math.max(1.0, half / (free / 2 - 24)));
+      }
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      animId = requestAnimationFrame(render);
+      const moving = st.isDragging || Math.abs(st.yawVel) > 0.001 || Math.abs(st.pitchVel) > 0.001;
+      if (visible && (!reduceMotion.matches || moving)) {
+        animId = requestAnimationFrame(render);
+      } else {
+        running = false;
+      }
     };
 
-    animId = requestAnimationFrame(render);
+    const start = () => {
+      if (running || !visible) return;
+      running = true;
+      t0 = performance.now();
+      animId = requestAnimationFrame(render);
+    };
+    stateRef.current.wake = start;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) start();
+    });
+    observer.observe(canvas);
+    reduceMotion.addEventListener('change', start);
+    start();
 
     const onPointerDown = (e) => {
       if (e.pointerType === 'touch') {
@@ -345,6 +397,7 @@ export function QuasarScene() {
       stateRef.current.lastY = e.clientY;
       stateRef.current.yawVel = 0;
       stateRef.current.pitchVel = 0;
+      start();
     };
 
     const onPointerMove = (e) => {
@@ -355,6 +408,7 @@ export function QuasarScene() {
           stateRef.current.yaw -= dx * 0.005;
           stateRef.current.lastX = e.clientX;
           stateRef.current.lastY = e.clientY;
+          start();
         }
         return;
       }
@@ -376,18 +430,23 @@ export function QuasarScene() {
     };
 
     const onWheel = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
       if (Math.abs(e.deltaY) > 0) {
         stateRef.current.dist = Math.max(14.0, Math.min(38.0, stateRef.current.dist + e.deltaY * 0.015));
+        start();
       }
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('wheel', onWheel, { passive: true });
+    canvas.addEventListener('wheel', onWheel, { passive: false });
 
     return () => {
       cancelAnimationFrame(animId);
+      observer.disconnect();
+      reduceMotion.removeEventListener('change', start);
       canvas.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
@@ -398,33 +457,27 @@ export function QuasarScene() {
   }, []);
 
   return (
-    <div className="relative w-full h-full overflow-hidden select-none touch-pan-y">
+    <figure className="relative m-0 w-full h-full overflow-hidden select-none touch-pan-y">
       <canvas
         ref={canvasRef}
+        aria-hidden="true"
         className="w-full h-full block cursor-grab active:cursor-grabbing touch-pan-y"
       />
-      <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 flex items-center gap-2 bg-[#050508]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20 pointer-events-auto">
-        <button
-          onClick={() => setAutoRotate(!autoRotate)}
-          className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white transition-colors"
-          title={autoRotate ? "Pause rotation" : "Auto rotate"}
-        >
-          {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-          <span className="hidden sm:inline">{autoRotate ? "Pause" : "Spin"}</span>
-        </button>
-        <span className="text-white/20">|</span>
-        <button
-          onClick={resetCamera}
-          className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white transition-colors"
-          title="Reset Camera"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Reset</span>
-        </button>
-      </div>
-      <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 hidden sm:block text-[11px] text-white/40 tracking-wider font-mono z-20">
-        DRAG TO ROTATE • SCROLL TO ZOOM
-      </div>
-    </div>
+      <figcaption className="absolute top-20 md:top-auto md:bottom-6 inset-x-0 z-raised pointer-events-none">
+        <div className="max-w-container mx-auto px-[var(--gutter)] flex items-center justify-end gap-[var(--space-md)]">
+          <span className="hidden md:inline text-sm text-muted">{labels.hint}</span>
+          <div className="flex items-center gap-[var(--space-2xs)] pointer-events-auto">
+            <button type="button" onClick={() => setAutoRotate(!autoRotate)} className="tab inline-flex items-center gap-[var(--space-xs)]" aria-pressed={!autoRotate}>
+              {autoRotate ? <Pause aria-hidden="true" className="w-4 h-4" /> : <Play aria-hidden="true" className="w-4 h-4" />}
+              <span>{autoRotate ? labels.pause : labels.spin}</span>
+            </button>
+            <button type="button" onClick={resetCamera} className="tab inline-flex items-center gap-[var(--space-xs)]">
+              <RotateCcw aria-hidden="true" className="w-4 h-4" />
+              <span>{labels.reset}</span>
+            </button>
+          </div>
+        </div>
+      </figcaption>
+    </figure>
   );
 }
