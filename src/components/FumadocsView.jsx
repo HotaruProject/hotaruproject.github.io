@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Book, ChevronRight, Hash, Layers, ListFilter, Copy, Check, Terminal, ExternalLink, ArrowLeft, Filter, Sparkles, Shield, Code, Cpu } from 'lucide-react';
+import { Search, Book, ChevronRight, ChevronDown, Hash, Layers, ListFilter, Copy, Check, Terminal, ExternalLink, ArrowLeft, Filter, Sparkles, Shield, Code, Cpu } from 'lucide-react';
 import { CATALOG_METHODS } from '../data/catalog.js';
 
 function CodeBlock({ code, lang = 'python' }) {
@@ -215,6 +215,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
     window.location.hash.includes('catalog') ? 'catalog' : 'chapters'
   );
   const [activeSection, setActiveSection] = useState(0);
+  const [chapterDropdownOpen, setChapterDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespace, setSelectedNamespace] = useState('all');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -432,33 +433,68 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
 
           {activeTab === 'chapters' ? (
             <div>
-              {/* Mobile Chapter Selector */}
-              <div className="lg:hidden mb-5 flex flex-col gap-2.5">
+              {/* Custom Mobile Chapter Selector */}
+              <div className="lg:hidden mb-5 flex flex-col gap-2 relative">
                 <div className="flex items-center justify-between text-[11px] font-mono text-white/50 px-1">
                   <span>{lang === 'ru' ? 'Текущий раздел:' : 'Current Chapter:'}</span>
                   <span>{activeSection + 1} / {filteredSections.length}</span>
                 </div>
-                <select
-                  value={activeSection}
-                  onChange={(e) => {
-                    setActiveSection(Number(e.target.value));
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090a14] border border-white/20 text-xs font-mono text-white focus:outline-none focus:border-white shadow-lg"
-                >
-                  {filteredSections.map((sec, idx) => (
-                    <option key={sec.id} value={idx} className="bg-[#090a14] text-white">
-                      {sec.title}
-                    </option>
-                  ))}
-                </select>
 
+                {/* Custom Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => setChapterDropdownOpen(!chapterDropdownOpen)}
+                  className="btn-press w-full px-3.5 py-2.5 rounded-xl bg-[#0a0b16] border border-white/20 text-xs font-mono text-white flex items-center justify-between gap-2 shadow-lg hover:border-white/40 transition-all text-left"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/70 flex-shrink-0" />
+                    <span className="truncate font-medium">{currentSection?.title || (lang === 'ru' ? 'Выберите раздел' : 'Select Chapter')}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-white/60 flex-shrink-0 transition-transform duration-200 ${chapterDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Custom Floating Menu */}
+                {chapterDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setChapterDropdownOpen(false)}
+                    />
+                    <div className="absolute top-[68px] inset-x-0 z-50 rounded-2xl bg-[#0a0b16]/95 backdrop-blur-2xl border border-white/20 shadow-2xl p-1.5 max-h-72 overflow-y-auto no-scrollbar flex flex-col gap-1 animate-fade-in">
+                      {filteredSections.map((sec, idx) => {
+                        const isSelected = currentSection?.id === sec.id;
+                        return (
+                          <button
+                            key={sec.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveSection(idx);
+                              setChapterDropdownOpen(false);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className={`btn-press w-full text-left px-3 py-2 rounded-xl text-xs font-mono transition-all flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-white text-black font-bold shadow-md'
+                                : 'text-white/80 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="truncate">{sec.title}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0 text-black" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {/* Quick-switch pills */}
                 <div className="overflow-x-auto no-scrollbar flex gap-2 pt-1 pb-1">
                   {filteredSections.map((sec, idx) => (
                     <button
                       key={sec.id}
                       onClick={() => {
                         setActiveSection(idx);
+                        setChapterDropdownOpen(false);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                       className={`btn-press flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-mono min-h-[34px] flex items-center border transition-all ${
