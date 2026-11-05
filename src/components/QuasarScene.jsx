@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { RotateCcw, Play, Pause } from 'lucide-react';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { RotateCcw } from 'lucide-react';
 
 const VERT_SRC = `
 attribute vec2 aPos;
@@ -16,7 +16,7 @@ precision mediump float;
 #endif
 
 // Schwarzschild black hole, rs = 1. Thin Novikov-Thorne disk from the ISCO (r = 3)
-// out to DISK_OUT, lit by its own blackbody, Doppler-beamed and gravitationally
+// out to DISK_OUT, its brightness set by the disk temperature, Doppler-beamed and gravitationally
 // redshifted. Rays are integrated with an adaptive leapfrog step, so a pixel takes
 // 20 to 70 iterations instead of hundreds.
 
@@ -31,7 +31,7 @@ uniform vec3 uCamFwd;
 uniform sampler2D uNoise;
 
 const float ISCO = 3.0;
-const float DISK_OUT = 13.0;
+const float DISK_OUT = 11.0;
 const float R_OUT = 16.0;
 const float FLUX_NORM = 476.6;   // 1 / peak of (1 - sqrt(3/r)) / r^3, at r ~ 4.08
 const int MAX_STEPS = 64;
@@ -46,22 +46,14 @@ float noise(vec2 p) {
   return texture2D(uNoise, p * (1.0 / 64.0)).r;
 }
 
-// Blackbody tint for a temperature ratio t (1.0 = the disk's peak): deep orange
-// at the cool rim, white near the peak, a cool blue-white for blueshifted gas.
-vec3 blackbody(float t) {
-  t = clamp(t, 0.0, 2.2);
-  vec3 ember = vec3(0.62, 0.12, 0.02);
-  vec3 amber = vec3(1.0, 0.42, 0.08);
-  vec3 gold = vec3(1.0, 0.7, 0.32);
-  vec3 white = vec3(1.0, 0.93, 0.82);
-  vec3 blue = vec3(0.8, 0.88, 1.0);
-  vec3 c = mix(ember, amber, smoothstep(0.15, 0.5, t));
-  c = mix(c, gold, smoothstep(0.5, 0.85, t));
-  c = mix(c, white, smoothstep(0.9, 1.25, t));
-  return mix(c, blue, smoothstep(1.35, 2.1, t));
+// Monochrome emission: the observed temperature sets brightness only. Cool gas
+// fades to grey, the hottest blueshifted gas to a hard white.
+vec3 glow(float t) {
+  float v = smoothstep(0.05, 1.35, t);
+  return vec3(mix(0.12, 1.0, v * v));
 }
 
-vec4 shadeDisk(vec3 hit, vec3 dir) {
+vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
   float r = length(hit.xz);
   if (r < ISCO || r > DISK_OUT) return vec4(0.0);
 
@@ -70,9 +62,10 @@ vec4 shadeDisk(vec3 hit, vec3 dir) {
   float omega = 2.4 * pow(r, -1.5);
   float a = atan(hit.z, hit.x) + uTime * omega;
   float lr = log(r);
-  vec2 q = vec2(a * 3.0, lr * 9.0);
-  float n = noise(q) * 0.5 + noise(q * 2.3 + 7.1) * 0.3 + noise(vec2(a * 14.0, lr * 40.0)) * 0.2;
-  float lanes = 0.28 + 0.72 * smoothstep(0.3, 0.8, n);
+  float sp = a + 2.2 * lr;
+  vec2 q = vec2(sp * 2.0, lr * 16.0);
+  float n = noise(q) * 0.5 + noise(q * 2.6 + 7.1) * 0.3 + noise(vec2(sp * 6.0, lr * 48.0)) * 0.2;
+  float lanes = mix(0.22 + 0.78 * smoothstep(0.3, 0.78, n), 0.8, step(0.5, order));
 
   float flux = (1.0 - sqrt(ISCO / r)) / (r * r * r) * FLUX_NORM;
   float temp = pow(max(flux, 0.0), 0.25);
@@ -83,8 +76,11 @@ vec4 shadeDisk(vec3 hit, vec3 dir) {
   float gamma = inversesqrt(1.0 - v * v);
   float g = sqrt(1.0 - 1.5 / r) / (gamma * (1.0 + dot(vel, dir)));
 
-  vec3 col = blackbody(temp * g) * flux * g * g * g * g * lanes * 1.6;
-  float edge = smoothstep(ISCO, ISCO + 0.25, r) * smoothstep(DISK_OUT, DISK_OUT - 4.0, r);
+  vec3 col = glow(temp * g) * flux * g * g * g * g * lanes * 2.1;
+  // The lensed (order 1) image is squeezed so hard near the ISCO that its inner edge
+  // falls under a pixel and breaks into dots; it gets a much wider, softer inner edge.
+  float inner = mix(0.45, 2.2, step(0.5, order));
+  float edge = smoothstep(ISCO, ISCO + inner, r) * smoothstep(DISK_OUT, DISK_OUT - 5.0, r);
   return vec4(col * edge, edge * (0.55 + 0.4 * lanes));
 }
 
@@ -106,8 +102,7 @@ vec3 stars(vec3 d) {
     vec3 q = f - o * 0.55;
     s = exp(-dot(q, q) * 160.0) * (0.12 + 1.2 * k * k);
   }
-  vec3 tint = mix(vec3(0.75, 0.84, 1.0), vec3(1.0, 0.9, 0.78), hash13(cell + 5.3));
-  return tint * s;
+  return vec3(s);
 }
 
 void main() {
@@ -125,17 +120,13 @@ void main() {
   float alpha = 0.0;
   bool captured = false;
   bool escaped = false;
-
   float impact = 100.0;
-  float corot = 0.0;
+
   if (disc > 0.0 && -b - sqrt(disc) > 0.0) {
     pos += dir * (-b - sqrt(disc));
     vec3 hv = cross(pos, dir);
     float h2 = dot(hv, hv);
     impact = sqrt(h2);
-    // The disk's angular momentum points along -y; rays that circle the same way
-    // carry light from the approaching side, beamed brighter.
-    corot = -hv.y / max(impact, 1e-3);
 
     int crossings = 0;
     for (int i = 0; i < MAX_STEPS; i++) {
@@ -152,10 +143,12 @@ void main() {
       float r2n = dot(pos, pos);
       dir = vh + (-0.75 * dt * h2 / (r2n * r2n * sqrt(r2n))) * pos;
 
-      if (prev.y * pos.y < 0.0) {
+      if (prev.y * pos.y < 0.0 && crossings < 2) {
         float t = prev.y / (prev.y - pos.y);
-        vec4 d = shadeDisk(mix(prev, pos, t), normalize(dir));
-        if (crossings > 0) d *= 0.75;
+        vec4 d = shadeDisk(mix(prev, pos, t), normalize(dir), float(crossings));
+        // Right at the shadow edge the lensed image thins to under a pixel and breaks
+        // into dots (measured at impact 2.61 to 2.67), so it fades out across that band.
+        d *= crossings > 0 ? smoothstep(2.68, 2.95, impact) : smoothstep(2.585, 2.64, impact);
         crossings++;
         col += d.rgb * (1.0 - alpha);
         alpha += d.a * (1.0 - alpha);
@@ -167,17 +160,17 @@ void main() {
   if (disc <= 0.0) escaped = true;
   // A ray still orbiting when the budget runs out sits on the photon sphere: its
   // light would wind around many times before leaving, so it reads as shadow.
+  // A soft shadow edge: whatever the ray hit fades to black over a thin band of impact
+  // parameter, so the rim stays smooth when the low-res canvas is upscaled.
+  float shadowEdge = smoothstep(2.55, 2.64, impact);
   if (escaped && !captured) {
-    col += stars(normalize(dir)) * (1.0 - alpha);
+    // Right at the shadow edge the lens magnifies the sky so hard that neighbouring
+    // pixels sample unrelated directions; stars there would show as a dotted rim.
+    float skyFade = smoothstep(2.62, 3.4, impact);
+    col += stars(normalize(dir)) * (1.0 - alpha) * skyFade;
   }
 
-  // Rays near the critical impact parameter (3 sqrt(3) / 2) wind around the photon
-  // sphere and pile up into a thin bright ring. It is drawn as a smooth band on both
-  // sides of the shadow edge, which also hides the edge's per-pixel flicker.
-  float ringD = impact - 2.585;   // where this integrator's shadow edge actually falls
-  float ring = exp(-ringD * ringD * 260.0) + 0.3 * exp(-max(ringD, 0.0) * 8.0) * step(0.0, ringD);
-  float beam = 0.25 + 0.75 * pow(0.5 + 0.5 * corot, 2.0);
-  col += vec3(1.0, 0.8, 0.55) * ring * 0.38 * beam * (1.0 - alpha * 0.8);
+  col *= shadowEdge;
 
   // Filmic tone map, then a whisper of grain against banding on dark gradients.
   col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
@@ -281,27 +274,23 @@ function cameraBasis(yaw, pitch, dist) {
 const QUALITY = [0.33, 0.42, 0.5, 0.62, 0.75];
 
 const LABELS = {
-  en: { hint: 'Drag to rotate, Ctrl and scroll to zoom', pause: 'Pause', spin: 'Spin', reset: 'Reset' },
-  ru: { hint: 'Тяните, чтобы вращать, Ctrl и колесо для зума', pause: 'Пауза', spin: 'Вращать', reset: 'Сброс' },
+  en: { hint: 'Drag to rotate, Ctrl and scroll to zoom', reset: 'Reset view' },
+  ru: { hint: 'Тяните, чтобы вращать, Ctrl и колесо для зума', reset: 'Сбросить вид' },
 };
 
 export function QuasarScene({ lang = 'en' }) {
   const labels = LABELS[lang] || LABELS.en;
   const canvasRef = useRef(null);
-  const [autoRotate, setAutoRotate] = useState(true);
   const stateRef = useRef({
     yaw: 0.0,
     pitch: 0.16,
     dist: 30.0,
-    autoRotate: true,
     isDragging: false,
     lastX: 0,
     lastY: 0,
     yawVel: 0,
     pitchVel: 0,
   });
-
-  stateRef.current.autoRotate = autoRotate;
 
   const resetCamera = useCallback(() => {
     stateRef.current.yaw = 0.0;
@@ -311,10 +300,6 @@ export function QuasarScene({ lang = 'en' }) {
     stateRef.current.pitchVel = 0;
     stateRef.current.wake?.();
   }, []);
-
-  useEffect(() => {
-    stateRef.current.wake?.();
-  }, [autoRotate]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -405,7 +390,7 @@ export function QuasarScene({ lang = 'en' }) {
       }
 
       const st = stateRef.current;
-      if (st.autoRotate && !st.isDragging && !reduceMotion.matches) {
+      if (!st.isDragging && !reduceMotion.matches) {
         st.yaw += dt * 0.05;
       }
 
@@ -562,19 +547,12 @@ export function QuasarScene({ lang = 'en' }) {
         aria-hidden="true"
         className="w-full h-full block cursor-grab active:cursor-grabbing touch-pan-y"
       />
-      <figcaption className="absolute top-20 md:top-auto md:bottom-6 inset-x-0 z-raised pointer-events-none">
-        <div className="max-w-container mx-auto px-[var(--gutter)] flex items-center justify-end gap-[var(--space-md)]">
-          <span className="hidden md:inline text-sm text-muted">{labels.hint}</span>
-          <div className="flex items-center gap-[var(--space-2xs)] pointer-events-auto">
-            <button type="button" onClick={() => setAutoRotate(!autoRotate)} className="tab inline-flex items-center gap-[var(--space-xs)]" aria-pressed={!autoRotate}>
-              {autoRotate ? <Pause aria-hidden="true" className="w-4 h-4" /> : <Play aria-hidden="true" className="w-4 h-4" />}
-              <span>{autoRotate ? labels.pause : labels.spin}</span>
-            </button>
-            <button type="button" onClick={resetCamera} className="tab inline-flex items-center gap-[var(--space-xs)]">
-              <RotateCcw aria-hidden="true" className="w-4 h-4" />
-              <span>{labels.reset}</span>
-            </button>
-          </div>
+      <figcaption className="hidden md:block absolute bottom-6 inset-x-0 z-raised pointer-events-none">
+        <div className="max-w-container mx-auto px-[var(--gutter)] flex items-center justify-end gap-[var(--space-xs)] text-sm text-muted">
+          <span>{labels.hint}</span>
+          <button type="button" onClick={resetCamera} className="tab pointer-events-auto" aria-label={labels.reset}>
+            <RotateCcw aria-hidden="true" className="w-4 h-4" />
+          </button>
         </div>
       </figcaption>
     </figure>

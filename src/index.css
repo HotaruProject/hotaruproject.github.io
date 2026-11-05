@@ -1,6 +1,6 @@
 /* Hallmark · shape: Marquee Hero · genre: atmospheric · theme: brand · redesign: full
- * paper: oklch(13.5% 0.012 275) · accent: oklch(85% 0.15 88) · display: Tektur · body: Onest · hero: Poster (canvas full-bleed, head low-left, hole set right) · nav: floating pill · footer: mast · signature: the raymarched black hole from the logo, live and draggable, with one firefly-yellow signal
- * axes: dark/display-condensed/chromatic-yellow · posture: restrained · contrast: pass · fold: pass · v2.0.0 */
+ * paper: oklch(12% 0.003 270) · accent: oklch(96% 0.002 270), the ink itself · display: Tektur · body: Onest · hero: Poster (canvas full-bleed, head low-left, hole set right) · nav: floating pill · footer: mast · signature: the raymarched black hole from the logo, live and draggable, in white light on black
+ * axes: dark/display-condensed/neutral · posture: restrained · contrast: pass · fold: pass · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V4 · weakest: P, the copy is the owner's and kept verbatim; the argument is carried by the spec rows set as a security ledger instead of six feature tiles */
 /* Hallmark · copy: verbatim · the owner's en and ru strings in src/data/content.js stay word for word */
 /* Hallmark · dismissed 29 · .nav-pill is the floating nav on a blur over the canvas, the one glass licence genres/atmospheric.md grants */
@@ -32,7 +32,7 @@
     cursor: pointer;
     transition: background-color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out), transform var(--dur-micro) var(--ease-out);
   }
-  .btn:hover { background: var(--color-ink); border-color: var(--color-ink); }
+  .btn:hover { background: var(--color-ink-2); border-color: var(--color-ink-2); }
   .btn:active { transform: translateY(1px); }
   .btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
   .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; transform: none; }
