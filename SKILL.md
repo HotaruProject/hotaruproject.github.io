@@ -1,6 +1,6 @@
 ---
 name: hotaru-module-developer
-description: Exhaustive engineering specification and agent reference for authoring secure .hmod modules for the Hotaru Telegram userbot with Linux namespace sandboxing, capability enforcement, and complete ModuleContext API reference.
+description: Exhaustive engineering specification and agent reference for authoring secure .hmod modules for the Hotaru Telegram userbot with Linux namespace sandboxing, capability enforcement, lifecycle hooks, template fields, watchers, tasks, and complete ModuleContext API reference.
 ---
 
 # Hotaru Module Developer Reference & Agent Skill
@@ -13,6 +13,7 @@ Modules (.hmod files) execute under strict Linux namespace boundaries:
 - CLONE_NEWUTS (Hostname Namespace): Isolated hostname identifiers.
 - CLONE_NEWNET (Network Namespace): Network stack isolation. Modules without the 'net' capability have only a down loopback device.
 - Privilege Dropping: Effective UID/GID set to nobody/nogroup (65534). prctl(PR_SET_NO_NEW_PRIVS, 1) enforced.
+- First-Statement Rule: The assignment to HOTARU must be the very first statement in the .hmod file.
 - Zero Comments Rule: Hotaru production code and .hmod modules must contain zero comments.
 
 ## 1. Core Architecture & Linux Namespace Isolation
@@ -58,998 +59,797 @@ Before executing module code, the worker drops root privileges:
 • Enforces prctl(PR_SET_NO_NEW_PRIVS, 1) to prevent privilege escalation via setuid binaries.
 • Channels all I/O through unidirectional UNIX pipes and typed JSON/TLV RPC serialization.
 
-## 2. The .hmod Module Specification & Lifecycle
+## 2. Manifest Specification & First-Statement Rule
 
-A Hotaru module is a self-contained Python source file ending with the .hmod extension. The runtime loads modules dynamically through the sandboxed runner.
+A Hotaru module is an executable Python source file ending with the .hmod extension. Before loading, the Hotaru module supervisor parses the AST to verify compliance with sandbox invariants.
 
-### Manifest Schema: HOTARU Dictionary
+### The First-Statement Rule
 
-Every .hmod module must expose a top-level module dictionary named HOTARU:
+Hotaru requires that the assignment to HOTARU be the very first statement in the file. If an import, variable declaration, or function definition precedes HOTARU, the loader rejects the module with ModuleValidationError('HOTARU must be the first statement').
+
+This rule allows the runtime to inspect the manifest metadata, verify requested capabilities, and validate dependencies before executing any code or importing untrusted libraries.
+
+### Manifest Schema Reference
 
 ```python
-from __future__ import annotations
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hotaru.response import ModuleContext
-
-async def qr_command(ctx: ModuleContext) -> None:
-    text = ctx.raw_args.strip()
-    if not text:
-        await ctx.respond(ctx.t("missing_text"))
-        return
-    url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={text}"
-    response = await ctx.net(url)
-    await ctx.reply_photo(response.content, caption=ctx.t("generated"))
-
 HOTARU = {
     "id": "qr_tool",
-    "name": "QR Generator",
     "version": "1.0.0",
-    "author": "Security Engineering",
-    "description": "Renders high resolution QR codes directly in chat.",
-    "capabilities": ["mt", "net"],
     "commands": {
-        "qr": qr_command,
+        "qr": "qr_command",
+    },
+    "capabilities": ["mt", "net"],
+    "watchers": ["message_watcher"],
+    "tasks": {
+        "sync_loop": "sync_worker",
+    },
+    "aliases": {
+        "qrcode": "qr",
+    },
+    "config_schema": {
+        "api_key": {
+            "type": "string",
+            "default": "",
+            "description": "Optional API key for upstream service",
+        },
     },
     "lexicon": {
         "en": {
-            "missing_text": "Please provide text or a URL after .qr",
-            "generated": "Here is your generated QR code.",
+            "description": "High resolution QR generator.",
+            "commands": {
+                "qr": {"description": "Generate a QR code from text"},
+            },
         },
-        "ru": {
-            "missing_text": "Укажите текст или ссылку после .qr",
-            "generated": "Ваш QR-код успешно сгенерирован.",
+    },
+    "requires": ["common_lib"],
+    "after": ["accounts", "shield"],
+    "inline_commands": ["qr_inline"],
+    "rise": "on_startup",
+    "fade": "on_shutdown",
+    "template_fields": {
+        "qr_count": {
+            "scope": "global",
+            "provider": "qr_count",
         },
+    },
+    "banner": "https://example.com/banner.png",
+    "bot_commands": ["qr"],
+}
+```
+
+### Manifest Fields Description
+
+• id (str, required): Unique identifier containing lowercase alphanumeric characters and underscores.
+• version (str, required): Semantic version string (e.g. '1.0.0').
+• commands (dict[str, Callable | str], required): Trigger-to-handler mappings.
+• capabilities (list[str], required): List of hardware and subsystem permissions requested by the module.
+• watchers (list[str | Callable], optional): Message and event interceptors.
+• tasks (dict[str, Callable | str], optional): Background coroutines managed by the supervisor.
+• aliases (dict[str, str], optional): Alternative command triggers mapped to existing commands.
+• config_schema (dict[str, dict[str, Any]], optional): Configurable settings schema for user customization.
+• lexicon (dict[str, dict[str, Any]], optional): Localization dictionary supporting 'en', 'ru', 'uk', 'ja', 'kz', 'zh'.
+• requires (list[str], optional): Module dependencies that must be installed and active.
+• after (list[str], optional): Soft load ordering constraints.
+• inline_commands (list[str], optional): Inline bot query triggers.
+• rise (str | Callable, optional): Async lifecycle coroutine executed during module initialization.
+• fade (str | Callable, optional): Async lifecycle coroutine executed during module shutdown.
+• template_fields (dict[str, dict[str, Any]], optional): Published template providers.
+• banner (str, optional): URL pointing to a preview image for module catalogues.
+• bot_commands (list[str], optional): Command triggers registered with BotFather for the companion bot.
+
+## 3. Module Lifecycle Hooks: rise and fade
+
+Hotaru modules can declare lifecycle hooks to manage resources across startup and shutdown events.
+
+### The rise Hook (Startup Initialization)
+
+The 'rise' field specifies an asynchronous function invoked immediately after the module is loaded and its capabilities are granted:
+
+```python
+HOTARU = {
+    "id": "custom_sync",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "commands": {
+        "sync": "sync_command",
+    },
+    "rise": "on_startup",
+    "fade": "on_shutdown",
+}
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from hotaru.response import ModuleContext
+
+async def on_startup(ctx: ModuleContext) -> None:
+    initialized = await ctx.state.get("initialized", False)
+    if not initialized:
+        await ctx.state.set("initialized", True)
+        await ctx.state.set("sync_counter", 0)
+
+async def on_shutdown(ctx: ModuleContext) -> None:
+    await ctx.state.set("last_shutdown", int(ctx.uptime))
+
+async def sync_command(ctx: ModuleContext) -> None:
+    await ctx.respond("Synced.")
+```
+
+### The fade Hook (Teardown Cleanup)
+
+The 'fade' field specifies a coroutine invoked when the module is unloaded, reloaded, or when Hotaru initiates process termination. Use fade to flush file buffers, close open network sessions, or emit audit logs.
+
+### Hibernation Protection
+
+By default, Hotaru suspends idle module worker processes to preserve RAM when no commands are processed. Declaring either 'rise', 'fade', 'tasks', or 'watchers' marks the worker as protected, keeping it active to service stateful operations.
+
+## 4. Event Watchers & Message Interceptors
+
+Watchers allow modules to monitor incoming and outgoing messages across chats without requiring an explicit command trigger.
+
+### Declaring Watchers
+
+Declare watcher handlers in the 'watchers' list of the HOTARU manifest:
+
+```python
+HOTARU = {
+    "id": "keyword_monitor",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "commands": {},
+    "watchers": ["message_scanner"],
+}
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from hotaru.response import ModuleContext
+
+async def message_scanner(ctx: ModuleContext) -> None:
+    if ctx.out:
+        return
+    text = ctx.message.text or ""
+    if "SECURITY ALERT" in text:
+        await ctx.save()
+```
+
+### Watcher Invariants
+
+• Non-blocking execution: Watchers run concurrently with command handlers. A slow watcher must not block the main event pipeline.
+• Error isolation: Unhandled exceptions inside a watcher are caught by the supervisor and recorded in the audit log without crashing the core userbot.
+• State access: Watchers receive a valid ModuleContext and can read or write to ctx.state.
+
+## 5. Background Tasks, Loops & Supervisor Watchdog
+
+Background tasks run continuously inside the module worker process to perform periodic syncs, cleanup sweeps, or metric collection.
+
+### Declaring Background Tasks
+
+Declare tasks in the 'tasks' dictionary of HOTARU:
+
+```python
+HOTARU = {
+    "id": "heartbeat_reporter",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "commands": {},
+    "tasks": {
+        "heartbeat": "run_heartbeat",
+    },
+}
+
+import asyncio
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from hotaru.response import ModuleContext
+
+async def run_heartbeat(ctx: ModuleContext) -> None:
+    while not ctx.is_stopping:
+        try:
+            current = await ctx.state.get("beats", 0)
+            await ctx.state.set("beats", current + 1)
+        except Exception:
+            pass
+        for _ in range(60):
+            if ctx.is_stopping:
+                break
+            await asyncio.sleep(1)
+```
+
+### Supervisor Crash Recovery
+
+If a task coroutine raises an unhandled exception, the Hotaru supervisor catches the fault and schedules a restart with exponential backoff:
+1. Attempt 1: 2-second delay
+2. Attempt 2: 4-second delay
+3. Attempt 3: 8-second delay
+4. Attempt 4: 16-second delay
+5. Attempt 5: 32-second delay
+If crashes persist beyond 5 attempts, the task is marked as degraded and quarantined.
+
+### Graceful Shutdown Lifecycle
+
+When Hotaru receives SIGINT or SIGTERM:
+1. The supervisor sets ctx.is_stopping to True across all contexts.
+2. Background tasks must detect this flag and terminate their loops.
+3. The supervisor grants a 5-second grace window. If a task fails to exit within 5 seconds, the worker process is sent SIGKILL.
+
+## 6. Dynamic Template System & Scopes
+
+Hotaru features a template rendering engine that dynamically resolves variables inside messages, user interfaces, and notifications.
+
+### Declaring Template Fields
+
+Modules publish template placeholders using 'template_fields' in HOTARU:
+
+```python
+HOTARU = {
+    "id": "crypto_data",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "commands": {},
+    "template_fields": {
+        "btc_price": {
+            "scope": "global",
+            "provider": "btc_provider",
+        },
+        "session_stat": {
+            "scope": "shared",
+            "modules": ["dashboard", "analytics"],
+            "provider": "stat_provider",
+        },
+    },
+}
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from hotaru.response import ModuleContext
+
+async def template_btc_provider(ctx: ModuleContext) -> str:
+    return "$92,400"
+
+async def template_stat_provider(ctx: ModuleContext) -> int:
+    return 142
+```
+
+### Template Scopes
+
+1. private: Placeholder can only be evaluated within the declaring module.
+2. shared: Placeholder is accessible by explicitly listed module IDs in the 'modules' array.
+3. global: Placeholder can be rendered in any module, status screen, or system notification using {field_name}.
+
+### Provider Conventions
+
+Each provider must be an async function named `template_<provider_name>(ctx: ModuleContext)` that returns a string, integer, or float.
+
+## 7. Dynamic Module Configuration Schema
+
+The 'config_schema' dictionary in HOTARU defines configurable module settings that users can adjust via the Singularity web panel or the .config command.
+
+### Schema Specification
+
+```python
+HOTARU = {
+    "id": "rss_notifier",
+    "version": "1.0.0",
+    "capabilities": ["mt", "net", "state"],
+    "commands": {
+        "rss": "rss_command",
+    },
+    "config_schema": {
+        "feed_url": {
+            "type": "string",
+            "default": "https://news.ycombinator.com/rss",
+            "description": "Upstream RSS feed URL",
+        },
+        "poll_interval": {
+            "type": "integer",
+            "default": 300,
+            "min": 60,
+            "max": 86400,
+            "description": "Polling frequency in seconds",
+        },
+        "notify_silent": {
+            "type": "boolean",
+            "default": False,
+            "description": "Send alerts without sound",
+        },
+    },
+}
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from hotaru.response import ModuleContext
+
+async def rss_command(ctx: ModuleContext) -> None:
+    url = getattr(ctx.config, "feed_url", "https://news.ycombinator.com/rss")
+    await ctx.respond(f"Active feed: {url}")
+```
+
+### Supported Schema Types
+
+• string: Text input with optional min_length and max_length.
+• integer / float: Numeric value with optional min and max bounds.
+• boolean: Toggle flag (True / False).
+• choice: Dropdown selection constrained to an array of valid strings.
+
+## 8. Aliases, Ordering & Module Dependencies
+
+Modules can declare relationships with other modules to ensure proper initialization order and prevent execution conflicts.
+
+### Command Aliases (aliases)
+
+Maps secondary trigger names to an existing command handler without duplicating code:
+
+```python
+HOTARU = {
+    "id": "url_shortener",
+    "version": "1.0.0",
+    "capabilities": ["mt", "net"],
+    "commands": {
+        "shorten": "shorten_cmd",
+    },
+    "aliases": {
+        "short": "shorten",
+        "tiny": "shorten",
     },
 }
 ```
 
-### Manifest Fields Reference
+### Hard Dependencies (requires)
 
-• id (str, required): Unique lowercase identifier containing alphanumeric characters and underscores (e.g. 'qr_tool', 'notes_mgr', 'crypto_ticker').
-• name (str, required): Human-readable display name.
-• version (str, required): Semantic version string (MAJOR.MINOR.PATCH).
-• author (str, optional): Author handle or organization.
-• description (str, optional): Functional summary of the module.
-• capabilities (list[str], required): Set of hardware and network capabilities requested by the module.
-• commands (dict[str, Callable], required): Mapping of command triggers to asynchronous handler coroutines. Every handler receives ctx: ModuleContext as its single argument.
-• tasks (dict[str, Callable], optional): Long-running background coroutines supervised by the core engine.
-• lexicon (dict[str, dict[str, str]], optional): Localization dictionary supporting 'en', 'ru', 'uk', 'ja', 'kz', and 'zh'.
+The 'requires' list specifies module IDs that must be present and active. If any required module is missing or failed validation, Hotaru refuses to load the module:
 
-### Reserved Kernel Triggers
+```python
+HOTARU = {
+    "id": "advanced_notes",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "requires": ["crypto_engine"],
+    "commands": {
+        "anote": "anote_cmd",
+    },
+}
+```
 
-Hotaru reserves all command triggers utilized by built-in constellation modules. A third-party module attempting to bind any of the following triggers will fail validation at load time:
-accounts, acl, backups, catalyst, executor, genesis, help, info, logger, power, settings, shield, singularity, translations, updater, ping, dash, restart, config, backup.
+### Load Ordering (after)
 
-## 3. Capability System & RPC Firewall
+The 'after' list defines soft ordering. The module is guaranteed to initialize after the specified modules have finished loading, without raising an error if they are absent:
 
-Hotaru adheres to the principle of least privilege. By default, an isolated module has zero permissions: no network egress, no filesystem read or write outside its tmpfs mount, and no direct MTProto invocation.
+```python
+HOTARU = {
+    "id": "analytics_tracker",
+    "version": "1.0.0",
+    "capabilities": ["mt", "state"],
+    "after": ["accounts", "shield"],
+    "commands": {
+        "metrics": "metrics_cmd",
+    },
+}
+```
 
-### Available Capabilities
+## 9. Inline Bot Commands & Queries
 
-1. mt:
-Grants mediated access to Telegram MTProto RPC calls via ctx.mt(method, **kwargs) and high-level messaging helpers. All RPC calls are intercepted by relay/firewall.py and verified against relay/denylist.py.
+Hotaru integrates with Telegram inline bot queries, enabling users to invoke modules via @bot_username in any chat.
 
-2. net:
-Enables the network namespace egress interface. Allows outgoing HTTP, HTTPS, and TCP socket requests through ctx.net(url) and ctx.stream(host, port). Modules lacking this capability cannot communicate over the Internet.
+### Declaring Inline Handlers
 
-3. state:
-Provides persistent key-value storage scoped strictly to the module id. Backed by SQLite in a secured namespace. Modules cannot inspect or modify state entries belonging to other modules.
+```python
+HOTARU = {
+    "id": "inline_search",
+    "version": "1.0.0",
+    "capabilities": ["mt", "net"],
+    "commands": {},
+    "inline_commands": ["search"],
+    "bot_commands": ["search"],
+}
 
-4. files:
-Grants read and write access inside the module's ephemeral tmpfs scratch directory. Path traversal attempts (such as ../../sanctuary) are trapped and terminated with a security exception.
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from hotaru.response import ModuleContext
 
-5. accounts:
-Allows read-only introspection of configured userbot accounts via ctx.accounts.
+async def search_inline(ctx: ModuleContext) -> None:
+    query = ctx.raw_args.strip()
+    articles = [
+        {
+            "id": "1",
+            "title": f"Search for {query}",
+            "description": "Click to send result",
+            "message_text": f"Results for: <b>{query}</b>",
+        }
+    ]
+    await ctx.inline.answer(articles)
+```
 
-6. screens:
-Enables the interactive UI screen rendering engine (ctx.screens) for terminal and message-based navigation.
+### bot_commands List
 
-### The RPC Denylist
+Triggers listed under 'bot_commands' are synchronized with BotFather to populate the official command menu in the userbot companion bot.
 
-When a module with the 'mt' capability issues raw RPC calls, relay/denylist.py evaluates the method name against destructive Telegram operations. The following methods are strictly forbidden:
+## 10. Capability Privilege Gate & RPC Denylist
 
-• Authentication and session revocation:
-auth.logOut, auth.resetAuthorizations, auth.dropTempAuthKeys
+Hotaru operates under a default-deny capability architecture. An unprivileged module cannot access hardware resources, network interfaces, or raw MTProto RPC calls.
 
-• Account destruction:
-account.deleteAccount
+### Capability Matrix
 
-• Two-factor password modification:
-account.updatePasswordSettings
+1. mt: Access to Telegram MTProto transport. Enables ctx.mt(method, **kwargs) and messaging helpers.
+2. net: Egress network interface. Enables HTTP/HTTPS requests via ctx.net and TCP socket streams via ctx.stream.
+3. state: Persistent isolated SQLite key-value store scoped strictly to the module ID.
+4. files: Filesystem write access inside the module ephemeral tmpfs scratch directory.
+5. accounts: Read-only access to userbot profile metadata via ctx.accounts.
+6. screens: Declarative UI rendering engine via ctx.screens.
 
-If a module attempts to invoke a denylisted method, the relay immediately intercepts the packet, drops the worker process, logs the violation, and revokes all module capabilities.
+### The RPC Denylist (relay/denylist.py)
 
-## 4. ModuleContext: Complete Properties Catalog
+Even when a module holds the 'mt' capability, all raw MTProto calls are inspected by relay/firewall.py against a denylist of destructive Telegram methods:
 
-The ModuleContext instance passed to command handlers and background tasks provides real-time event metadata and execution state.
+• auth.logOut
+• auth.resetAuthorizations
+• auth.dropTempAuthKeys
+• account.deleteAccount
+• account.updatePasswordSettings
 
-### Properties Reference Table
+Any attempt to call a denylisted method terminates the worker process with SIGKILL and logs a security violation.
+
+## 11. ModuleContext: Properties Reference Catalog
+
+The ModuleContext instance passed to command handlers, tasks, and watchers exposes the following properties:
 
 • ctx.module_id -> str
-Returns the unique identifier of the executing module.
-Example:
-assert ctx.module_id == "qr_tool"
+Returns the unique lowercase identifier of the executing module.
 
 • ctx.chat_id -> int
 Telegram ID of the dialog, group, or channel where the command was triggered.
-Example:
-chat = ctx.chat_id
 
-• ctx.sender_id / ctx.user_id -> int | None
-Telegram user ID of the individual who sent the triggering message. Returns None if the message originated from an anonymous channel.
-Example:
-sender = ctx.sender_id or 0
+• ctx.user_id / ctx.sender_id -> int | None
+Telegram user ID of the author of the triggering message. Returns None if sent from an anonymous channel.
 
 • ctx.topic_id -> int | None
-Thread ID when the message is posted inside a forum supergroup topic. Returns None in regular chats.
-Example:
-if ctx.topic_id is not None:
-    await ctx.respond(f"Executed in topic {ctx.topic_id}")
+Thread ID when executed inside a forum supergroup topic. Returns None in non-forum chats.
 
 • ctx.is_me / ctx.out -> bool
 Boolean indicating whether the triggering message was sent by the userbot account itself.
-Example:
-if not ctx.is_me:
-    return
 
 • ctx.message -> ModuleMessage
-The underlying message object containing text, entities, reply references, and raw flags.
-Example:
-raw_id = ctx.message.id
+The triggering message instance, exposing text, entities, reply references, and timestamp.
 
 • ctx.has_media -> bool
-Evaluates to True if the triggering message contains an attached photo, video, document, audio, sticker, voice note, or animation.
-Example:
-if not ctx.has_media:
-    await ctx.respond("Please attach a file.")
-    return
+True if the triggering message contains an attached photo, video, document, audio, sticker, voice note, or animation.
 
 • ctx.media / ctx.attachment -> Attachment | None
-Represents the media payload attached to the current message. Exposes .file_id, .size, .mime_type, and .filename.
-Example:
-if ctx.attachment:
-    size_mb = ctx.attachment.size / (1024 * 1024)
+Attachment metadata object exposing file_id, size, mime_type, and filename.
 
 • ctx.reply_message -> ModuleMessage | None
 If the command was executed in reply to another message, returns that referenced message. Otherwise returns None.
-Example:
-if ctx.reply_message:
-    target_author = ctx.reply_message.sender_id
 
 • ctx.reply_attachment -> Attachment | None
-The media attachment present on the replied-to message.
-Example:
-if ctx.reply_attachment:
-    data = await ctx.download(ctx.reply_attachment)
+The attachment object of the message replied to, if present.
 
 • ctx.args -> list[str]
-List of command arguments split by whitespace, excluding the prefix and command trigger.
-Example:
-if len(ctx.args) < 2:
-    await ctx.respond("Usage: .calc <number> <operator>")
+List of command arguments split by whitespace, excluding prefix and command trigger.
 
 • ctx.raw_args -> str
-The complete, unparsed string following the command trigger. Preserves leading and trailing whitespace.
-Example:
-query = ctx.raw_args.strip()
+The complete unparsed string following the command trigger. Preserves whitespace.
 
 • ctx.prefix -> str
-The specific prefix character used to trigger the command (e.g. '.' or '!').
-Example:
-pfx = ctx.prefix
+The command prefix used to trigger the handler (e.g. '.' or '!').
 
 • ctx.uptime -> float
-The uptime of the Hotaru supervisor process in seconds.
-Example:
-up_hours = ctx.uptime / 3600.0
+The uptime of the Hotaru kernel supervisor process in seconds.
 
 • ctx.memory / ctx.ram -> int
-The resident set size (RSS) memory consumption of the worker process in bytes.
-Example:
-mb_used = ctx.memory / (1024 * 1024)
+Resident set size (RSS) memory consumption of the worker process in bytes.
 
 • ctx.version -> str
-The Hotaru core version string.
-Example:
-current_ver = ctx.version
+Hotaru kernel release version string.
 
 • ctx.is_stopping -> bool
-Flag indicating whether the userbot has initiated shutdown. Checked by background tasks to perform graceful cleanup.
-Example:
-while not ctx.is_stopping:
-    await asyncio.sleep(1)
+Shutdown flag indicating whether the userbot has initiated process termination.
 
-## 5. ModuleContext: Messaging & Editing Methods
+## 12. ModuleContext: Messaging, Dispatch & Editing
 
-ModuleContext provides methods to create, edit, forward, react to, and delete messages.
+ModuleContext provides methods for creating, editing, forwarding, and deleting Telegram messages.
 
 ### ctx.reply
-Signature:
 `await ctx.reply(text: str, *, parse_mode: str = "html", link_preview: bool = False, silent: bool = False, schedule_date: int | None = None) -> ModuleMessage`
-Description:
-Sends a message into the current chat in explicit reply to the triggering message.
-Parameters:
-• text (str): The body text to transmit.
-• parse_mode (str): Entity parser ('html', 'md', or None). Defaults to 'html'.
-• link_preview (bool): Enables or disables rich URL preview cards.
-• silent (bool): Delivers the notification without sound.
-• schedule_date (int | None): Unix timestamp for scheduled delivery.
-Returns:
-ModuleMessage instance of the sent message.
-Exceptions:
-Raises TelegramError on flood wait or chat restrictions.
-Example:
-```python
-await ctx.reply("Calculation result: <b>42</b>", parse_mode="html")
-```
+Sends a message in direct reply to the triggering message.
 
 ### ctx.respond
-Signature:
 `await ctx.respond(text: str, *, parse_mode: str = "html", link_preview: bool = False) -> ModuleMessage`
-Description:
-If the triggering message was sent by the userbot account (ctx.is_me is True), edits that message in place. If the message was sent by another user, sends a fresh reply.
-Returns:
-ModuleMessage instance.
-Example:
-```python
-msg = await ctx.respond("Processing dataset...")
-await msg.edit("Processing complete.")
-```
+If the triggering message was authored by the userbot (ctx.is_me is True), edits that message in place. If authored by another user, transmits a new reply.
 
 ### ctx.edit
-Signature:
 `await ctx.edit(text: str, *, parse_mode: str = "html", link_preview: bool = False) -> ModuleMessage`
-Description:
-Edits the content of the triggering message. Fails if the message was not authored by the userbot.
-Exceptions:
-Raises PermissionError if ctx.is_me is False.
-Example:
-```python
-await ctx.edit("Status: <b>Updated</b>")
-```
+Edits the triggering message in place. Raises PermissionError if ctx.is_me is False.
 
 ### ctx.delete
-Signature:
 `await ctx.delete(*, revoke: bool = True) -> bool`
-Description:
-Deletes the triggering message.
-Parameters:
-• revoke (bool): When True, deletes the message for all chat participants.
-Returns:
-bool indicating success.
-Example:
-```python
-await ctx.delete(revoke=True)
-```
+Deletes the triggering message. If revoke is True, deletes for all participants.
 
-### ctx.pin
-Signature:
+### ctx.pin & ctx.unpin
 `await ctx.pin(*, silent: bool = False, unpin_both: bool = False) -> bool`
-Description:
-Pins the triggering message in the current chat.
-Example:
-```python
-await ctx.pin(silent=True)
-```
-
-### ctx.unpin
-Signature:
 `await ctx.unpin() -> bool`
-Description:
-Unpins the triggering message.
-Example:
-```python
-await ctx.unpin()
-```
+Pins or unpins the triggering message in the chat.
 
-### ctx.react
-Signature:
+### ctx.react & ctx.unreact
 `await ctx.react(emoji: str, *, big: bool = False) -> bool`
-Description:
-Applies an emoji reaction to the triggering message.
-Parameters:
-• emoji (str): Unicode emoji character (e.g. '🔥', '👍', '❤️').
-• big (bool): Displays full-screen reaction animation.
-Example:
-```python
-await ctx.react("🔥", big=True)
-```
-
-### ctx.unreact
-Signature:
 `await ctx.unreact() -> bool`
-Description:
-Removes any previously set reaction by the userbot on the current message.
-Example:
-```python
-await ctx.unreact()
-```
+Applies or removes an emoji reaction on the triggering message.
 
-### ctx.forward_to
-Signature:
+### ctx.forward & ctx.forward_to
 `await ctx.forward_to(target_chat_id: int, *, silent: bool = False) -> ModuleMessage`
-Description:
-Forwards the triggering message to the specified target chat or user.
-Example:
-```python
-await ctx.forward_to(123456789, silent=True)
-```
+Forwards the triggering message to the target chat with forward attribution.
 
 ### ctx.copy_to
-Signature:
 `await ctx.copy_to(target_chat_id: int, *, caption: str | None = None) -> ModuleMessage`
-Description:
-Sends a duplicate copy of the triggering message without the forwarded header.
-Example:
-```python
-await ctx.copy_to(123456789, caption="Copied snippet")
-```
+Copies the message content to the target chat without forward attribution.
 
 ### ctx.save
-Signature:
 `await ctx.save() -> ModuleMessage`
-Description:
-Forwards the message directly to Saved Messages ('me').
-Example:
-```python
-await ctx.save()
-```
+Copies the message directly into Saved Messages.
+
+### ctx.schedule
+`await ctx.schedule(schedule_date: int, text: str | None = None) -> ModuleMessage`
+Schedules a message to be delivered at a future Unix timestamp.
 
 ### ctx.typing
-Signature:
 `await ctx.typing(action: str = "typing") -> None`
-Description:
-Sends a chat action notification to indicate activity.
-Supported actions: 'typing', 'upload_photo', 'record_video', 'upload_video', 'record_audio', 'upload_audio', 'upload_document', 'choose_sticker'.
-Example:
-```python
-await ctx.typing("upload_document")
-```
+Broadcasts a chat activity status ('typing', 'upload_photo', 'upload_document', 'record_video').
 
 ### ctx.read & ctx.mark_read
-Signature:
 `await ctx.read() -> bool`
-Description:
-Marks all incoming messages in the current dialog up to the current message as read.
-Example:
-```python
-await ctx.read()
-```
+Marks incoming messages in the dialog up to the current message as read.
 
-## 6. ModuleContext: Media & File Operations
+### ctx.read_contents
+`await ctx.read_contents() -> bool`
+Marks media contents (voice notes, video notes) as listened/watched.
 
-Hotaru handles media upload, transmission, and download through high-level streaming helpers that bypass disk storage when operating with memory buffers.
+## 13. ModuleContext: Message Inspection & Peer Resolution
 
-### ctx.send_file & ctx.reply_file
-Signature:
-`await ctx.reply_file(file: bytes | str | BinaryIO, *, caption: str | None = None, force_document: bool = False, filename: str | None = None) -> ModuleMessage`
-Description:
-Transmits an arbitrary binary payload, local file, or memory stream as a file attachment.
-Parameters:
-• file: Raw bytes, string path, or file-like object.
-• caption: Optional descriptive text.
-• force_document: Forces document delivery even for photos or audio.
-• filename: Explicit filename when transmitting raw bytes.
-Example:
-```python
-data = b"ID,Name\n1,Alpha\n2,Beta"
-await ctx.reply_file(data, filename="report.csv", caption="Weekly Export")
-```
+Methods for resolving Telegram peers, extracting sender entities, and querying chat metadata:
 
-### ctx.send_photo & ctx.reply_photo
-Signature:
-`await ctx.reply_photo(photo: bytes | str | BinaryIO, *, caption: str | None = None, parse_mode: str = "html") -> ModuleMessage`
-Description:
-Sends a JPEG, PNG, or WEBP image formatted as a compressed Telegram photo.
-Example:
-```python
-with open("chart.png", "rb") as f:
-    await ctx.reply_photo(f.read(), caption="System Metrics")
-```
+• await ctx.get_sender() -> dict[str, Any]
+Retrieves the full User entity of the message sender.
 
-### ctx.send_video & ctx.reply_video
-Signature:
-`await ctx.reply_video(video: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None, width: int | None = None, height: int | None = None) -> ModuleMessage`
-Description:
-Transmits an MP4 or MOV video container with dimensions and playback duration metadata.
-Example:
-```python
-await ctx.reply_video("capture.mp4", duration=14, caption="Recorded stream")
-```
+• await ctx.get_chat() -> dict[str, Any]
+Fetches full chat or channel metadata for the current conversation.
 
-### ctx.send_audio & ctx.reply_audio
-Signature:
-`await ctx.reply_audio(audio: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None, performer: str | None = None, title: str | None = None) -> ModuleMessage`
-Description:
-Transmits an MP3, FLAC, or OGG music track with track title and performer tags.
-Example:
-```python
-await ctx.reply_audio(audio_data, title="Synthesized Wave", performer="Hotaru")
-```
+• await ctx.get_input_chat() -> dict[str, Any]
+Constructs an InputPeer representation of the current chat for raw MTProto RPC calls.
 
-### ctx.send_voice & ctx.reply_voice
-Signature:
-`await ctx.reply_voice(voice: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None) -> ModuleMessage`
-Description:
-Transmits an Opus-encoded audio stream as a voice waveform note.
-Example:
-```python
-await ctx.reply_voice(opus_bytes, duration=5)
-```
+• await ctx.get_input_sender() -> dict[str, Any]
+Constructs an InputPeer representation of the message sender.
 
-### ctx.send_animation & ctx.reply_animation
-Signature:
-`await ctx.reply_animation(animation: bytes | str | BinaryIO, *, caption: str | None = None) -> ModuleMessage`
-Description:
-Transmits a silent looping MP4 or GIF file as an in-chat animated sticker.
-Example:
-```python
-await ctx.reply_animation("radar.mp4")
-```
+• await ctx.get_input_channel() -> dict[str, Any]
+Constructs an InputChannel representation when operating in a broadcast channel or supergroup.
 
-### ctx.send_dice & ctx.reply_dice
-Signature:
-`await ctx.reply_dice(emoji: str = "🎲") -> ModuleMessage`
-Description:
-Rolls an animated Telegram dice. Supported emojis: '🎲', '🎯', '🏀', '⚽', '🎳', '🎰'.
-Example:
-```python
-await ctx.reply_dice("🎯")
-```
+• await ctx.get_reply_message() -> ModuleMessage | None
+Fetches the full message object referenced by the current reply.
 
-### ctx.edit_media
-Signature:
-`await ctx.edit_media(media: bytes | str | BinaryIO, *, caption: str | None = None, parse_mode: str = "html") -> ModuleMessage`
-Description:
-Replaces the media attachment of an existing message without re-sending the message entity.
-Example:
-```python
-await ctx.edit_media(updated_chart_bytes, caption="Updated at 12:00 UTC")
-```
+• await ctx.get_reactions() -> list[dict[str, Any]]
+Lists all active emoji reactions and reactor counts on the message.
 
-### ctx.edit_caption
-Signature:
-`await ctx.edit_caption(caption: str, *, parse_mode: str = "html") -> ModuleMessage`
-Description:
-Updates the text caption of an existing media message without re-uploading the underlying file.
-Example:
-```python
-await ctx.edit_caption("Archived capture")
-```
+• await ctx.get_reactors(limit: int = 50) -> list[dict[str, Any]]
+Queries individual user entities that reacted to the message.
 
-### ctx.download & ctx.download_media
-Signature:
-`await ctx.download(attachment: Attachment | None = None, destination: str | None = None) -> bytes | str`
-Description:
-Downloads the attachment associated with the triggering message or replied message. If destination is provided, streams the file to disk and returns the string path. If destination is None, buffers the complete file into memory and returns bytes.
-Example:
-```python
-if ctx.reply_attachment:
-    file_bytes = await ctx.download(ctx.reply_attachment)
-    assert isinstance(file_bytes, bytes)
-```
+• await ctx.get_views() -> int
+Returns the view count of the message in channels.
 
-## 7. ModuleContext: Buttons, Polls & Checklists
+• await ctx.get_replies() -> int
+Returns the reply count in discussion threads.
 
-Hotaru enables deep interaction with inline buttons, Telegram polls, and native checklists.
+• await ctx.get_discussion() -> dict[str, Any]
+Retrieves the linked discussion supergroup for a channel post.
 
-### Inline Button Operations
+• await ctx.get_link() -> str
+Constructs a direct t.me link to the current message.
+
+• await ctx.check_restrictions() -> dict[str, Any]
+Queries active Telegram spam or permission restrictions on the userbot account.
+
+## 14. ModuleContext: Media Transmission & File Operations
+
+Hotaru handles media transmission through streaming helpers supporting raw bytes, file paths, and BinaryIO objects.
+
+### Media Sending Methods
+
+• await ctx.reply_file(file: bytes | str | BinaryIO, *, caption: str | None = None, force_document: bool = False, filename: str | None = None) -> ModuleMessage
+Sends a file attachment into the chat.
+
+• await ctx.reply_photo(photo: bytes | str | BinaryIO, *, caption: str | None = None, parse_mode: str = "html") -> ModuleMessage
+Sends a compressed Telegram photo (JPEG, PNG, WEBP).
+
+• await ctx.reply_video(video: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None, width: int | None = None, height: int | None = None) -> ModuleMessage
+Sends an MP4 or MOV video.
+
+• await ctx.reply_audio(audio: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None, performer: str | None = None, title: str | None = None) -> ModuleMessage
+Sends a music track with metadata tags.
+
+• await ctx.reply_voice(voice: bytes | str | BinaryIO, *, caption: str | None = None, duration: int | None = None) -> ModuleMessage
+Sends an Opus audio stream as a voice message.
+
+• await ctx.reply_animation(animation: bytes | str | BinaryIO, *, caption: str | None = None) -> ModuleMessage
+Sends a looping silent MP4 or GIF.
+
+• await ctx.reply_dice(emoji: str = "🎲") -> ModuleMessage
+Rolls an animated dice ('🎲', '🎯', '🏀', '⚽', '🎳', '🎰').
+
+### Media Editing & Downloading
+
+• await ctx.edit_media(media: bytes | str | BinaryIO, *, caption: str | None = None) -> ModuleMessage
+Replaces the media attachment of an existing message.
+
+• await ctx.edit_caption(caption: str, *, parse_mode: str = "html") -> ModuleMessage
+Updates the caption of an existing media message without re-uploading the file.
+
+• await ctx.download(attachment: Attachment | None = None, destination: str | None = None) -> bytes | str
+Downloads media from the message. If destination is None, buffers into memory and returns bytes.
+
+## 15. ModuleContext: Buttons, Polls & Checklists
+
+Methods for interacting with inline keyboards, interactive polls, and native checklists:
+
+### Inline Buttons
 
 • ctx.buttons -> list[list[MessageButton]]
-Matrix of inline buttons present on the triggering message. Each button exposes .text, .data, and .url.
+Matrix of inline buttons on the triggering message.
 
 • ctx.button_count -> int
 Total count of inline buttons on the message.
 
 • await ctx.click(row: int, col: int) -> Any
-Simulates tapping an inline button at the specified matrix coordinate.
+Simulates clicking the button at matrix coordinate (row, col).
 
 • await ctx.click_button(text: str | None = None, data: bytes | None = None) -> Any
-Searches for an inline button matching the label or callback payload and triggers it.
-Example:
-```python
-await ctx.click_button(text="Confirm")
-```
+Clicks an inline button matching label text or callback data.
 
 • await ctx.edit_buttons(buttons: list[list[dict[str, str]]]) -> None
-Updates or replaces the inline keyboard markup of the current message.
-Example:
-```python
-markup = [
-    [{"text": "Refresh", "data": "ref_1"}, {"text": "Dismiss", "data": "dis_1"}]
-]
-await ctx.edit_buttons(markup)
-```
+Replaces the inline keyboard of the current message.
 
 • await ctx.remove_buttons() -> None
-Strips all inline keyboard buttons from the message while keeping its text intact.
-Example:
-```python
-await ctx.remove_buttons()
-```
+Removes all inline buttons from the message.
 
-### Native Poll Operations
+### Telegram Polls
 
 • await ctx.send_poll(question: str, answers: list[str], *, multiple_choice: bool = False, quiz: bool = False, correct_id: int | None = None) -> ModuleMessage
 Sends an interactive poll into the chat.
-Parameters:
-• question: The inquiry heading (up to 255 characters).
-• answers: List of 2 to 10 option strings.
-• multiple_choice: Permits selecting multiple answers.
-• quiz: Sets quiz mode requiring a single correct answer.
-• correct_id: Zero-indexed position of the correct answer in quiz mode.
-Example:
-```python
-await ctx.send_poll(
-    "Choose target deployment region:",
-    ["Frankfurt", "Tokyo", "Virginia"],
-    multiple_choice=False,
-)
-```
 
 • await ctx.close_poll() -> Any
-Closes voting on the poll contained in the current message.
-Example:
-```python
-await ctx.close_poll()
-```
+Closes voting on the poll.
 
 • await ctx.vote(answers: list[int]) -> Any
-Casts a vote on the poll for the specified answer indices.
-Example:
-```python
-await ctx.vote([0])
-```
+Casts a vote for option indices.
 
 • await ctx.retract_vote() -> Any
-Retracts the userbot's cast vote from the poll.
-Example:
-```python
-await ctx.retract_vote()
-```
+Retracts cast votes from the poll.
 
 • await ctx.get_poll_results() -> dict[str, Any]
-Retrieves aggregated vote totals and percentages for the poll.
+Fetches aggregated poll voting totals.
 
-### Native Telegram Checklists
+### Telegram Checklists
 
 • await ctx.send_todo(title: str, items: list[str], *, others_can_append: bool = False, others_can_complete: bool = False) -> ModuleMessage
-Transmits a native Telegram checklist with checkable boxes.
-Example:
-```python
-await ctx.send_todo(
-    "Deployment Checklist",
-    ["Run migrations", "Flush cache", "Verify health check"],
-    others_can_complete=True,
-)
-```
+Sends a native Telegram checklist.
 
 • await ctx.append_todo(items: list[str]) -> Any
-Appends additional task items to an existing checklist message.
-Example:
-```python
-await ctx.append_todo(["Verify DNS propagation"])
-```
+Appends new items to an existing checklist.
 
 • await ctx.set_checklist_completed(completed: list[int], incompleted: list[int]) -> Any
-Toggles the checked state of checklist items by index.
+Toggles task completion indices.
 
-## 8. Extended Telegram Subsystem Catalog
-
-The Hotaru relay provides direct access to over 290 granular Telegram methods through ctx. These methods are type-checked, sanitized, and bound to the current peer.
-
-### Forum Topics Management
-
-• await ctx.create_forum_topic(title: str, icon_color: int | None = None, icon_emoji_id: int | None = None) -> Any
-Creates a discussion thread inside a forum supergroup.
-Example:
-```python
-topic = await ctx.create_forum_topic("Incident #402", icon_color=0x6FB9F0)
-```
-
-• await ctx.edit_forum_topic(topic_id: int, title: str | None = None, closed: bool | None = None) -> Any
-Modifies topic title or toggles closed status.
-
-• await ctx.set_forum_topic_pinned(topic_id: int, pinned: bool) -> Any
-Pins or unpins a topic in the forum index.
-
-• await ctx.remove_forum_topic(topic_id: int) -> Any
-Deletes a forum topic and its complete message history.
-
-• await ctx.forum_topics(offset_date: int = 0, limit: int = 50) -> Any
-Lists forum topics in the current channel.
-
-### Channel Administration
-
-• await ctx.channel_details() -> Any
-Fetches metadata, participant count, and description for the current channel.
-
-• await ctx.channel_members(limit: int = 50) -> Any
-Retrieves participant records for the channel.
-
-• await ctx.set_channel_admin(user_id: int, is_admin: bool, rank: str = "") -> Any
-Promotes or demotes an administrator with a custom badge title.
-
-• await ctx.restrict_channel_member(user_id: int, send_messages: bool = False) -> Any
-Restricts specific permissions of a member.
-
-• await ctx.channel_admin_log(limit: int = 50) -> Any
-Extracts audit log events including member bans, message deletions, and role changes.
-
-• await ctx.set_slow_mode(seconds: int) -> Any
-Configures slow mode interval in seconds (0 to disable).
-
-• await ctx.set_antispam(enabled: bool) -> Any
-Toggles Telegram native aggressive anti-spam protection.
-
-### Reactions & Scheduled History
-
-• await ctx.configure_chat_reactions(available_reactions: list[str]) -> Any
-Restricts allowed reaction emojis in a group or channel.
-
-• await ctx.scheduled_messages() -> list[Any]
-Retrieves pending scheduled messages in the current chat.
-
-• await ctx.cancel_scheduled(ids: list[int]) -> Any
-Cancels and removes scheduled messages by their identifier.
-
-## 9. State Storage & Network Stream Engine
+## 16. ModuleContext: State Storage & Network Stream
 
 Hotaru isolates persistence and network I/O behind dedicated capability proxies.
 
 ### Persistent Key-Value State (ctx.state)
 
 Requires capability: 'state'
-State is backed by an encrypted SQLite engine. Keys are scoped strictly to the calling module ID, guaranteeing isolation between modules.
+Key-value storage backed by SQLite and scoped strictly to the module ID.
 
-Methods:
 • await ctx.state.get(key: str, default: Any = None) -> Any
-Retrieves the value associated with key. If absent, returns default.
+Retrieves value for key. Returns default if absent.
 
 • await ctx.state.set(key: str, value: Any) -> None
 Persists a JSON-serializable value (dict, list, int, float, str, bool).
 
 • await ctx.state.delete(key: str) -> bool
-Removes key from storage. Returns True if the key existed.
+Deletes key from storage.
 
 • await ctx.state.clear() -> None
-Purges all key-value entries belonging to this module.
+Purges all stored keys for this module.
 
 • await ctx.state.all() -> dict[str, Any]
-Dumps the entire key-value space of the module.
-
-Usage Example:
-```python
-async def counter_command(ctx: ModuleContext) -> None:
-    current = await ctx.state.get("invocations", 0)
-    current += 1
-    await ctx.state.set("invocations", current)
-    await ctx.respond(f"Command executed {current} times.")
-```
+Returns all key-value pairs stored by this module.
 
 ### Network Client & TCP Streaming (ctx.net & ctx.stream)
 
 Requires capability: 'net'
-All egress traffic passes through a proxy gateway enforcing TLS validation and connection rate limiting.
+All egress traffic passes through a proxy enforcing TLS validation and rate limiting.
 
 1. HTTP Requests (ctx.net):
-Signature:
-`await ctx.net(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, data: bytes | None = None, json: Any | None = None, timeout: float = 10.0) -> HttpResponse`
-Properties on HttpResponse:
-• .status_code (int): HTTP response status code (e.g. 200, 404).
-• .text (str): Decoded unicode response body.
-• .content (bytes): Raw binary response body.
-• .headers (dict[str, str]): HTTP response headers.
+`await ctx.net(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, data: bytes | None = None, timeout: float = 10.0) -> HttpResponse`
+Exposes .status_code, .text, .content, and .headers.
 
-Usage Example:
-```python
-async def weather_command(ctx: ModuleContext) -> None:
-    city = ctx.raw_args.strip() or "London"
-    url = f"https://wttr.in/{city}?format=j1"
-    response = await ctx.net(url)
-    if response.status_code == 200:
-        data = json.loads(response.text)
-        temp = data["current_condition"][0]["temp_C"]
-        await ctx.respond(f"Temperature in {city}: {temp}°C")
-```
-
-2. Raw TCP Streaming (ctx.stream):
-Signature:
+2. TCP Streaming (ctx.stream):
 `stream = await ctx.stream(host: str, port: int, *, ssl: bool = True) -> NetStream`
-Methods on NetStream:
 • await stream.send(data: bytes) -> None
 • await stream.recv(size: int = 4096) -> bytes
 • await stream.close() -> None
 
-## 10. Interactive Screens, Navigation & Form Engine
+## 17. Interactive Screens, Navigation & Form Engine
 
-The Hotaru Screens engine (ctx.screens) enables developers to create stateful interactive menus and terminal screens within Telegram messages.
-
-### Screen Components Reference
+The Hotaru Screens engine (ctx.screens) enables developers to build stateful menus within Telegram messages:
 
 • await ctx.screens.show(title: str, body: str, *, buttons: list[list[Any]] | None = None, pager: Any | None = None) -> FormHandle
-Renders a structured message screen with header, content body, and inline keyboard controls.
+Renders a structured screen card with header, body, and keyboard.
 
 • ctx.screens.button(text: str, callback: Callable[[FormHandle], Awaitable[None]], style: str = "default")
-Creates an interactive button bound to an asynchronous callback coroutine.
+Creates an interactive button bound to an asynchronous callback.
 
 • ctx.screens.primary(text: str, callback: Callable)
-Creates a visually highlighted primary action button.
+Creates a highlighted action button.
 
 • ctx.screens.danger(text: str, callback: Callable)
 Creates a destructive warning button (red accent).
 
 • ctx.screens.success(text: str, callback: Callable)
-Creates an affirmative action button (green accent).
+Creates a confirmation action button (green accent).
 
 • ctx.screens.pager(current_page: int, total_pages: int, on_page_change: Callable[[int], Awaitable[None]])
 Constructs a pagination bar with previous, index, and next triggers.
 
 • ctx.screens.table(headers: list[str], rows: list[list[str]], page: int = 1, page_size: int = 5) -> str
-Renders an aligned ASCII table formatted for mobile monospaced display.
+Renders an aligned ASCII table formatted for monospaced mobile displays.
+
+• ctx.screens.details(items: dict[str, str]) -> str
+Renders a structured key-value specification block.
+
+• ctx.screens.back(on_back: Callable)
+Adds a back button navigating to the previous view in the stack.
 
 • ctx.screens.close()
 Creates a dismissal button that cleanly tears down the interactive screen.
 
-### Stateful Navigation Example
+## 18. Security Checklist & Production Blueprints
+
+Before distributing or loading a module, it must satisfy strict security audits:
+
+### Security Verification (.semgrep/hotaru-security.yml)
+
+1. No Credentials Leakage: Modules must never access sanctuary/ or session vaults.
+2. No Private Namespace Escape: Access to __class__, __subclasses__, or sys.modules is blocked.
+3. No Raw Sockets: Direct import of socket or urllib is rejected. Use ctx.net with the 'net' capability.
+4. No Shell Execution: Calls to os.system or subprocess are blocked by seccomp.
+5. Zero Comments: Production .hmod files contain zero comments. Code must be self-describing through strict typing.
+
+### Production Blueprint: QR Code Generator (.qr)
 
 ```python
-async def notes_menu(ctx: ModuleContext) -> None:
-    notes = await ctx.state.get("notes_list", [])
-
-    async def render_view(page: int = 0) -> None:
-        items_per_page = 3
-        total = max(1, (len(notes) + items_per_page - 1) // items_per_page)
-        slice_items = notes[page * items_per_page:(page + 1) * items_per_page]
-        
-        body_lines = [f"{i+1}. {item}" for i, item in enumerate(slice_items)]
-        body = "\n".join(body_lines) or "No notes saved yet."
-
-        rows = []
-        if total > 1:
-            pager_row = []
-            if page > 0:
-                pager_row.append(ctx.screens.button("Prev", lambda h: render_view(page - 1)))
-            pager_row.append(ctx.screens.button(f"{page + 1}/{total}", lambda h: None))
-            if page < total - 1:
-                pager_row.append(ctx.screens.button("Next", lambda h: render_view(page + 1)))
-            rows.append(pager_row)
-
-        rows.append([
-            ctx.screens.success("Add Note", add_note_flow),
-            ctx.screens.danger("Clear All", clear_notes_flow),
-        ])
-
-        await ctx.screens.show("Notes Manager", body, buttons=rows)
-
-    async def add_note_flow(handle: FormHandle) -> None:
-        notes.append(f"Note recorded at {int(ctx.uptime)}s")
-        await ctx.state.set("notes_list", notes)
-        await render_view(0)
-
-    async def clear_notes_flow(handle: FormHandle) -> None:
-        notes.clear()
-        await ctx.state.set("notes_list", [])
-        await render_view(0)
-
-    await render_view(0)
-```
-
-## 11. Background Supervisor Tasks & Lifecycle
-
-Modules can run background tasks that persist throughout the userbot runtime. Declare tasks in the tasks mapping of the HOTARU dictionary.
-
-### Background Task Lifecycle
-
-1. Registration:
-During module startup, Hotaru registers every coroutine declared in HOTARU['tasks'].
-
-2. Supervisor Monitoring:
-Tasks run inside the module's sandboxed worker process. If a task crashes due to an unhandled exception, the Hotaru supervisor restarts it with exponential backoff (up to 5 attempts).
-
-3. Graceful Termination:
-During bot shutdown or module unloading, ctx.is_stopping is set to True. The task is given a 5-second grace period to flush buffers, close open files, and exit cleanly before SIGKILL.
-
-### Background Worker Pattern
-
-```python
-import asyncio
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hotaru.response import ModuleContext
-
-async def reminder_worker(ctx: ModuleContext) -> None:
-    while not ctx.is_stopping:
-        try:
-            reminders = await ctx.state.get("pending_reminders", [])
-            now = int(asyncio.get_event_loop().time())
-            active = []
-            for r in reminders:
-                if r["timestamp"] <= now:
-                    await ctx.tg.send_message(r["chat_id"], f"Reminder: {r['text']}")
-                else:
-                    active.append(r)
-            if len(active) != len(reminders):
-                await ctx.state.set("pending_reminders", active)
-        except Exception:
-            pass
-        
-        for _ in range(10):
-            if ctx.is_stopping:
-                break
-            await asyncio.sleep(1)
-
 HOTARU = {
-    "id": "reminders",
-    "name": "Background Reminder",
+    "id": "qr_tool",
     "version": "1.0.0",
-    "capabilities": ["mt", "state"],
-    "commands": {},
-    "tasks": {
-        "checker": reminder_worker,
+    "commands": {
+        "qr": "qr_command",
+    },
+    "capabilities": ["mt", "net"],
+    "lexicon": {
+        "en": {
+            "missing": "Provide text after .qr",
+            "done": "QR Code generated.",
+        },
+        "ru": {
+            "missing": "Укажите текст после .qr",
+            "done": "QR-код сгенерирован.",
+        },
     },
 }
-```
 
-## 12. Internationalization & Lexicons
-
-Hotaru user interfaces adapt dynamically to the user's configured language. Hardcoding user-facing strings in command handlers is strictly prohibited.
-
-### Lexicon Schema
-
-Declare a lexicon dictionary in the module manifest containing language sub-dictionaries:
-
-```python
-"lexicon": {
-    "en": {
-        "welcome": "Welcome back, {user}!",
-        "error_empty": "Query cannot be empty.",
-    },
-    "ru": {
-        "welcome": "С возвращением, {user}!",
-        "error_empty": "Запрос не может быть пустым.",
-    },
-    "uk": {
-        "welcome": "З поверненням, {user}!",
-        "error_empty": "Запит не може бути порожнім.",
-    },
-}
-```
-
-### Retrieving Localized Strings: ctx.t
-
-Signature:
-`ctx.t(key: str, **kwargs) -> str`
-
-Behavior:
-1. Checks the user's active language setting.
-2. If the key exists in that language, returns the translated string formatted with **kwargs.
-3. If absent, falls back to the English ('en') translation.
-4. If missing from English, returns the raw key literal as a safety measure.
-
-Usage Example:
-```python
-greeting = ctx.t("welcome", user="Alice")
-await ctx.respond(greeting)
-```
-
-## 13. Security Audit Checklist & Semgrep Rules
-
-Before any module is distributed or loaded into Hotaru, it must satisfy strict static security requirements.
-
-### Semgrep Security Verification
-
-The repository enforces Semgrep rules located in .semgrep/hotaru-security.yml:
-
-1. No Credentials Leakage (hotaru-no-vault-leak):
-Modules must never attempt to open, read, or transmit files located in sanctuary/, including hotaru.vault, runtime.db, or session files.
-
-2. No Private Namespace Access (hotaru-no-private-escape):
-Modules must never inspect or modify private attributes of the core engine (__class__, __subclasses__, __globals__, or sys.modules).
-
-3. No Unsandboxed Network Sockets (hotaru-no-raw-socket):
-Direct import of socket, urllib, or requests is blocked by the runtime. All network traffic must use ctx.net or ctx.stream with the 'net' capability declared.
-
-4. No System Shell Execution (hotaru-no-shell-exec):
-Calls to os.system, subprocess.Popen, os.popen, or pty.spawn are trapped by seccomp filters and result in immediate worker SIGKILL.
-
-5. Zero Comments in Production Code:
-In accordance with Hotaru code purity standards, production .hmod files contain zero comment lines. Code must be self-documenting through precise type annotations and explicit naming.
-
-## 14. Complete Production Module Blueprints
-
-The following production blueprints demonstrate real-world, secure module design. Notice that neither ping nor any kernel command is used.
-
-### Blueprint 1: Text Encryption Tool (.cipher)
-
-```python
-from __future__ import annotations
-import base64
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from hotaru.response import ModuleContext
 
-async def cipher_command(ctx: ModuleContext) -> None:
+async def qr_command(ctx: ModuleContext) -> None:
     text = ctx.raw_args.strip()
     if not text:
-        await ctx.respond(ctx.t("missing_input"))
+        await ctx.respond(ctx.t("missing"))
         return
-    encoded = base64.b64encode(text.encode("utf-8")).decode("ascii")
-    await ctx.respond(f"<code>{encoded}</code>", parse_mode="html")
-
-HOTARU = {
-    "id": "b64_cipher",
-    "name": "Base64 Cipher",
-    "version": "1.0.0",
-    "capabilities": ["mt"],
-    "commands": {
-        "cipher": cipher_command,
-    },
-    "lexicon": {
-        "en": {
-            "missing_input": "Usage: .cipher <text to encode>",
-        },
-        "ru": {
-            "missing_input": "Использование: .cipher <текст для кодирования>",
-        },
-    },
-}
-```
-
-### Blueprint 2: Persistent Paste Bin (.paste)
-
-```python
-from __future__ import annotations
-import json
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hotaru.response import ModuleContext
-
-async def paste_command(ctx: ModuleContext) -> None:
-    content = ctx.raw_args.strip()
-    if not content and ctx.reply_message:
-        content = ctx.reply_message.message.text
-    if not content:
-        await ctx.respond(ctx.t("empty_paste"))
-        return
-    await ctx.typing("upload_document")
-    payload = json.dumps({"content": content, "extension": "txt"}).encode("utf-8")
-    res = await ctx.net(
-        "https://paste.rs",
-        method="POST",
-        headers={"Content-Type": "text/plain"},
-        data=content.encode("utf-8"),
-    )
-    if res.status_code in (200, 201):
-        url = res.text.strip()
-        await ctx.respond(ctx.t("paste_success", url=url))
-    else:
-        await ctx.respond(ctx.t("paste_error"))
-
-HOTARU = {
-    "id": "paste_bin",
-    "name": "Paste Bin Uploader",
-    "version": "1.0.0",
-    "capabilities": ["mt", "net"],
-    "commands": {
-        "paste": paste_command,
-    },
-    "lexicon": {
-        "en": {
-            "empty_paste": "Provide text or reply to a message with .paste",
-            "paste_success": "Uploaded to pastebin: {url}",
-            "paste_error": "Failed to upload snippet.",
-        },
-        "ru": {
-            "empty_paste": "Укажите текст или ответьте на сообщение через .paste",
-            "paste_success": "Сниппет опубликован: {url}",
-            "paste_error": "Ошибка при публикации сниппета.",
-        },
-    },
-}
+    url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={text}"
+    response = await ctx.net(url)
+    await ctx.reply_photo(response.content, caption=ctx.t("done"))
 ```
