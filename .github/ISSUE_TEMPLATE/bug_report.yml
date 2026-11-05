@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a bug or rendering issue on the Hotaru website
+labels: ["type:bug", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, search existing issues to confirm this has not been reported yet.
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and Operating System
+      placeholder: "e.g. Chrome 132 on Linux, Safari 18 on iOS"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: Explain what happened.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: List the steps to reproduce the behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?

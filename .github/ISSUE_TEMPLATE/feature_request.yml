@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest an enhancement or new documentation page for the Hotaru web portal
+labels: ["type:enhancement", "status:needs-triage"]
+body:
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Feature proposal
+      description: What change or addition would you like to see?
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Target use case
+      description: How will this help developers or users of Hotaru?
