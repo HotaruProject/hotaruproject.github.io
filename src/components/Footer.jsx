@@ -40,7 +40,7 @@ export function Footer({ content }) {
             <span>{t.githubWeb}</span>
           </a>
           <a
-            href="https://t.me/HotaruProject"
+            href="https://t.me/hotaru_ub"
             target="_blank"
             rel="noreferrer"
             className="hover:text-white transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.03] hover:bg-white/[0.08] border border-white/10"
