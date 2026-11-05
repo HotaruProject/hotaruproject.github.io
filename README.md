@@ -8,7 +8,7 @@
 <br />
 [![GitHub Pages][pages-badge]][pages-url]
 [![License][license-badge]][license-url]
-[![Hotaru Core][hotaru-badge]][hotaru-url]
+[![Hotaru Userbot][hotaru-badge]][hotaru-url]
 [![Telegram][telegram-badge]][telegram-url]
 
   <p>Official web portal, interactive 3D quasar visualization, and documentation for Hotaru.</p>
@@ -133,7 +133,7 @@ This project is open-source software licensed under the GNU Affero General Publi
 [pages-url]: https://hotaruproject.github.io/
 [license-badge]: https://img.shields.io/badge/License-AGPL_3.0-blue.svg?style=for-the-badge
 [license-url]: LICENSE
-[hotaru-badge]: https://img.shields.io/badge/Hotaru_Core-Repository-000000.svg?style=for-the-badge&logo=telegram&logoColor=white
+[hotaru-badge]: https://img.shields.io/badge/Hotaru_Userbot-Repository-000000.svg?style=for-the-badge&logo=telegram&logoColor=white
 [hotaru-url]: https://github.com/HotaruProject/Hotaru
 [telegram-badge]: https://img.shields.io/badge/Telegram-Community-2CA5E0.svg?style=for-the-badge&logo=telegram&logoColor=white
 [telegram-url]: https://t.me/hotaru_ub
