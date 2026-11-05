@@ -269,7 +269,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
             <span className="hidden sm:inline">Home</span>
           </button>
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] flex-shrink-0 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-white/80 flex-shrink-0" />
             <span className="font-bold tracking-tight text-sm sm:text-base text-white truncate">
               Hotaru
             </span>
@@ -432,20 +432,45 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
 
           {activeTab === 'chapters' ? (
             <div>
-              <div className="lg:hidden mb-4 overflow-x-auto no-scrollbar flex gap-1.5 pb-1">
-                {filteredSections.map((sec, idx) => (
-                  <button
-                    key={sec.id}
-                    onClick={() => setActiveSection(idx)}
-                    className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-mono min-h-[36px] flex items-center ${
-                      currentSection?.id === sec.id
-                        ? 'bg-white text-black font-semibold'
-                        : 'bg-white/5 text-white/70'
-                    }`}
-                  >
-                    {sec.title.split('.')[0]}
-                  </button>
-                ))}
+              {/* Mobile Chapter Selector */}
+              <div className="lg:hidden mb-5 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between text-[11px] font-mono text-white/50 px-1">
+                  <span>{lang === 'ru' ? 'Текущий раздел:' : 'Current Chapter:'}</span>
+                  <span>{activeSection + 1} / {filteredSections.length}</span>
+                </div>
+                <select
+                  value={activeSection}
+                  onChange={(e) => {
+                    setActiveSection(Number(e.target.value));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090a14] border border-white/20 text-xs font-mono text-white focus:outline-none focus:border-white shadow-lg"
+                >
+                  {filteredSections.map((sec, idx) => (
+                    <option key={sec.id} value={idx} className="bg-[#090a14] text-white">
+                      {sec.title}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="overflow-x-auto no-scrollbar flex gap-2 pt-1 pb-1">
+                  {filteredSections.map((sec, idx) => (
+                    <button
+                      key={sec.id}
+                      onClick={() => {
+                        setActiveSection(idx);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`btn-press flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-mono min-h-[34px] flex items-center border transition-all ${
+                        currentSection?.id === sec.id
+                          ? 'bg-white text-black font-semibold border-white shadow-sm'
+                          : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {sec.title.split(':')[0]}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {currentSection && (
@@ -461,6 +486,32 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                     {currentSection.summary}
                   </p>
                   <FormattedContent rawContent={currentSection.content} />
+
+                  {/* Chapter Navigation Footer */}
+                  <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    {activeSection > 0 ? (
+                      <button
+                        onClick={() => {
+                          setActiveSection(activeSection - 1);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="btn-press flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-mono text-white/80 border border-white/10 transition-colors"
+                      >
+                        ← {filteredSections[activeSection - 1]?.title.split(':')[0]}
+                      </button>
+                    ) : <div />}
+                    {activeSection < filteredSections.length - 1 ? (
+                      <button
+                        onClick={() => {
+                          setActiveSection(activeSection + 1);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="btn-press flex items-center justify-center sm:justify-end gap-2 px-4 py-2.5 rounded-xl bg-white text-black font-semibold text-xs font-mono hover:bg-white/90 transition-colors ml-auto"
+                      >
+                        {filteredSections[activeSection + 1]?.title.split(':')[0]} →
+                      </button>
+                    ) : <div />}
+                  </div>
                 </div>
               )}
             </div>

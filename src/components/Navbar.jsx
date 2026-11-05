@@ -31,7 +31,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center gap-2 text-left group min-w-0 active:scale-95 transition-transform"
           >
-            <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] flex-shrink-0 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-white/80 flex-shrink-0" />
             <div className="flex items-center gap-2 min-w-0">
               <span className="font-bold tracking-tight text-sm sm:text-base text-white truncate">
                 Hotaru

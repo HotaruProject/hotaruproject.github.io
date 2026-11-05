@@ -49,7 +49,7 @@ export function Hero({ content, onOpenDocs }) {
 
             <button
               onClick={copyInstall}
-              className={`relative z-10 flex-shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl sm:rounded-full text-xs font-mono font-bold tracking-wider liquid-glass-button active:scale-95 ${
+              className={`relative z-10 flex-shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl sm:rounded-full text-xs font-mono font-bold tracking-wider liquid-glass-button btn-press ${
                 copied ? 'liquid-glass-button-copied' : ''
               }`}
               title={copied ? t.copiedTooltip : t.copyTooltip}
@@ -57,12 +57,12 @@ export function Hero({ content, onOpenDocs }) {
               {copied ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>COPIED</span>
+                  <span>{t.copiedBtn || "COPIED"}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5 text-white/80" />
-                  <span>COPY</span>
+                  <span>{t.copyBtn || "COPY"}</span>
                 </>
               )}
             </button>
