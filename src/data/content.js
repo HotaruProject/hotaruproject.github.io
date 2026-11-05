@@ -13,15 +13,15 @@ export const CONTENT = {
       downloadSkill: "Get Skill (.md)",
     },
     hero: {
-      badge: "SECURITY-FIRST TELEGRAM USERBOT",
-      title: "HOTARU",
-      subtitle: "A modern Telegram userbot built on GoyGram with Linux namespace isolation and strict capability sandboxing.",
-      installTitle: "Interactive one-line installation:",
+      badge: "Telegram юзербот • Python 3.13",
+      title: "Hotaru",
+      subtitle: "Модульный юзербот для Telegram на GoyGram с изолированными процессами и песочницей.",
+      installTitle: "Команда установки:",
       copyTooltip: "Copy command",
       copiedTooltip: "Copied to clipboard",
-      ctaDocs: "Explore Documentation",
-      ctaSkill: "Download Agent Skill",
-      ctaGithub: "View Source Code",
+      ctaDocs: "Документация",
+      ctaSkill: "Инструкция для ИИ (SKILL.md)",
+      ctaGithub: "Исходный код",
       metrics: [
         { label: "Core Engine", value: "GoyGram 0.8.28" },
         { label: "Runtime", value: "Python 3.13+" },
@@ -30,8 +30,8 @@ export const CONTENT = {
       ],
     },
     architecture: {
-      sectionTitle: "Security Architecture",
-      sectionSubtitle: "Hotaru eliminates attack vectors common in userbots by running untrusted third-party code in unprivileged namespaces.",
+      sectionTitle: "Архитектура и изоляция",
+      sectionSubtitle: "Сторонние модули исполняются в изолированных процессах без прямого доступа к хосту.",
       cards: [
         {
           id: "namespaces",
@@ -72,8 +72,8 @@ export const CONTENT = {
       ],
     },
     modules: {
-      sectionTitle: "Module Ecosystem (.hmod)",
-      sectionSubtitle: "Modules are standard Python 3.13 scripts declaring capabilities, command callbacks, and localized lexicons.",
+      sectionTitle: "Примеры модулей .hmod",
+      sectionSubtitle: "Готовые скрипты на Python, которые можно загрузить прямо в чате через .ld.",
       tabs: [
         {
           id: "qr",
@@ -202,11 +202,11 @@ HOTARU = {
       ],
     },
     docs: {
-      badge: "DEVELOPER PORTAL",
-      title: "Hotaru Module Developer Hub",
-      subtitle: "Exhaustive documentation for building, loading, and managing third-party .hmod modules via .ld in Telegram.",
-      openDocsBtn: "Open Full Documentation",
-      openCatalogBtn: "Browse 292 Methods",
+      badge: "Документация",
+      title: "Руководство по разработке модулей",
+      subtitle: "Подробное руководство по созданию, загрузке через .ld и вызову методов контекста.",
+      openDocsBtn: "Открыть документацию",
+      openCatalogBtn: "292 метода API",
       cards: [
         {
           title: "Module Loading & Lifecycle",
@@ -234,11 +234,11 @@ HOTARU = {
       sections: DOCS_EN,
     },
     skill: {
-      badge: "AI CODING ASSISTANT SKILL",
-      title: "Hotaru Agent Skill (SKILL.md)",
-      subtitle: "A comprehensive instruction manual for Antigravity, Claude Code, Cursor, and ChatGPT agents to write correct, secure .hmod modules.",
-      downloadBtn: "Download SKILL.md",
-      previewBtn: "View Specification",
+      badge: "Инструкция для ИИ",
+      title: "Инструкция для AI-агентов (SKILL.md)",
+      subtitle: "Файл инструкций для Claude, Cursor, ChatGPT и Antigravity для создания корректных .hmod модулей.",
+      downloadBtn: "Скачать SKILL.md",
+      previewBtn: "Смотреть спецификацию",
       features: [
         "Complete manifest schema with typed definitions",
         "Every ModuleContext method, signature, and parameter",
@@ -267,14 +267,14 @@ HOTARU = {
       downloadSkill: "Скачать Skill",
     },
     hero: {
-      badge: "SECURITY-FIRST TELEGRAM ЮЗЕРБОТ",
-      title: "HOTARU",
-      subtitle: "Telegram юзербот с архитектурой security-first на базе GoyGram, изоляцией в Linux namespaces и строгой моделью capabilities.",
-      installTitle: "Быстрая установка одной командой:",
+      badge: "Telegram юзербот • Python 3.13",
+      title: "Hotaru",
+      subtitle: "Модульный юзербот для Telegram на GoyGram с изолированными процессами и песочницей.",
+      installTitle: "Команда установки:",
       copyTooltip: "Скопировать команду",
       copiedTooltip: "Скопировано в буфер",
-      ctaDocs: "Перейти к документации",
-      ctaSkill: "Скачать Agent Skill",
+      ctaDocs: "Документация",
+      ctaSkill: "Инструкция для ИИ (SKILL.md)",
       ctaGithub: "Исходный код",
       metrics: [
         { label: "Ядро MTProto", value: "GoyGram 0.8.28" },
@@ -284,7 +284,7 @@ HOTARU = {
       ],
     },
     architecture: {
-      sectionTitle: "Архитектура безопасности",
+      sectionTitle: "Архитектура и изоляция",
       sectionSubtitle: "Hotaru исключает типичные векторы атак в юзерботах, изолируя сторонний код модулей в непривилегированных пространствах имён.",
       cards: [
         {
@@ -326,7 +326,7 @@ HOTARU = {
       ],
     },
     modules: {
-      sectionTitle: "Экосистема модулей (.hmod)",
+      sectionTitle: "Примеры модулей .hmod",
       sectionSubtitle: "Модули представляют собой стандартные скрипты Python 3.13 с объявлением прав, обработчиков команд и многоязычного лексикона.",
       tabs: [
         {
@@ -457,10 +457,10 @@ HOTARU = {
     },
     docs: {
       badge: "ПОРТАЛ РАЗРАБОТЧИКА",
-      title: "Центр документации модулей Hotaru",
-      subtitle: "Исчерпывающее руководство по созданию, загрузке и управлению сторонними .hmod модулями через .ld в Telegram.",
-      openDocsBtn: "Открыть полную документацию",
-      openCatalogBtn: "Каталог 292 методов",
+      title: "Руководство по разработке модулей",
+      subtitle: "Подробное руководство по созданию, загрузке через .ld и вызову методов контекста.",
+      openDocsBtn: "Открыть документацию",
+      openCatalogBtn: "292 метода API",
       cards: [
         {
           title: "Загрузка модулей и жизненный цикл",
@@ -488,11 +488,11 @@ HOTARU = {
       sections: DOCS_RU,
     },
     skill: {
-      badge: "SKILL ДЛЯ AI-АГЕНТОВ",
-      title: "Hotaru Agent Skill (SKILL.md)",
-      subtitle: "Полная инструкция для агентов Antigravity, Claude Code, Cursor и ChatGPT для безошибочного создания модулей .hmod.",
+      badge: "Инструкция для ИИ",
+      title: "Инструкция для AI-агентов (SKILL.md)",
+      subtitle: "Файл инструкций для Claude, Cursor, ChatGPT и Antigravity для создания корректных .hmod модулей.",
       downloadBtn: "Скачать SKILL.md",
-      previewBtn: "Открыть спецификацию",
+      previewBtn: "Смотреть спецификацию",
       features: [
         "Полная схема манифеста с типизированными определениями",
         "Каждый метод ModuleContext с сигнатурами и аргументами",

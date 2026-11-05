@@ -33,11 +33,11 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
           >
             <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] flex-shrink-0 animate-pulse" />
             <div className="flex items-center gap-2 min-w-0">
-              <span className="font-extrabold tracking-wider text-sm sm:text-base text-white truncate">
-                HOTARU
+              <span className="font-bold tracking-tight text-sm sm:text-base text-white truncate">
+                Hotaru
               </span>
               <span className="hidden sm:inline-block text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60 flex-shrink-0">
-                AGPLv3
+                agpl-3.0
               </span>
             </div>
           </button>

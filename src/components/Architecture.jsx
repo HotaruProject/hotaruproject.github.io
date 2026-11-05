@@ -49,10 +49,10 @@ export function Architecture({ content }) {
                 </p>
               </div>
               <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40 font-mono">
-                <span>ISOLATION</span>
-                <span className="text-emerald-400 font-semibold tracking-wider flex items-center gap-1.5">
+                <span>Изоляция процесса</span>
+                <span className="text-emerald-400 font-medium tracking-wider flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                  ENFORCED
+                  Активна
                 </span>
               </div>
             </div>

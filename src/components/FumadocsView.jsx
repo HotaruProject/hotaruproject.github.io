@@ -270,11 +270,11 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
           </button>
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] flex-shrink-0 animate-pulse" />
-            <span className="font-extrabold tracking-wider text-sm sm:text-base text-white truncate">
-              HOTARU
+            <span className="font-bold tracking-tight text-sm sm:text-base text-white truncate">
+              Hotaru
             </span>
             <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-white/10 text-white/60 flex-shrink-0">
-              DOCS
+              docs
             </span>
           </div>
         </div>
