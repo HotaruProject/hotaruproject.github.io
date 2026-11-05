@@ -221,7 +221,7 @@ HOTARU = {
       ],
     },
     footer: {
-      copyright: "Hotaru Project. Open-source software released under the MIT License.",
+      copyright: "Hotaru Project. Open-source software released under the GNU AGPLv3 License.",
       docsLink: "Documentation",
       githubHotaru: "Hotaru Core",
       githubWeb: "HotaruWeb",
@@ -448,7 +448,7 @@ HOTARU = {
       ],
     },
     footer: {
-      copyright: "Hotaru Project. Открытое программное обеспечение под лицензией MIT.",
+      copyright: "Hotaru Project. Открытое программное обеспечение под лицензией GNU AGPLv3.",
       docsLink: "Документация",
       githubHotaru: "Hotaru Core",
       githubWeb: "HotaruWeb",

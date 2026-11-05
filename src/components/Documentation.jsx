@@ -130,7 +130,7 @@ function FormattedContent({ rawContent }) {
   );
 }
 
-export function Documentation({ content }) {
+export function Documentation({ content, onOpenDocs }) {
   const [activeSection, setActiveSection] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileSelectOpen, setMobileSelectOpen] = useState(false);
@@ -161,10 +161,23 @@ export function Documentation({ content }) {
       className="py-14 sm:py-24 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 border-t border-white/[0.08] w-full max-w-full overflow-hidden"
     >
       <div className="mb-8 sm:mb-12 w-full max-w-full">
-        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white/70 mb-3">
-          <Book className="w-3.5 h-3.5 text-white" />
-          <span>TECHNICAL MANUAL</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-white/70 self-start">
+            <Book className="w-3.5 h-3.5 text-white" />
+            <span>TECHNICAL MANUAL</span>
+          </div>
+
+          {onOpenDocs && (
+            <button
+              onClick={onOpenDocs}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-mono font-semibold hover:bg-white/90 transition-all shadow-md self-start sm:self-auto"
+            >
+              <span>Open Fumadocs View (292 Methods)</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
+
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white break-words">
           Hotaru Developer Manual
         </h2>
