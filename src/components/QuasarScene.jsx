@@ -39,7 +39,7 @@ const float R_OUT = 17.0;
 const float B_CRIT = 2.598;      // critical impact parameter, 3 sqrt(3) / 2
 const float FLUX_NORM = 476.6;   // 1 / peak of (1 - sqrt(3/r)) / r^3, at r ~ 4.08
 const float FLOW = 12.0;         // seconds per flow cycle, see shadeDisk
-const int MAX_STEPS = 64;
+const int MAX_STEPS = 96;
 
 float noise(vec2 p) {
   return texture2D(uNoise, p * (1.0 / 64.0)).r;
@@ -91,7 +91,9 @@ vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
   vec3 col = glow(temp * g) * flux * g * g * g * g * lanes * 2.6;
   float inner = mix(0.35, 1.6, step(0.5, order));
   float edge = smoothstep(ISCO, ISCO + inner, r) * smoothstep(DISK_OUT, DISK_OUT - 6.0, r);
-  return vec4(col * edge, edge * (0.6 + 0.35 * min(lanes, 1.0)));
+  // Optically thick: the near side hides what lies behind it, so the lensed
+  // underside shows only below the disk, hugging the shadow as it does in nature.
+  return vec4(col * edge, edge * mix(0.97, 0.75, step(0.5, order)));
 }
 
 float hash13(vec3 p) {
@@ -100,7 +102,7 @@ float hash13(vec3 p) {
   return fract((p.x + p.y) * p.z);
 }
 
-vec3 sky(vec3 d) {
+vec3 sky(vec3 d, float starFade) {
   vec3 p = d * 120.0;
   vec3 cell = floor(p);
   vec3 f = fract(p) - 0.5;
@@ -117,7 +119,7 @@ vec3 sky(vec3 d) {
   float lat = dot(d, vec3(0.28, 0.87, 0.41));
   float dust = noise(d.xz * 9.0 + d.y * 5.0) * 0.6 + noise(d.yx * 23.0) * 0.4;
   float band = exp(-lat * lat * 26.0) * (0.25 + 0.9 * dust * dust);
-  return vec3(s + band * 0.055);
+  return vec3(s * starFade + band * 0.09);
 }
 
 void main() {
@@ -137,6 +139,7 @@ void main() {
   vec3 col = vec3(0.0);
   float alpha = 0.0;
   bool captured = false;
+  bool escaped = disc <= 0.0;
   float impact = 100.0;
 
   if (disc > 0.0 && -b - sqrt(disc) > 0.0) {
@@ -151,10 +154,12 @@ void main() {
       float r2 = dot(pos, pos);
       float r = sqrt(r2);
       if (r < 1.0) { captured = true; break; }
-      if (r > R_OUT + 0.1 && dot(pos, dir) > 0.0) break;
+      if (r > R_OUT + 0.1 && dot(pos, dir) > 0.0) { escaped = true; break; }
 
       // Step grows with radius; past r = 9 rays barely bend, so they take long strides.
-      float dt = max(r < 9.0 ? 0.14 * r : 0.35 * r, 0.03);
+      // Near the photon sphere (r = 1.5) rays wind round the hole; fine steps there
+      // resolve the thin lensed rings instead of breaking them into dots.
+      float dt = max(r < 9.0 ? 0.14 * r * clamp(r - 1.1, 0.35, 1.0) : 0.35 * r, 0.02);
       vec3 prev = pos;
       vec3 vh = dir + (-0.75 * dt * h2 / (r2 * r2 * r)) * pos;
       pos += dt * vh;
@@ -169,17 +174,31 @@ void main() {
         // The direct image is never faded: the near side of the disk crosses in front
         // of the shadow, and cutting it there turned the shadow into a pasted-on disc.
         float fadeW = 0.02 + 3.0 * pix;
-        if (crossings > 0) d *= smoothstep(B_CRIT + 0.04, B_CRIT + 0.04 + fadeW * (2.0 + 4.0 * float(crossings - 1)), impact);
+        if (crossings > 0) d *= smoothstep(B_CRIT + 0.03, B_CRIT + 0.03 + 2.0 * fadeW, impact);
         crossings++;
         col += d.rgb * (1.0 - alpha);
         alpha += d.a * (1.0 - alpha);
-        if (alpha > 0.985) break;
+        if (alpha > 0.985) { escaped = true; break; }
       }
     }
-    if (!captured && impact < B_CRIT) captured = true;
+    // A ray still circling when the budget runs out sits on the photon sphere and reads as shadow.
+    if (!escaped || impact < B_CRIT) captured = true;
   }
 
-  if (!captured) col += sky(normalize(dir)) * (1.0 - alpha) * smoothstep(B_CRIT, B_CRIT + 0.6, impact);
+  // Right at the rim the lens magnifies the sky so hard that neighbouring pixels
+  // sample unrelated stars and the rim turns dotted; stars fade there, the smooth band stays.
+  // The rim is antialiased over a pixel and a half; only what lies behind the hole
+  // (sky, ring) is masked, the near side of the disk keeps crossing in front.
+  float rim = smoothstep(B_CRIT - 1.5 * pix, B_CRIT, impact);
+  if (!captured || rim > 0.0) col += rim * sky(normalize(dir), smoothstep(B_CRIT + 0.05, B_CRIT + 0.7, impact)) * (1.0 - alpha);
+
+  // Photon ring: rays just outside the critical curve loop round the hole again and
+  // again, each loop another, thinner image of the disk. Summed they make a hair-thin
+  // line on the shadow rim. Its brightness is set per frame, not per ray: rays that
+  // close to the critical curve are chaotic, and sampling them made the line dotted.
+  float ringW = 0.02 + 2.0 * pix;
+  float ringX = max(impact - B_CRIT, 0.0) / ringW;
+  col += vec3(0.32) * exp(-ringX * ringX) * (1.0 - 0.8 * alpha) * rim;
 
   // Filmic tone map; the composite pass adds bloom and grain on top.
   col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
