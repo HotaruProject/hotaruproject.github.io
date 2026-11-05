@@ -10,7 +10,7 @@
 [![License][license-badge]][license-url]
 [![Hotaru][hotaru-badge]][hotaru-url]
 
-  <p>Official web portal, interactive 3D quasar visualizer, and ArchWiki-style documentation manual for the Hotaru Telegram userbot.</p>
+  <p>Official web portal, interactive 3D quasar visualizer, and Hotaru developer manual for the Hotaru Telegram userbot.</p>
 </div>
 
 > [!NOTE]
@@ -25,7 +25,7 @@ The web portal is deployed to GitHub Pages:
 ## Features
 
 - **Relativistic 3D quasar**: Real-time WebGL raymarched black hole with interactive camera controls (drag to orbit, wheel to zoom), gravitational bending, photon ring, and relativistic Doppler beaming.
-- **ArchWiki engineering manual**: Comprehensive documentation covering Linux namespace sandboxing, the `.hmod` manifest schema, and complete `ctx` API method specifications.
+- **Hotaru developer manual**: Comprehensive documentation covering Linux namespace sandboxing, the `.hmod` manifest schema, and complete `ctx` API method specifications.
 - **Bilingual interface**: Instant runtime language switching between English and Russian across all guides and specifications.
 - **Agent skill download**: Integrated `SKILL.md` distribution ready for use with AI coding assistants (Antigravity, Cursor, Claude Code, ChatGPT).
 - **Responsive design**: Layout calibrated for mobile screens (390px), tablets, and ultra-wide displays.
