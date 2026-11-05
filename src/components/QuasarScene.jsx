@@ -138,7 +138,6 @@ void main() {
   float alpha = 0.0;
   bool captured = false;
   float impact = 100.0;
-  vec3 hv0 = cross(pos, dir);
 
   if (disc > 0.0 && -b - sqrt(disc) > 0.0) {
     // Skip the flat space between the camera and the sphere where gravity matters.
@@ -167,8 +166,10 @@ void main() {
         vec4 d = shadeDisk(mix(prev, pos, t), normalize(dir), float(crossings));
         // Higher images crowd into a sliver at the shadow rim, under a pixel wide;
         // they fade out there and the photon ring below stands in for them.
+        // The direct image is never faded: the near side of the disk crosses in front
+        // of the shadow, and cutting it there turned the shadow into a pasted-on disc.
         float fadeW = 0.02 + 3.0 * pix;
-        d *= smoothstep(B_CRIT + fadeW * float(crossings), B_CRIT + fadeW * (1.0 + 2.0 * float(crossings)), impact);
+        if (crossings > 0) d *= smoothstep(B_CRIT + 0.04, B_CRIT + 0.04 + fadeW * (2.0 + 4.0 * float(crossings - 1)), impact);
         crossings++;
         col += d.rgb * (1.0 - alpha);
         alpha += d.a * (1.0 - alpha);
@@ -179,20 +180,6 @@ void main() {
   }
 
   if (!captured) col += sky(normalize(dir)) * (1.0 - alpha) * smoothstep(B_CRIT, B_CRIT + 0.6, impact);
-
-  // The photon ring: light that orbited the hole one or more times before leaving,
-  // a thin bright line right outside the shadow. Its width tracks the pixel, its
-  // integral does not, and the approaching side of the disk lights it harder.
-  float w = max(0.025, 1.4 * pix);
-  float x = (impact - B_CRIT - 0.012) / w;
-  vec3 hn = normalize(hv0);
-  float spin = hn.y;
-  float side = dot(normalize(cross(vec3(0.0, 1.0, 0.0), uCamFwd) + 1e-4), normalize(uv.x * uCamRight + uv.y * uCamUp + 1e-4));
-  float beam = 0.55 + 0.45 * side * (1.0 - abs(spin));
-  col += vec3(exp(-x * x) * 0.11 / w * beam * (1.0 - 0.7 * alpha));
-
-  // Hard shadow edge, antialiased over a pixel and a half.
-  col *= smoothstep(B_CRIT - 0.01 - 1.5 * pix, B_CRIT - 0.01, impact);
 
   // Filmic tone map; the composite pass adds bloom and grain on top.
   col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
