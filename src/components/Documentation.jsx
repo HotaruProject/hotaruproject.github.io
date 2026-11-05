@@ -8,7 +8,7 @@ export function Documentation({ content, onOpenDocs }) {
 
   return (
     <section id="documentation" className="py-20 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-white/[0.08] w-full max-w-full overflow-hidden">
-      <div className="rounded-2xl sm:rounded-3xl border border-white/15 bg-gradient-to-b from-[#0a0b12] to-[#050508] p-6 sm:p-10 md:p-14 relative overflow-hidden shadow-2xl">
+      <div className="rounded-2xl sm:rounded-3xl border border-white/15 bg-gradient-to-b from-[#080910] to-[#040407] p-6 sm:p-10 md:p-14 relative overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.6)]">
         <div className="max-w-3xl mb-10 sm:mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-mono text-white mb-4">
             <BookOpen className="w-3.5 h-3.5 text-white" />
@@ -30,11 +30,11 @@ export function Documentation({ content, onOpenDocs }) {
             return (
               <div
                 key={idx}
-                className="p-5 sm:p-6 rounded-2xl bg-[#0e1019]/90 border border-white/10 hover:border-white/30 transition-all duration-300 flex flex-col justify-between"
+                className="p-5 sm:p-6 rounded-2xl bg-[#090a12]/90 border border-white/[0.08] hover:border-white/25 transition-all duration-300 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/15 flex items-center justify-center text-white">
+                    <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
                       <Icon className="w-4 h-4" />
                     </div>
                     <span className="text-[10px] sm:text-[11px] font-mono uppercase px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
@@ -62,7 +62,7 @@ export function Documentation({ content, onOpenDocs }) {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               onClick={() => onOpenDocs?.('catalog')}
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white text-xs sm:text-sm font-mono transition-all duration-200"
+              className="flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-white text-xs sm:text-sm font-mono transition-all duration-200 active:scale-95"
             >
               <Terminal className="w-4 h-4 text-white/70" />
               <span>{t.openCatalogBtn || "Browse 292 Methods"}</span>
@@ -70,7 +70,7 @@ export function Documentation({ content, onOpenDocs }) {
 
             <button
               onClick={() => onOpenDocs?.('chapters')}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-black font-semibold text-xs sm:text-sm hover:bg-white/90 transition-all duration-200 shadow-xl active:scale-95"
+              className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-black font-bold text-xs sm:text-sm hover:bg-white/90 transition-all duration-200 shadow-[0_4px_24px_rgba(255,255,255,0.18)] active:scale-95"
             >
               <BookOpen className="w-4 h-4" />
               <span>{t.openDocsBtn || "Open Full Documentation"}</span>

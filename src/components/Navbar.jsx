@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, BookOpen, Terminal, Sparkles, Menu, X, Globe, Download } from 'lucide-react';
+import { Shield, BookOpen, Terminal, Sparkles, Menu, X, Download } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
 
 export function Navbar({ lang, setLang, content, onOpenDocs }) {
@@ -24,55 +24,83 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   };
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-2xl bg-[#050508]/85 border-b border-white/[0.08] transition-all w-full max-w-full overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between w-full min-w-0">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 overflow-hidden">
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2.5 text-left group min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all duration-200 flex-shrink-0">
-              <Shield className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-bold tracking-wider text-sm sm:text-base text-white truncate">HOTARU</span>
-              <span className="text-[9px] text-white/50 tracking-widest font-mono -mt-1 truncate">USERBOT</span>
+    <header className="fixed top-2 sm:top-4 inset-x-0 z-50 px-3 sm:px-6 pointer-events-none flex flex-col items-center w-full max-w-full">
+      <div className="pointer-events-auto w-full max-w-5xl rounded-full border border-white/[0.08] bg-[#07070a]/90 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] px-3.5 sm:px-5 h-13 sm:h-14 flex items-center justify-between transition-all min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-2 text-left group min-w-0 active:scale-95 transition-transform"
+          >
+            <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] flex-shrink-0 animate-pulse" />
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-extrabold tracking-wider text-sm sm:text-base text-white truncate">
+                HOTARU
+              </span>
+              <span className="hidden sm:inline-block text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60 flex-shrink-0">
+                AGPLv3
+              </span>
             </div>
           </button>
-          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-white/5 border border-white/10 text-white/70 flex-shrink-0">
-            AGPLv3
-          </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-6">
-          <button onClick={() => scrollTo('architecture')} className="text-xs font-mono text-white/70 hover:text-white transition-colors">
+        <nav className="hidden md:flex items-center gap-1 bg-white/[0.03] p-1 rounded-full border border-white/[0.06]">
+          <button
+            onClick={() => scrollTo('architecture')}
+            className="px-3.5 py-1.5 rounded-full text-xs font-mono text-white/70 hover:text-white hover:bg-white/[0.06] transition-all"
+          >
             {t.architecture}
           </button>
-          <button onClick={() => scrollTo('modules')} className="text-xs font-mono text-white/70 hover:text-white transition-colors">
+          <button
+            onClick={() => scrollTo('modules')}
+            className="px-3.5 py-1.5 rounded-full text-xs font-mono text-white/70 hover:text-white hover:bg-white/[0.06] transition-all"
+          >
             {t.modules}
           </button>
-          <button onClick={handleDocsClick} className="text-xs font-mono text-white/70 hover:text-white transition-colors flex items-center gap-1.5">
+          <button
+            onClick={handleDocsClick}
+            className="px-3.5 py-1.5 rounded-full text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] transition-all flex items-center gap-1.5"
+          >
             <BookOpen className="w-3.5 h-3.5 text-white/90" />
             <span>{t.docs}</span>
           </button>
-          <button onClick={() => scrollTo('agent-skill')} className="text-xs font-mono text-white/70 hover:text-white transition-colors flex items-center gap-1.5">
+          <button
+            onClick={() => scrollTo('agent-skill')}
+            className="px-3.5 py-1.5 rounded-full text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] transition-all flex items-center gap-1.5"
+          >
             <Sparkles className="w-3.5 h-3.5 text-white/90" />
             <span>{t.skill}</span>
           </button>
-        </div>
+        </nav>
 
-        <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-xs font-mono text-white/80 hover:text-white hover:border-white/30 transition-all"
-            title="Toggle language"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span className="uppercase">{lang}</span>
-          </button>
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+          <div className="flex rounded-full border border-white/[0.08] bg-black/50 p-0.5">
+            <button
+              onClick={() => setLang('ru')}
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-mono font-bold transition-all ${
+                lang === 'ru'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/40 hover:text-white'
+              }`}
+            >
+              RU
+            </button>
+            <button
+              onClick={() => setLang('en')}
+              className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-mono font-bold transition-all ${
+                lang === 'en'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/40 hover:text-white'
+              }`}
+            >
+              EN
+            </button>
+          </div>
 
           <a
             href="https://github.com/HotaruProject/Hotaru"
             target="_blank"
             rel="noreferrer"
-            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/5 transition-colors border border-transparent hover:border-white/10"
+            className="hidden sm:inline-flex p-2 rounded-full text-white/70 hover:text-white hover:bg-white/5 transition-all border border-transparent hover:border-white/10"
             title="Hotaru on GitHub"
           >
             <GithubIcon className="w-4 h-4" />
@@ -81,81 +109,73 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
           <a
             href="./skill/SKILL.md"
             download="HOTARU_AGENT_SKILL.md"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-white/90 transition-all shadow-sm active:scale-95"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-black text-xs font-semibold hover:bg-white/90 transition-all shadow-sm active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />
             <span>{t.downloadSkill}</span>
           </a>
-        </div>
 
-        <div className="flex items-center gap-2 md:hidden flex-shrink-0">
-          <button
-            onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}
-            className="px-2.5 py-1.5 rounded-lg border border-white/15 text-xs font-mono text-white/90 active:scale-95"
-          >
-            {lang.toUpperCase()}
-          </button>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-2 rounded-lg text-white/80 hover:text-white active:scale-95"
+            className="md:hidden p-2 rounded-full text-white/80 hover:text-white active:scale-95 border border-white/10 bg-white/5"
             aria-label="Toggle menu"
           >
-            {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-b border-white/10 bg-[#050508]/98 px-4 sm:px-5 pt-3 pb-6 flex flex-col gap-3 backdrop-blur-3xl animate-fade-in shadow-2xl w-full max-w-full overflow-hidden">
+        <div className="pointer-events-auto mt-2 w-full max-w-5xl rounded-2xl border border-white/10 bg-[#07070a]/98 px-5 py-4 flex flex-col gap-2.5 backdrop-blur-3xl animate-fade-in shadow-2xl">
           <button
             onClick={() => scrollTo('architecture')}
-            className="text-left text-sm py-2.5 text-white/80 hover:text-white border-b border-white/5"
+            className="text-left text-xs font-mono py-2 text-white/80 hover:text-white border-b border-white/5 flex items-center justify-between"
           >
-            {t.architecture}
+            <span>{t.architecture}</span>
           </button>
           <button
             onClick={() => scrollTo('modules')}
-            className="text-left text-sm py-2.5 text-white/80 hover:text-white border-b border-white/5"
+            className="text-left text-xs font-mono py-2 text-white/80 hover:text-white border-b border-white/5 flex items-center justify-between"
           >
-            {t.modules}
+            <span>{t.modules}</span>
           </button>
           <button
             onClick={handleDocsClick}
-            className="text-left text-sm py-2.5 text-white/80 hover:text-white border-b border-white/5 flex items-center justify-between"
+            className="text-left text-xs font-mono py-2 text-white/80 hover:text-white border-b border-white/5 flex items-center justify-between"
           >
             <span>{t.docs}</span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-white/70">
-              Full Manual
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/70">
+              Manual & 292 Methods
             </span>
           </button>
           <button
             onClick={() => scrollTo('agent-skill')}
-            className="text-left text-sm py-2.5 text-white/80 hover:text-white flex items-center gap-2 border-b border-white/5"
+            className="text-left text-xs font-mono py-2 text-white/80 hover:text-white flex items-center gap-2 border-b border-white/5"
           >
-            <Sparkles className="w-4 h-4 text-white" />
+            <Sparkles className="w-3.5 h-3.5 text-white" />
             <span>{t.skill}</span>
           </button>
-          <div className="pt-2 flex flex-col gap-2.5">
+          <div className="pt-2 flex flex-col gap-2">
             <a
               href="./skill/SKILL.md"
               download="HOTARU_AGENT_SKILL.md"
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white text-black text-sm font-semibold shadow-lg"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white text-black text-xs font-semibold shadow-md active:scale-95"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
               <span>{t.downloadSkill}</span>
             </a>
             <a
               href="https://github.com/HotaruProject/Hotaru"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-white/20 text-white text-sm"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-full border border-white/15 text-white/80 text-xs font-mono"
             >
-              <GithubIcon className="w-4 h-4" />
+              <GithubIcon className="w-3.5 h-3.5" />
               <span>GitHub (AGPLv3)</span>
             </a>
           </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 }

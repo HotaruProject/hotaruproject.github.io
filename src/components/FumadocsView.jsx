@@ -258,33 +258,34 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
     filteredSections[activeSection] || filteredSections[0] || t.sections[0];
 
   return (
-    <div className="min-h-screen bg-[#050508] text-white flex flex-col font-sans w-full max-w-full overflow-x-hidden">
-      <header className="sticky top-0 z-40 bg-[#050508]/90 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-[#040407] text-white flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+      <header className="sticky top-0 z-40 bg-[#07070c]/90 backdrop-blur-2xl border-b border-white/[0.08] px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <button
             onClick={onBackToHome}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-xs font-mono text-white/80 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 text-xs font-mono text-white/80 transition-colors active:scale-95 flex-shrink-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Home</span>
+            <span className="hidden sm:inline">Home</span>
           </button>
-          <div className="flex items-center gap-2">
-            <span className="font-bold tracking-tight text-sm sm:text-base text-white">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] flex-shrink-0 animate-pulse" />
+            <span className="font-extrabold tracking-wider text-sm sm:text-base text-white truncate">
               HOTARU
             </span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/10 text-white/60">
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-white/10 text-white/60 flex-shrink-0">
               DOCS
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden sm:flex items-center rounded-lg bg-white/5 p-1 border border-white/10">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="hidden sm:flex items-center rounded-full bg-white/[0.03] p-0.5 border border-white/[0.08]">
             <button
               onClick={() => setActiveTab('chapters')}
-              className={`px-3 py-1 rounded text-xs font-mono transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
                 activeTab === 'chapters'
-                  ? 'bg-white text-black font-semibold'
+                  ? 'bg-white text-black font-bold shadow-sm'
                   : 'text-white/60 hover:text-white'
               }`}
             >
@@ -292,9 +293,9 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
             </button>
             <button
               onClick={() => setActiveTab('catalog')}
-              className={`px-3 py-1 rounded text-xs font-mono transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
                 activeTab === 'catalog'
-                  ? 'bg-white text-black font-semibold'
+                  ? 'bg-white text-black font-bold shadow-sm'
                   : 'text-white/60 hover:text-white'
               }`}
             >
@@ -302,17 +303,33 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
             </button>
           </div>
 
-          <button
-            onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}
-            className="px-2.5 py-1 rounded-lg text-xs font-mono bg-white/5 border border-white/10 text-white/70 hover:text-white"
-          >
-            {lang.toUpperCase()}
-          </button>
+          <div className="flex rounded-full border border-white/[0.08] bg-black/50 p-0.5">
+            <button
+              onClick={() => setLang('ru')}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
+                lang === 'ru'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/40 hover:text-white'
+              }`}
+            >
+              RU
+            </button>
+            <button
+              onClick={() => setLang('en')}
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
+                lang === 'en'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/40 hover:text-white'
+              }`}
+            >
+              EN
+            </button>
+          </div>
 
           <a
             href="./skill/SKILL.md"
             download="HOTARU_AGENT_SKILL.md"
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono bg-white text-black font-semibold hover:bg-white/90"
+            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono bg-white text-black font-bold hover:bg-white/90 shadow-sm active:scale-95"
           >
             <Sparkles className="w-3 h-3" />
             <span>SKILL.md</span>
@@ -382,19 +399,19 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
 
         <main className="flex-grow p-4 sm:p-8 max-w-5xl mx-auto w-full overflow-hidden">
           <div className="lg:hidden flex items-center justify-between mb-4 gap-2">
-            <div className="flex rounded-lg bg-white/5 p-1 border border-white/10">
+            <div className="flex rounded-full bg-white/[0.03] p-0.5 border border-white/[0.08]">
               <button
                 onClick={() => setActiveTab('chapters')}
-                className={`px-3 py-1 rounded text-xs font-mono ${
-                  activeTab === 'chapters' ? 'bg-white text-black font-semibold' : 'text-white/60'
+                className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
+                  activeTab === 'chapters' ? 'bg-white text-black font-bold shadow-sm' : 'text-white/60'
                 }`}
               >
                 Manual
               </button>
               <button
                 onClick={() => setActiveTab('catalog')}
-                className={`px-3 py-1 rounded text-xs font-mono ${
-                  activeTab === 'catalog' ? 'bg-white text-black font-semibold' : 'text-white/60'
+                className={`px-3 py-1 rounded-full text-xs font-mono transition-all ${
+                  activeTab === 'catalog' ? 'bg-white text-black font-bold shadow-sm' : 'text-white/60'
                 }`}
               >
                 292 Methods
