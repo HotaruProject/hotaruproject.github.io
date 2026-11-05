@@ -20,7 +20,7 @@ Hotaru is a security-first Telegram userbot operating from a primary user accoun
    Type annotations are completely optional in Hotaru modules. Python 3.13 executes handlers whether typed or untyped with zero difference in performance or runtime behavior. Developers are free to use typing for static analysis or omit it for concise scripting.
 
 4. **Code Quality & Documentation**:
-   Clear code, descriptive docstrings, inline comments, and robust error handling are encouraged to maintain long-term reliability and facilitate collaborative development and agent pair-programming.
+   Clear code, clean architecture, and robust error handling maintain long-term reliability and facilitate collaborative development and agent pair-programming.
 
 5. **Open Source License**:
    Hotaru is free, open-source software distributed under the GNU Affero General Public License v3.0 (AGPLv3).

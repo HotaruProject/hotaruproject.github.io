@@ -9,7 +9,7 @@ export function Footer({ content }) {
     <footer className="border-t border-white/[0.08] bg-[#040406] py-14 w-full max-w-full overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] flex-shrink-0 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-white/80 flex-shrink-0" />
           <span className="font-bold tracking-tight text-sm text-white">Hotaru</span>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50">
             agpl-3.0
