@@ -43,31 +43,32 @@ export function Hero({ content, onOpenDocs }) {
             <span className="truncate">{t.installTitle}</span>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-[#090a10]/90 border border-white/15 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-white/35 gap-2.5 sm:gap-3 w-full max-w-full min-w-0 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-2.5 py-1.5 overflow-x-auto no-scrollbar text-left flex-grow min-w-0 w-full max-w-full">
-              <span className="text-emerald-400 font-mono text-xs select-none flex-shrink-0">$</span>
-              <code className="text-[11px] sm:text-xs md:text-sm font-mono text-white/95 whitespace-nowrap select-all inline-block">
+          <div className="liquid-glass-container rounded-2xl sm:rounded-full p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 w-full max-w-full min-w-0 transition-all duration-300 hover:border-white/35">
+            <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent pointer-events-none" />
+            <div className="absolute -top-10 left-1/4 w-1/2 h-14 bg-white/[0.08] blur-xl pointer-events-none rounded-full" />
+
+            <div className="flex items-center gap-2.5 px-3 py-1.5 overflow-x-auto no-scrollbar text-left flex-grow min-w-0 w-full max-w-full relative z-10">
+              <span className="text-emerald-400 font-mono text-xs select-none flex-shrink-0 drop-shadow-[0_0_6px_rgba(52,211,153,0.5)]">$</span>
+              <code className="text-[11px] sm:text-xs md:text-sm font-mono text-white/95 whitespace-nowrap select-all inline-block drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
                 {installCmd}
               </code>
             </div>
 
             <button
               onClick={copyInstall}
-              className={`flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl text-xs font-mono font-bold tracking-wider transition-all duration-200 active:scale-95 ${
-                copied
-                  ? 'bg-emerald-400 text-black shadow-lg shadow-emerald-400/20'
-                  : 'bg-white text-black hover:bg-white/90 shadow-md'
+              className={`relative z-10 flex-shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl sm:rounded-full text-xs font-mono font-bold tracking-wider liquid-glass-button active:scale-95 ${
+                copied ? 'liquid-glass-button-copied' : ''
               }`}
               title={copied ? t.copiedTooltip : t.copyTooltip}
             >
               {copied ? (
                 <>
-                  <Check className="w-3.5 h-3.5" />
+                  <Check className="w-3.5 h-3.5 text-emerald-300" />
                   <span>COPIED</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-3.5 h-3.5 text-white/80" />
                   <span>COPY</span>
                 </>
               )}
