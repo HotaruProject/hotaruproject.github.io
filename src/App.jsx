@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Architecture } from './components/Architecture';
-import { ModulePlayground } from './components/ModulePlayground';
 import { Documentation } from './components/Documentation';
-import { AgentSkillSection } from './components/AgentSkillSection';
 import { Footer } from './components/Footer';
 import { FumadocsView } from './components/FumadocsView';
 import { CONTENT } from './data/content.js';
@@ -60,9 +58,7 @@ export function App() {
       <main className="flex-grow w-full max-w-full overflow-x-hidden">
         <Hero content={currentContent} onOpenDocs={openDocs} />
         <Architecture content={currentContent} />
-        <ModulePlayground content={currentContent} />
         <Documentation content={currentContent} onOpenDocs={openDocs} />
-        <AgentSkillSection content={currentContent} />
       </main>
       <Footer content={currentContent} />
     </div>

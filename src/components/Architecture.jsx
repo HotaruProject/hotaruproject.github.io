@@ -33,27 +33,15 @@ export function Architecture({ content }) {
               className="group p-6 rounded-2xl bg-[#08090f]/90 border border-white/[0.08] hover:border-white/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.5)] flex flex-col justify-between"
             >
               <div>
-                <div className="flex items-center justify-between mb-4 sm:mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all duration-200 shadow-inner">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] sm:text-[11px] font-mono uppercase px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
-                    {c.tag}
-                  </span>
+                <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/90 mb-4">
+                  <Icon className="w-4 h-4" />
                 </div>
-                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mb-2.5">
+                <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mb-2">
                   {c.title}
                 </h3>
                 <p className="text-xs sm:text-sm text-white/70 leading-relaxed font-normal">
                   {c.description}
                 </p>
-              </div>
-              <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40 font-mono">
-                <span>Изоляция процесса</span>
-                <span className="text-emerald-400 font-medium tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                  Активна
-                </span>
               </div>
             </div>
           );

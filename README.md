@@ -35,7 +35,6 @@
 - **Vector & Limen Aesthetics**: Minimalist floating glass pill navigation, deep obsidian cards (`#08090f`), and fluid typography.
 - **Bilingual Support**: Instant runtime switching between English (`en`) and Russian (`ru`).
 - **Mobile Containment**: Strict viewport bounds prevention (`overflow-x-hidden`, responsive flex-wrap, isolated horizontal code blocks).
-- **Zero Comments Invariant**: Entire web codebase maintains zero comments in production files.
 
 ## Project Structure
 
