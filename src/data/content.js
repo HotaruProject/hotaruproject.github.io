@@ -35,7 +35,7 @@ export const CONTENT = {
         {
           id: "capabilities",
           title: "Permission Controls",
-          description: "Modules explicitly declare what they need: Telegram API calls, local storage, or internet access. If a module does not declare internet access, raw network calls are blocked.",
+          description: "Modules explicitly declare privileged permissions: raw MTProto calls, persistent storage, or outbound network. Standard messaging and all 292 extended MTProto methods work out of the box with zero permissions.",
         },
         {
           id: "vault",
@@ -128,7 +128,7 @@ export const CONTENT = {
         {
           id: "capabilities",
           title: "Контроль разрешений",
-          description: "Модули явно объявляют нужные права: доступ к Telegram API, локальной базе или интернету. Без разрешения модуль физически не может отправлять сетевые запросы.",
+          description: "Модули объявляют только привилегированные права: прямой вызов сырого MTProto, локальную базу или выход в сеть. Базовые сообщения и все 292 метода каталога доступны из коробки без лишних прав.",
         },
         {
           id: "vault",
