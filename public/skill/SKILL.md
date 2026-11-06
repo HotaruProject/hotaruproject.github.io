@@ -231,9 +231,9 @@ HOTARU = {
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | `str` | Yes | Unique identifier matching `^[a-z0-9_]{2,32}$`. |
+| `id` | `str` | Yes | **Module name** (e.g. `'notes'`, `'calc'`). Used in Telegram commands like `.rl <id>`, `.ul <id>`, `.ex <id>`, `.resetdb <id>`, and in `.mods`. |
 | `version` | `str` | Yes | Semantic version string (`x.y.z`). |
-| `commands` | `dict[str, str]` | Yes | Map of command triggers to handler function names. |
+| `commands` | `dict[str, str]` | Yes | Map of chat command triggers to handler functions (e.g. `{'calc': 'calc_cmd'}` triggers on `.calc`). |
 | `capabilities` | `list[str]` | Yes | List of requested permissions (`mt`, `state`, `net`, `files`, `shell`, `inline`, `modules`, `assets`). Default is `[]` for standard modules using `ctx` methods. |
 | `watchers` | `list[str]` | No | List of message interceptors called on all updates. |
 | `tasks` | `dict[str, str]` | No | Supervised background worker coroutines. |
@@ -259,7 +259,7 @@ Hotaru enforces a capability-based security model. Modules execute in isolated u
 |---|---|---|
 | **Everyday Messaging** | **None (`[]`)** | `ctx.respond()`, `ctx.reply()`, `ctx.edit()`, `ctx.delete()`, `ctx.react()`, `ctx.pin()`, etc. |
 | **Media Senders** | **None (`[]`)** | `ctx.reply_photo()`, `ctx.reply_file()`, `ctx.reply_video()`, `ctx.reply_audio()`, `ctx.reply_voice()`, `ctx.reply_dice()` |
-| **All 292 Extended MTProto Methods** | **None (`[]`)** | High-level methods on `ctx` (`ctx.send_message()`, `ctx.block_peer()`, `ctx.channel_details()`, `ctx.post_story()`, `ctx.create_forum_topic()`, `ctx.send_poll()`, `ctx.set_slow_mode()`, `ctx.ban_channel_member()`, etc.). Handled safely via internal IPC `op_call`. |
+| **All 292 Extended MTProto Methods** | **None (`[]`)** | Built-in Telegram methods on `ctx` (`ctx.send_message()`, `ctx.block_peer()`, `ctx.channel_details()`, `ctx.post_story()`, `ctx.create_forum_topic()`, `ctx.send_poll()`, `ctx.set_slow_mode()`, `ctx.ban_channel_member()`, etc.) with automatic defaults for current chat and message. |
 | **Interactive Screens & UI** | **None (`[]`)** | `ctx.screens` (buttons, forms, paginators, tables) and `ctx.ui` |
 | **HTML Formatting** | **None (`[]`)** | `ctx.html.bold()`, `ctx.html.italic()`, `ctx.html.code()`, `ctx.html.pre()`, `ctx.html.escape()`, etc. |
 | **Localization & Lexicon** | **None (`[]`)** | `ctx.t("key", **kwargs)` multi-language string lookup |
@@ -277,7 +277,7 @@ Hotaru enforces a capability-based security model. Modules execute in isolated u
 
 > [!IMPORTANT]
 > **The `mt` capability is NOT needed for the 292 extended MTProto methods on `ctx`!**
-> The 292 extended methods on `ctx` (e.g. `ctx.block_peer`, `ctx.send_message`, `ctx.channel_details`, `ctx.post_story`) are pre-validated, context-aware operations that route through Hotaru's trusted operations gate (`_ctx_call` -> `op_call`). You only need `"capabilities": ["mt"]` when you need to make raw, uncurated MTProto calls via `ctx.tg.call("some.method", { ... })`.
+> The 292 extended methods on `ctx` (e.g. `ctx.block_peer`, `ctx.send_message`, `ctx.channel_details`, `ctx.post_story`) work out of the box with zero permissions. You only need `"capabilities": ["mt"]` when making raw, direct MTProto calls via `ctx.tg.call("some.method", { ... })`.
 
 ## 5. Daemon Subsystem: 29 Supported Init Systems (`hotaru/daemon.py`)
 
@@ -389,9 +389,9 @@ Every handler coroutine receives an instance of `ModuleContext` (`ctx`). Below i
 
 ## 7. Exhaustive Reference: All 292 MTProto RPC Methods on `ctx`
 
-Hotaru exposes 292 extended Telegram MTProto methods directly onto `ctx`. **Crucially, these 292 methods do NOT require the `'mt'` capability!** They are safe, curated, and context-bound operations executed through the core IPC operations bridge (`_ctx_call` -> `op_call`). Default context substitutions are automatically applied when parameters are omitted (`$peer` -> `ctx.peer_id`, `$message` -> `ctx.message.id`, `$self` -> userbot account ID).
+Hotaru exposes 292 built-in Telegram methods directly on `ctx`. **Crucially, these 292 methods do NOT require the `'mt'` capability!** They work out of the box in any module with `capabilities: []`. Default arguments are automatically filled in when omitted (`$peer` -> current chat, `$message` -> current message, `$self` -> userbot account ID).
 
-The `'mt'` capability is strictly reserved for raw, uncurated MTProto calls via `await ctx.tg.call(method, kwargs)` or `await mt(...)`.
+The `'mt'` capability is strictly reserved for rare, raw low-level Telegram API calls made via `await ctx.tg.call(method, kwargs)` or `await mt(...)`.
 
 Below is the complete indexed reference of every method:
 
