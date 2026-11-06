@@ -170,7 +170,7 @@ HOTARU = {
         "sync": "sync_command",
         "status": "status_command",
     },
-    "capabilities": ["mt", "net", "state"],
+    "capabilities": ["net", "state"],  # Declare ONLY what is actually needed (mt is NOT needed for ctx 292 methods!)
     "watchers": ["message_watcher"],
     "tasks": {
         "heartbeat_loop": "heartbeat_worker",
@@ -234,7 +234,7 @@ HOTARU = {
 | `id` | `str` | Yes | Unique identifier matching `^[a-z0-9_]{2,32}$`. |
 | `version` | `str` | Yes | Semantic version string (`x.y.z`). |
 | `commands` | `dict[str, str]` | Yes | Map of command triggers to handler function names. |
-| `capabilities` | `list[str]` | Yes | List of requested permissions (`mt`, `net`, `state`, `files`, `audio`). |
+| `capabilities` | `list[str]` | Yes | List of requested permissions (`mt`, `state`, `net`, `files`, `shell`, `inline`, `modules`, `assets`). Default is `[]` for standard modules using `ctx` methods. |
 | `watchers` | `list[str]` | No | List of message interceptors called on all updates. |
 | `tasks` | `dict[str, str]` | No | Supervised background worker coroutines. |
 | `aliases` | `dict[str, str]` | No | Command aliases (`{'alias': 'target'}`). |
@@ -248,6 +248,36 @@ HOTARU = {
 | `template_fields`| `dict[str, dict]`| No | Dynamic placeholder variables for formatting layouts. |
 | `banner` | `str` | No | URL or local path to module banner image. |
 | `bot_commands` | `list[str]` | No | Commands exported to Telegram autocomplete. |
+
+### Complete Capability Classification & Sandbox Security Model
+
+Hotaru enforces a capability-based security model. Modules execute in isolated unprivileged worker processes and must explicitly request privileged capabilities in `HOTARU['capabilities']`. Unprivileged requests are immediately rejected with `CapabilityDeniedError`.
+
+#### Principle of Least Privilege: What Requires Capabilities vs What Is Free
+
+| Resource / API | Capability Required | Description |
+|---|---|---|
+| **Everyday Messaging** | **None (`[]`)** | `ctx.respond()`, `ctx.reply()`, `ctx.edit()`, `ctx.delete()`, `ctx.react()`, `ctx.pin()`, etc. |
+| **Media Senders** | **None (`[]`)** | `ctx.reply_photo()`, `ctx.reply_file()`, `ctx.reply_video()`, `ctx.reply_audio()`, `ctx.reply_voice()`, `ctx.reply_dice()` |
+| **All 292 Extended MTProto Methods** | **None (`[]`)** | High-level methods on `ctx` (`ctx.send_message()`, `ctx.block_peer()`, `ctx.channel_details()`, `ctx.post_story()`, `ctx.create_forum_topic()`, `ctx.send_poll()`, `ctx.set_slow_mode()`, `ctx.ban_channel_member()`, etc.). Handled safely via internal IPC `op_call`. |
+| **Interactive Screens & UI** | **None (`[]`)** | `ctx.screens` (buttons, forms, paginators, tables) and `ctx.ui` |
+| **HTML Formatting** | **None (`[]`)** | `ctx.html.bold()`, `ctx.html.italic()`, `ctx.html.code()`, `ctx.html.pre()`, `ctx.html.escape()`, etc. |
+| **Localization & Lexicon** | **None (`[]`)** | `ctx.t("key", **kwargs)` multi-language string lookup |
+| **Context & Inspection Data** | **None (`[]`)** | `ctx.chat_id`, `ctx.peer_id`, `ctx.message`, `ctx.reply_to`, `ctx.sender_id`, `ctx.args`, `ctx.memory`, `ctx.uptime` |
+| **Structured Logging** | **None (`[]`)** | `ctx.logs.info()`, `ctx.logs.warning()`, `ctx.logs.error()` (always granted) |
+| **Read-Only Message Fetching** | **None (`[]`)** | `fetch` capability is always granted |
+| **Persistent Storage** | **`"state"`** | Module-isolated SQLite key-value database (`ctx.state`) |
+| **Internet & Web Requests** | **`"net"`** | Outbound HTTP/HTTPS, WebSocket, and streaming (`ctx.net`, `ctx.stream`) with SSRF firewall |
+| **Sandboxed Filesystem** | **`"files"`** | File read/write inside the module's tmpfs workspace directory (`ctx.files`) |
+| **Sandboxed Shell Execution** | **`"shell"`** | Running shell commands in workspace namespace jail (`ctx.shell`) |
+| **Inline Bot Gateway** | **`"inline"`** | Querying and forwarding results from external Telegram inline bots (`ctx.inline`) |
+| **Module Management** | **`"modules"`** | Managing other modules: load, unload, reload, inspect (`ctx.modules`) |
+| **Encrypted Asset Storage** | **`"assets"`** | Hidden assets storage and file downloads (`ctx.assets`, `ctx.download_file`) |
+| **Raw Telegram MTProto RPC** | **`"mt"`** | **ONLY for direct raw calls** via `await ctx.tg.call(method, kwargs)`, `await ctx.tg.send(...)`, `await ctx.cap("mt", ...)`, or `await mt(...)`. |
+
+> [!IMPORTANT]
+> **The `mt` capability is NOT needed for the 292 extended MTProto methods on `ctx`!**
+> The 292 extended methods on `ctx` (e.g. `ctx.block_peer`, `ctx.send_message`, `ctx.channel_details`, `ctx.post_story`) are pre-validated, context-aware operations that route through Hotaru's trusted operations gate (`_ctx_call` -> `op_call`). You only need `"capabilities": ["mt"]` when you need to make raw, uncurated MTProto calls via `ctx.tg.call("some.method", { ... })`.
 
 ## 5. Daemon Subsystem: 29 Supported Init Systems (`hotaru/daemon.py`)
 
@@ -359,7 +389,9 @@ Every handler coroutine receives an instance of `ModuleContext` (`ctx`). Below i
 
 ## 7. Exhaustive Reference: All 292 MTProto RPC Methods on `ctx`
 
-When `capabilities` includes `'mt'`, Hotaru maps 292 extended Telegram MTProto methods directly onto `ctx`. Default context substitutions are automatically applied when parameters are omitted (`$peer` -> `ctx.peer_id`, `$message` -> `ctx.message.id`, `$self` -> userbot account ID).
+Hotaru exposes 292 extended Telegram MTProto methods directly onto `ctx`. **Crucially, these 292 methods do NOT require the `'mt'` capability!** They are safe, curated, and context-bound operations executed through the core IPC operations bridge (`_ctx_call` -> `op_call`). Default context substitutions are automatically applied when parameters are omitted (`$peer` -> `ctx.peer_id`, `$message` -> `ctx.message.id`, `$self` -> userbot account ID).
+
+The `'mt'` capability is strictly reserved for raw, uncurated MTProto calls via `await ctx.tg.call(method, kwargs)` or `await mt(...)`.
 
 Below is the complete indexed reference of every method:
 
@@ -3730,7 +3762,7 @@ Below is the complete indexed reference of every method:
 The following 12 blueprints represent fully functional, tested `.hmod` modules covering a wide spectrum of userbot applications:
 
 ### Blueprint 1: Multi-Currency & Crypto Price Watcher (`crypto_watch.hmod`)
-Demonstrates `net` and `state` capabilities with automatic live screen refreshes:
+Demonstrates `net` and `state` capabilities with automatic live screen refreshes (no `mt` capability needed):
 ```python
 HOTARU = {
     "id": "crypto_watch",
@@ -3739,7 +3771,7 @@ HOTARU = {
         "crypto": "crypto_cmd",
         "btc": "btc_cmd",
     },
-    "capabilities": ["mt", "net", "state"],
+    "capabilities": ["net", "state"],
     "lexicon": {
         "en": {
             "fetching": "Querying cryptocurrency rates...",
@@ -3798,7 +3830,7 @@ async def btc_cmd(ctx):
 ```
 
 ### Blueprint 2: Ephemeral Self-Destructing Notes (`destruct_note.hmod`)
-Demonstrates message scheduling, timers, and automatic deletion:
+Demonstrates message scheduling, timers, and automatic deletion using standard context operations (zero capabilities needed):
 ```python
 HOTARU = {
     "id": "destruct_note",
@@ -3806,7 +3838,7 @@ HOTARU = {
     "commands": {
         "sd": "self_destruct_cmd",
     },
-    "capabilities": ["mt"],
+    "capabilities": [],
 }
 
 import asyncio
@@ -3835,7 +3867,7 @@ async def self_destruct_cmd(ctx):
 ```
 
 ### Blueprint 3: Anti-Spam Channel & Group Watcher (`spam_sentinel.hmod`)
-Demonstrates passive `watchers`, regex filtering, and MTProto member administration:
+Demonstrates passive `watchers`, regex filtering, and MTProto member administration using 292 contextual methods (requires only `state`, no `mt` needed):
 ```python
 HOTARU = {
     "id": "spam_sentinel",
@@ -3843,7 +3875,7 @@ HOTARU = {
     "commands": {
         "sentinel": "toggle_sentinel_cmd",
     },
-    "capabilities": ["mt", "state"],
+    "capabilities": ["state"],
     "watchers": ["spam_filter_watcher"],
 }
 
@@ -3881,7 +3913,7 @@ async def spam_filter_watcher(ctx):
 ```
 
 ### Blueprint 4: System Telemetry & Daemon Monitor (`daemon_inspector.hmod`)
-Demonstrates integration with Hotaru's 29 init systems and interactive screens:
+Demonstrates integration with Hotaru's 29 init systems and interactive screens (zero capabilities needed):
 ```python
 HOTARU = {
     "id": "daemon_inspector",
@@ -3889,7 +3921,7 @@ HOTARU = {
     "commands": {
         "daemon": "daemon_cmd",
     },
-    "capabilities": ["mt"],
+    "capabilities": [],
 }
 
 from hotaru.daemon import detect_init_system, daemon_status
@@ -3921,7 +3953,7 @@ async def daemon_cmd(ctx):
 ```
 
 ### Blueprint 5: Audio Pitch Shifter & Voice Converter (`voice_mod.hmod`)
-Demonstrates `audio` and `files` capabilities with ffmpeg transcoding:
+Demonstrates `files` and `shell` capabilities with ffmpeg transcoding:
 ```python
 HOTARU = {
     "id": "voice_mod",
@@ -3929,7 +3961,7 @@ HOTARU = {
     "commands": {
         "pitch": "pitch_cmd",
     },
-    "capabilities": ["mt", "files", "audio"],
+    "capabilities": ["files", "shell"],
 }
 
 import asyncio
@@ -3962,7 +3994,7 @@ async def pitch_cmd(ctx):
 ```
 
 ### Blueprint 6: Persistent Todo & Checklist Manager (`todo_list.hmod`)
-Demonstrates multi-key SQLite state persistence with formatted checklists:
+Demonstrates multi-key SQLite state persistence with formatted checklists (requires only `state`):
 ```python
 HOTARU = {
     "id": "todo_list",
@@ -3973,7 +4005,7 @@ HOTARU = {
         "todos": "todos_cmd",
         "cleartodo": "clear_todo_cmd",
     },
-    "capabilities": ["mt", "state"],
+    "capabilities": ["state"],
 }
 
 async def todo_cmd(ctx):
@@ -4023,7 +4055,7 @@ async def clear_todo_cmd(ctx):
 ```
 
 ### Blueprint 7: Link Unshortener & Redirect Safety Checker (`link_check.hmod`)
-Demonstrates resolving HTTP 301/302 redirects without executing client scripts:
+Demonstrates resolving HTTP 301/302 redirects without executing client scripts (requires only `net`):
 ```python
 HOTARU = {
     "id": "link_check",
@@ -4031,7 +4063,7 @@ HOTARU = {
     "commands": {
         "unshort": "unshort_cmd",
     },
-    "capabilities": ["mt", "net"],
+    "capabilities": ["net"],
 }
 
 async def unshort_cmd(ctx):
@@ -4061,7 +4093,7 @@ async def unshort_cmd(ctx):
 ```
 
 ### Blueprint 8: GitHub Repository Release & Issue Watcher (`github_watch.hmod`)
-Demonstrates background supervised tasks polling public APIs:
+Demonstrates background supervised tasks polling public APIs (requires `net` and `state`):
 ```python
 HOTARU = {
     "id": "github_watch",
@@ -4070,7 +4102,7 @@ HOTARU = {
         "ghrepo": "set_repo_cmd",
         "ghstatus": "status_cmd",
     },
-    "capabilities": ["mt", "net", "state"],
+    "capabilities": ["net", "state"],
     "tasks": {
         "poll_releases": "release_checker_task",
     },
@@ -4115,7 +4147,7 @@ async def release_checker_task(ctx):
 ```
 
 ### Blueprint 9: AI Language Model Chat Assistant (`ai_chat.hmod`)
-Demonstrates integrating external LLM endpoints (OpenAI/Anthropic/Ollama):
+Demonstrates integrating external LLM endpoints (requires `net` and `state`):
 ```python
 HOTARU = {
     "id": "ai_chat",
@@ -4124,7 +4156,7 @@ HOTARU = {
         "ai": "ai_cmd",
         "ask": "ai_cmd",
     },
-    "capabilities": ["mt", "net", "state"],
+    "capabilities": ["net", "state"],
     "config_schema": {
         "api_key": {
             "type": "string",
@@ -4175,7 +4207,7 @@ async def ai_cmd(ctx):
 ```
 
 ### Blueprint 10: Auto-Translation Group Watcher (`group_translator.hmod`)
-Demonstrates automatic language translation of non-native messages in foreign groups:
+Demonstrates automatic language translation of non-native messages in foreign groups (requires only `state`):
 ```python
 HOTARU = {
     "id": "group_translator",
@@ -4183,7 +4215,7 @@ HOTARU = {
     "commands": {
         "autotr": "toggle_autotr_cmd",
     },
-    "capabilities": ["mt", "net", "state"],
+    "capabilities": ["state"],
     "watchers": ["translate_watcher"],
 }
 
@@ -4213,7 +4245,7 @@ async def translate_watcher(ctx):
 ```
 
 ### Blueprint 11: Telegram Story Auto-Archiver (`story_archiver.hmod`)
-Demonstrates story enumeration, media downloading, and archive storage:
+Demonstrates story enumeration and media downloading (zero capabilities needed for standard download and photo reply):
 ```python
 HOTARU = {
     "id": "story_archiver",
@@ -4221,7 +4253,7 @@ HOTARU = {
     "commands": {
         "savestory": "save_story_cmd",
     },
-    "capabilities": ["mt", "files"],
+    "capabilities": [],
 }
 
 async def save_story_cmd(ctx):
@@ -4247,7 +4279,7 @@ async def save_story_cmd(ctx):
 ```
 
 ### Blueprint 12: Interactive Poll Maker with CSV Export (`poll_wizard.hmod`)
-Demonstrates creating native polls and exporting response data:
+Demonstrates creating native polls using `ctx.send_poll` (one of the 292 methods, zero capabilities needed):
 ```python
 HOTARU = {
     "id": "poll_wizard",
@@ -4255,7 +4287,7 @@ HOTARU = {
     "commands": {
         "poll": "create_poll_cmd",
     },
-    "capabilities": ["mt"],
+    "capabilities": [],
 }
 
 async def create_poll_cmd(ctx):
@@ -4275,6 +4307,35 @@ async def create_poll_cmd(ctx):
         await ctx.respond(f"Failed to publish poll: {err}")
 ```
 
+### Blueprint 13: Raw MTProto Inspector (`raw_mtproto.hmod`)
+Demonstrates when the `'mt'` capability **IS** actually required: making direct, raw MTProto RPC calls via `ctx.tg.call`:
+```python
+HOTARU = {
+    "id": "raw_mtproto",
+    "version": "1.0.0",
+    "commands": {
+        "dc": "get_dc_cmd",
+    },
+    "capabilities": ["mt"],  # Required ONLY because ctx.tg.call is invoked directly
+    "lexicon": {
+        "en": {
+            "dc_info": "<b>Telegram Data Center Info (Raw MTProto):</b>\n• Country: <code>{country}</code>\n• Current DC: <code>DC{this_dc}</code>\n• Nearest DC: <code>DC{nearest_dc}</code>",
+        },
+        "ru": {
+            "dc_info": "<b>Дата-центр Telegram (Сырой MTProto):</b>\n• Страна: <code>{country}</code>\n• Текущий ДЦ: <code>DC{this_dc}</code>\n• Ближайший ДЦ: <code>DC{nearest_dc}</code>",
+        },
+    },
+}
+
+async def get_dc_cmd(ctx):
+    # Direct raw MTProto call using ctx.tg.call (requires mt capability in HOTARU["capabilities"])
+    res = await ctx.tg.call("help.getNearestDc")
+    country = res.get("country", "Unknown")
+    this_dc = res.get("this_dc", 0)
+    nearest_dc = res.get("nearest_dc", 0)
+    await ctx.respond(ctx.t("dc_info", country=country, this_dc=this_dc, nearest_dc=nearest_dc))
+```
+
 ## 9. Security Audit Checklist & Development Best Practices
 
 When authoring `.hmod` modules for production deployment or sharing with the Hotaru community, ensure strict adherence to the following security guidelines:
@@ -4283,7 +4344,7 @@ When authoring `.hmod` modules for production deployment or sharing with the Hot
    Never place comments, imports, or variable assignments before `HOTARU = { ... }`. The manifest dictionary must be line 1.
 
 2. **Principle of Least Privilege**:
-   Declare only the exact capabilities your module requires. Never request `net` if your module only computes numbers locally. Never request `files` if `state` suffices.
+   Declare only the exact capabilities your module requires. Never request `mt` unless invoking raw `ctx.tg.call(...)` (the 292 contextual methods on `ctx` do NOT require `mt`!). Never request `net` if your module only computes numbers locally. Never request `files` if `state` suffices.
 
 3. **Sandboxed File Paths**:
    When using `capabilities: ['files']`, always write to `/tmp/sandbox/` or temporary files generated by Python's `tempfile` module. Never attempt to traverse into host paths like `/etc` or `/home`.
