@@ -160,7 +160,7 @@ Hotaru ships with 15 production-grade built-in modules located in `constellation
 
 ## 4. Complete Manifest Schema Reference (HOTARU Dictionary)
 
-Every module declares its specification via the `HOTARU` dictionary. Below is the comprehensive schema documentation:
+Every module declares its specification via the `HOTARU` dictionary. The dictionary **must be the first executable statement** in the `.hmod` file (parsed by Hotaru's AST analyzer before compiling bytecode).
 
 ```python
 HOTARU = {
@@ -173,8 +173,10 @@ HOTARU = {
     "capabilities": ["net", "state"],  # Declare ONLY what is actually needed (mt is NOT needed for ctx 292 methods!)
     "watchers": ["message_watcher"],
     "tasks": {
-        "heartbeat_loop": "heartbeat_worker",
-        "cleanup_loop": "cleanup_worker",
+        "sync_loop": {
+            "interval": 300.0,
+            "autostart": True,
+        },
     },
     "aliases": {
         "vstatus": "status",
@@ -185,6 +187,9 @@ HOTARU = {
             "type": "string",
             "default": "https://api.vault.internal/sync",
             "description": "Remote vault sync URL",
+            "category": "Network",
+            "min_len": 5,
+            "max_len": 200,
         },
         "sync_interval": {
             "type": "int",
@@ -192,11 +197,28 @@ HOTARU = {
             "min": 30,
             "max": 86400,
             "description": "Interval between background syncs (seconds)",
+            "category": "Timing",
+            "requires_restart": True,
         },
         "auto_notify": {
             "type": "bool",
             "default": True,
             "description": "Send notification upon successful sync",
+            "category": "Notifications",
+        },
+        "sync_mode": {
+            "type": "select",
+            "options": ["fast", "deep", "stealth"],
+            "default": "fast",
+            "description": "Synchronization strategy",
+            "category": "Engine",
+        },
+        "api_token": {
+            "type": "string",
+            "secret": True,
+            "default": "",
+            "description": "Private API token",
+            "category": "Security",
         },
     },
     "lexicon": {
@@ -231,23 +253,99 @@ HOTARU = {
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | `str` | Yes | **Module name** (e.g. `'notes'`, `'calc'`). Used in Telegram commands like `.rl <id>`, `.ul <id>`, `.ex <id>`, `.resetdb <id>`, and in `.mods`. |
+| `id` | `str` | Yes | **Module name** (e.g. `'notes'`, `'calc'`). The primary identifier used in Telegram commands (`.rl <id>`, `.ul <id>`, `.ex <id>`, `.config <id>`, `.resetdb <id>`), in the `.mods` list, and names its database `sanctuary/modules/<id>.db`. |
 | `version` | `str` | Yes | Semantic version string (`x.y.z`). |
-| `commands` | `dict[str, str]` | Yes | Map of chat command triggers to handler functions (e.g. `{'calc': 'calc_cmd'}` triggers on `.calc`). |
+| `commands` | `dict[str, str] \| list[str]` | Yes | Map of chat command triggers to handler functions (e.g. `{'calc': 'calc_cmd'}` triggers on `.calc`). |
 | `capabilities` | `list[str]` | Yes | List of requested permissions (`mt`, `state`, `net`, `files`, `shell`, `inline`, `modules`, `assets`). Default is `[]` for standard modules using `ctx` methods. |
-| `watchers` | `list[str]` | No | List of message interceptors called on all updates. |
-| `tasks` | `dict[str, str]` | No | Supervised background worker coroutines. |
+| `tasks` | `dict[str, dict]` | No | Supervised background periodic workers. Schema: `{"<name>": {"interval": float, "autostart": bool}}`. Handler must be `async def task_<name>(ctx):`. |
+| `config_schema`| `dict[str, dict]`| No | User settings schema configured in Telegram via `.config <id>` (NOT web panel). Hotaru renders interactive inline buttons/toggles. |
+| `watchers` | `list[str]` | No | List of message interceptors called on all updates without command prefix. |
 | `aliases` | `dict[str, str]` | No | Command aliases (`{'alias': 'target'}`). |
-| `config_schema`| `dict[str, dict]`| No | User settings schema with types, defaults, and ranges. |
-| `lexicon` | `dict[str, dict]`| No | Localized strings for multi-language support. |
+| `lexicon` | `dict[str, dict]`| No | Localized strings for multi-language support (`ctx.t("key", **kwargs)`). |
 | `requires` | `list[str]` | No | Module dependencies that must be active. |
 | `after` | `list[str]` | No | Initialization ordering constraints. |
 | `inline_commands`| `list[str]` | No | Triggers for inline queries via `@bot`. |
 | `rise` | `str` | No | Startup initialization hook coroutine. |
 | `fade` | `str` | No | Shutdown teardown hook coroutine. |
 | `template_fields`| `dict[str, dict]`| No | Dynamic placeholder variables for formatting layouts. |
-| `banner` | `str` | No | URL or local path to module banner image. |
+| `banner` | `str` | No | URL or local path to module banner image for `.help` and `.config`. |
 | `bot_commands` | `list[str]` | No | Commands exported to Telegram autocomplete. |
+
+### Deep Dive: Module Identifier (`id`)
+
+The `id` field is the official **Module Name**. It is the name you use when managing the module in chat:
+- `.rl <id>` — Hot-reload module code in runtime without stopping Hotaru (e.g. `.rl notes`).
+- `.ul <id>` — Unload and deactivate the module (`.ul notes`).
+- `.ex <id>` — Export the module's `.hmod` file into Telegram (`.ex notes`).
+- `.config <id>` — Open the module's interactive configuration menu in Telegram (`.config notes`).
+- `.resetdb <id>` — Wipe the module's private SQLite state store (`.resetdb notes`).
+- Appears in `.mods` and determines the database path: `sanctuary/modules/<id>.db`.
+
+### Deep Dive: Supervised Background Tasks (`tasks`)
+
+Hotaru features a built-in supervisor for resilient background jobs:
+```python
+"tasks": {
+    "sync_loop": {
+        "interval": 30.0,   # Seconds between iterations (default: 60.0)
+        "autostart": True,  # Auto-start upon module activation (default: False)
+    },
+}
+```
+
+1. **Parameters**:
+   - `interval` (float | int, default `60.0`): The period in seconds between task runs. The supervisor calls your handler, awaits its completion, and sleeps for `interval` seconds before running it again.
+   - `autostart` (bool, default `False`): If `True`, the task starts automatically as soon as the module is loaded or reloaded. If `False`, it stays idle until explicitly started.
+2. **Worker Function**:
+   - The handler coroutine MUST follow the naming convention `task_<task_name>(ctx)`. For example, for task `"sync_loop"`, define:
+     ```python
+     async def task_sync_loop(ctx):
+         # Periodic background logic
+         pass
+     ```
+   - Receives the standard `ctx` with all capabilities and helpers.
+3. **Supervisor Resilience & Teardown**:
+   - If an unhandled exception occurs inside `task_<name>`, the supervisor catches it, logs it to observatory logs (`sanctuary/logs/`), and waits `interval` seconds before retrying. It **never crashes Hotaru or the userbot**.
+   - On reload (`.rl`) or unload (`.ul`), the supervisor cleanly cancels running tasks via `asyncio.CancelledError`.
+
+### Deep Dive: Configuration Schema (`config_schema`)
+
+> [!IMPORTANT]
+> **Module settings are configured in Telegram, NOT in the web panel!**
+> The Singularity web panel is purely a telemetry dashboard (CPU, RAM, Uptime, process status, and logs); it does NOT edit module configs.
+> Module settings are configured directly inside Telegram via the `.config <id>` command (or `.settings`) using interactive inline keyboard screens (`ctx.screens`) with toggle buttons, selectors, and text prompts.
+
+#### Reading Config Values in Code
+```python
+# With default fallback
+endpoint = ctx.config.get("remote_endpoint", "https://api.vault.internal/sync")
+# Or direct lookup
+interval = ctx.config["sync_interval"]
+```
+
+#### Supported Data Types (`type`)
+- `"bool"` / `"boolean"`: Boolean flag. In Telegram UI rendered with interactive one-click toggle buttons `[ON / OFF]` / `[ВКЛ / ВЫКЛ]`.
+- `"int"` / `"integer"`: Integer number. Supports `min` (or `minimum`) and `max` (or `maximum`) bounds. Telegram UI enables adjustments or direct numeric entry.
+- `"float"`: Floating-point number. Supports `min` / `max` bounds.
+- `"str"` / `"string"`: Text string. Supports `min_len` / `min_length`, `max_len` / `max_length`, and `regex` validation.
+- `"choice"` / `"select"`: Single selection from a predefined list. Requires `options: ["val1", "val2", ...]`. Telegram UI presents clickable choice buttons.
+- `"series"` / `"list"`: A sequence/list of values. Supports `item` (specification for items, e.g. `{"type": "str"}`), `separator` (delimiter, default `","`), `min_items`, and `max_items`.
+
+#### Field Configuration Attributes
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `default` | Any | `None` | Default value when the user hasn't configured one. |
+| `description`| `str` | `""` | Readable label shown next to the setting in `.config`. |
+| `category` | `str` | `"General"`| Section/tab grouping in the Telegram settings menu. |
+| `doc` | `str` | `""` | Extended documentation or help tooltip displayed when expanding setting details. |
+| `secret` | `bool` | `False` | When `True`, masks the value in Telegram UI as `••••••••` to keep tokens, API keys, and passwords safe. |
+| `requires_restart` | `bool` | `False` | Displays an indicator in Telegram that changing this parameter requires reloading the module (`.rl <id>`). |
+| `min` / `max` | number | `None` | Numeric limits for `int` and `float`. |
+| `min_len` / `max_len` | `int` | `None` | String length bounds for `str`. |
+| `regex` | `str` | `None` | Regular expression pattern for validating text input. |
+| `options` | `list` | `None` | Allowed options for `choice` / `select`. |
+| `item` | `dict` | `{"type": "str"}` | Sub-schema definition for items in `series` / `list`. |
+| `separator` | `str` | `","` | Delimiter string for `series` / `list` input. |
 
 ### Complete Capability Classification & Sandbox Security Model
 
