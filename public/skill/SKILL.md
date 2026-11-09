@@ -1,4458 +1,8472 @@
 ---
-name: hotaru-module-developer
-description: Exhaustive engineering specification, architecture reference, and agent manual for authoring secure .hmod modules for the Hotaru Telegram userbot with Linux namespace sandboxing, capability enforcement, lifecycle hooks, template fields, watchers, tasks, 29 init systems daemon integration, and complete reference for all ModuleContext MTProto methods.
-license: GNU AGPLv3
+name: hotaru-modules
+description: >-
+  Разработка, редактирование, исправление и ревью модулей Telegram-userbot Hotaru
+  (.hmod): манифест HOTARU, SandboxContext, команды и алиасы, MTProto/GoyGram,
+  сообщения и медиа, inline/rich UI, callbacks и ввод, конфиги, состояние и миграции,
+  watchers, lifecycle, фоновые задачи, capabilities, сеть, зависимости и тесты;
+  справочник контекстных методов без raw mt, ctx.tools, regdate и search.
+  Использовать при создании нового модуля Hotaru, добавлении функций, исправлении
+  ошибок и адаптации существующего .hmod. Проверять фактический API целевой версии,
+  сохранять поведение и пользовательские данные, не путать sandbox и ядро.
 ---
 
-# Hotaru Module Developer Reference & Agent Skill
+# Разработка и редактирование модулей Hotaru
 
-Hotaru is a security-first Telegram userbot operating from a primary user account, built on top of the GoyGram asynchronous MTProto framework (`goygram==0.8.28`) in Python 3.13+. Unlike legacy userbot platforms that execute third-party code in the main process alongside sensitive authentication keys and session databases, Hotaru enforces hardware-assisted process isolation and capability-based sandboxing.
+## 1. Назначение и контракт
 
-## 1. Core Architectural Invariants
+Ты разрабатываешь настоящий устанавливаемый модуль Hotaru, а не приблизительный
+Python-пример. Выполняй пользовательскую задачу в её границах: создание, точечная
+правка, расширение, диагностика или ревью. Не переписывай всё без необходимости.
 
-1. **First-Statement Rule**:
-   The assignment `HOTARU = { ... }` must be the very first executable statement in every `.hmod` file. Hotaru inspects module metadata using Python's `ast` module prior to loading or compiling bytecode. Any preceding imports, variable declarations, or helper functions will trigger `ModuleValidationError` and immediately halt execution.
+- По умолчанию результат — один самодостаточный `<module_id>.hmod`. Helpers,
+  пользовательские строки и статические данные размещай внутри него. Не создавай
+  обязательные соседние `.py`, JSON, ресурсы, установщики и скрытые сервисы.
+- Предпочитай стандартную библиотеку и штатные API Hotaru. Внешние зависимости
+  допустимы только при обоснованной необходимости и совместимости с установкой
+  пользователя; явно декларируй их и сообщай об этом. Не устанавливай их молча.
+- Тесты можно создавать отдельно в тестовой или временной области; не превращай
+  их в обязательную часть устанавливаемого модуля.
+- Не меняй ядро Hotaru, ACL, глобальные настройки и sandbox ради обхода ограничения
+  модуля. Если публичного контракта недостаточно, укажи конкретный blocker.
+- При переносе из Ataraxia/Hikka дополнительно загрузи `ataraxia-to-hotaru`, если
+  он доступен. Его контракт однофайловости, зависимостей и соответствия 1:1
+  соблюдай для такого переноса; этот скилл не отменяет его ограничений.
+- Отвечай на языке пользователя. Код согласуй с проектом. Для `.hmod` соблюдай
+  политику Hotaru: не добавляй `#`-комментарии; выбирай ясные имена функций.
 
-2. **Process Isolation & Linux Namespaces**:
-   Modules execute in dedicated child worker processes isolated through Linux namespaces (`CLONE_NEWNS`, `CLONE_NEWIPC`, `CLONE_NEWUTS`, `CLONE_NEWNET`). Unprivileged worker UID/GID is locked to `nobody:nogroup` (65534) on a clean, ephemeral `tmpfs` root. The Linux kernel flag `prctl(PR_SET_NO_NEW_PRIVS, 1)` strictly prevents privilege escalation.
+## 2. Источник истины: версия и код
 
-3. **Optional Type Annotations**:
-   Type annotations are completely optional in Hotaru modules. Python 3.13 executes handlers whether typed or untyped with zero difference in performance or runtime behavior. Developers are free to use typing for static analysis or omit it for concise scripting.
+Репозиторий: https://github.com/HotaruProject/Hotaru.
 
-4. **Code Quality & Documentation**:
-   Clear code, clean architecture, and robust error handling maintain long-term reliability and facilitate collaborative development and agent pair-programming.
+База и справочники перепроверены 2026-11-09 на `main`/`develop`
+`8cab560e2b9dbc009aab4670c8a78a9a790e2d1a`. Тогда ветки совпадали. Это
+историческая отметка, не обещание актуальности API или веток.
 
-5. **Open Source License**:
-   Hotaru is free, open-source software distributed under the GNU Affero General Public License v3.0 (AGPLv3).
+### Один файл и навигация
 
-## 2. Core Subsystems Deep Dive (File-by-File Reference)
+**Этот SKILL.md самодостаточен:** инструкции, все справочники и проверочный код
+включены ниже. Для установки достаточно только этого файла; соседние `.md`, `.py`,
+дополнительные каталоги и ZIP не требуются. Дополнительный скилл переноса, если
+он установлен, — необязательное дополнение, не зависимость этого документа.
 
-Hotaru's codebase is divided into two primary security boundaries: the trusted core (`hotaru/`) and the isolation relay gate (`relay/`).
+- [Приложение A — контекстный API и компактный каталог 292 операций](#context-contract).
+- [Приложение B — все 76 tools, regdate, search и примеры](#tools-reference).
+- [Приложение C — полные карточки всех 292 методов](#method-cards): RPC,
+  namespace, сигнатуры, описания RU/EN и таблицы параметров.
+- [Приложение D — самостоятельный проверочный скрипт](#api-inspector):
+  AST-инвентаризация API и генерация карточек без импорта Hotaru.
 
-### Core Directory (`hotaru/`)
+Сначала читай основные правила. В приложениях ищи конкретный `ctx.<name>` или
+`ctx.tools.<name>` средствами поиска по этому файлу; не перечитывай весь каталог
+для каждой небольшой правки. Указанные пути `hotaru/` и `relay/` относятся к
+исходникам целевого Hotaru, не к обязательным файлам рядом со скиллом.
 
-• `hotaru/__main__.py`:
-  The primary entry point. Parses command-line flags (`--config`, `--daemon`, `--version`), sets up signal handlers (`SIGINT`, `SIGTERM`, `SIGHUP`), bootstraps logging with Rich formatting, verifies `.venv` execution, and initializes `hotaru.kernel.Kernel`.
+Перед реализацией:
 
-• `hotaru/kernel.py`:
-  The central nervous system of Hotaru. Instantiates the GoyGram client, connects to Telegram MTProto data centers, initializes the encryption layer, manages network keep-alives, routes raw Telegram updates into the event bus, and dispatches command triggers to active modules.
+1. Прочитай применимые `AGENTS.md`, исходный модуль и связанные файлы. Проверь
+   существующие изменения; не удаляй и не перезаписывай пользовательскую работу.
+2. Определи целевые ветку/коммит Hotaru и среду исполнения. Если есть локальная
+   установка, приоритет у её исходников. Не меняй её ветку и не обновляй установку.
+3. При отсутствии исходников возьми нужные файлы из указанного пользователем
+   коммита. Если версия не задана, используй текущую `main`, зафиксировав SHA.
+   Репозиторий можно читать в отдельной временной копии; не запускай install.sh.
+4. Изучай реализации необходимых методов и оба конца IPC, а не только README,
+   названия методов, аннотации `ModuleContext` или встроенные примеры.
+5. Если код недоступен, отдели подтверждённое от предположений. Не называй
+   непроверенную сигнатуру или поведение гарантированно совместимыми.
 
-• `hotaru/modules.py`:
-  The dynamic module loading engine. Implements the `.ld` command handler. Downloads `.hmod` files from chat replies or HTTPS URLs into `sanctuary/quarantine/`, performs AST parsing and schema validation, checks capability policies in `hotaru/access.py`, forks the isolated worker process via `relay/sandbox.py`, and registers command triggers in `hotaru/registry.py`. Also provides `.rl` (hot-reload), `.ul` (unload), `.ex` (export), and `.resetdb` (database wipe).
+### Карта исходников
 
-• `hotaru/response.py`:
-  Implements the `ModuleContext` class passed to every command, watcher, and task. Provides everyday helpers (`ctx.respond`, `ctx.reply`, `ctx.edit`, `ctx.delete`, `ctx.react`, `ctx.reply_photo`, `ctx.reply_file`, `ctx.reply_video`, `ctx.reply_audio`, `ctx.reply_voice`, `ctx.reply_dice`), capability bridges (`ctx.state`, `ctx.net`, `ctx.screens`, `ctx.stream`, `ctx.download`), and all 292 extended MTProto RPC methods.
+| Что нужно узнать | Где искать |
+| --- | --- |
+| Формат и проверка манифеста | `hotaru/modules.py`: `HmodLoader`, `ModuleManifest` |
+| Регистрация, rise/fade, tasks | `hotaru/activation.py`, `hotaru/tasks.py` |
+| Аргументы, aliases, dispatch | `hotaru/commands.py`, `hotaru/registry.py`, `hotaru/kernel.py` |
+| Реальный внешний ctx, invocation, IPC | `relay/sandbox.py`: `WORKER_SOURCE`, `SandboxContext`, `_execute`, `_serve_*` |
+| Высокоуровневые Telegram-операции | `relay/context.py`: `ContextOperations`, `MessageOperations`, `CTX_OPERATIONS`, `CTX_CATALOG` |
+| Capabilities и ограничения | `relay/caps.py`: `CapabilityHost`, `PROVIDERS`, `KNOWN` |
+| Host ctx и доставка ответа | `hotaru/response.py`, `hotaru/runtime.py` |
+| UI, callbacks, input | `hotaru/screens.py`, `hotaru/callbacks.py`, `hotaru/runtime.py`, worker-прокси в `relay/sandbox.py` |
+| Схема и хранение конфигов | `hotaru/config.py`, `hotaru/state.py` |
+| Переводы и шаблоны | `hotaru/i18n.py`, `relay/toolkit.py`, `hotaru/activation.py` |
+| Медиа и зависимости | `relay/files.py`, `relay/caps.py`, `hotaru/deps.py` |
+| Права и восстановление | `hotaru/access.py`, `hotaru/security.py`, `hotaru/backup.py` |
 
-• `hotaru/screens.py`:
-  The interactive Telegram UI engine. Renders inline keyboard buttons, pagination carousels, monospaced ASCII tables, and multi-step dialog forms. Maps callback queries to coroutine closures via `hotaru/callback_codec.py`.
+Не фиксируй в модуле путь к машине разработки, временной копии или исходникам.
+Не подгружай исполняемый код из сети для «совместимости».
 
-• `hotaru/state.py`:
-  Encrypted SQLite storage manager. Provisions an isolated SQLite database for each module at `sanctuary/modules/<id>.db`. Configured in WAL mode with atomic transactions and automatic JSON serialization of arbitrary nested structures.
+## 3. Сначала опиши поведение
 
-• `hotaru/daemon.py`:
-  Cross-platform background service coordinator supporting 29 init systems and service supervisors (`systemd`, `dinit`, `openrc`, `runit`, `s6`, `66`, `termux-services`, `termux-boot`, `launchd`, `procd`, `sysvinit`, `upstart`, `shepherd`, `supervisord`, `circus`, `monit`, `pm2`, `god`, `daemontools`, `perp`, `finit`, `busybox-init`, `minit`, `cinit`, `smf`, `nosh`, `bsd-rc`, `openbsd-rc`, `simple-daemon`). Auto-detects the active init system on the host and manages unit generation, installation, status checks, and uninstallation.
+Для нового модуля составь краткую спецификацию. Для правки сначала восстанови
+существующий контракт и найди причину ошибки. Зафиксируй:
 
-• `hotaru/supervisor.py`:
-  Task monitor. Continuously supervises background coroutines declared in `HOTARU['tasks']`. Catches unhandled exceptions, records tracebacks, and applies an exponential backoff restart schedule (`2s`, `4s`, `8s`, `16s`, `32s`). Enforces a 5-second graceful termination window via `ctx.is_stopping` during module unloads.
+- команды, алиасы, обычные/bot/inline-входы и разбор аргументов;
+- поведение без аргументов, по reply, с вложением, подписью и неверным вводом;
+- кто вызывает действие, от чьего имени и в какой чат/топик отправляется ответ;
+- edit/reply/send, обычное/rich форматирование, кнопки, страницы и ввод;
+- конфиги, state-ключи, версии схемы и совместимость со старыми данными;
+- watchers, расписание, загрузку/выгрузку и обработку ошибок;
+- требуемые capabilities, внешние сервисы и зависимости.
 
-• `hotaru/access.py`:
-  Security gate and Access Control Lists (ACL). Enforces permission boundaries, role-based command whitelists and blacklists, chat scopes, and capability authorizations.
+При редактировании сохраняй ID модуля, команды, алиасы, имена конфигов и state-ключи,
+если пользователь не запросил их изменение. Исправляй минимальный необходимый
+участок. Для изменения схемы данных спроектируй идемпотентную миграцию с сохранением
+старых значений; не сбрасывай базу и не используй `purge` как «исправление».
 
-• `hotaru/login.py`:
-  Interactive multi-factor CLI login wizard. Supports QR code authentication, phone number + SMS code + 2FA cloud password, and bot token authorization. Automatically connects to `/dev/tty` when executed inside piped install scripts.
+## 4. Главная граница: внешний модуль ≠ встроенный
 
-• `hotaru/accounts.py`:
-  Multi-account session coordinator. Allows users to register and manage multiple Telegram accounts within a single Hotaru instance, switch active personas, and synchronize security policies.
+Встроенные `constellations/*.hmod` исполняются в ядре. Сторонний модуль работает
+в отдельном worker с `SandboxContext`. Сходные имена объектов не делают API равным.
 
-• `hotaru/boot.py` & `hotaru/deps.py`:
-  Runtime bootloader and dependency resolver. Checks virtual environment integrity, auto-creates `.venv` if missing, synchronizes dependencies via `uv` or `pip`, and executes self-exec process replacement.
+Для внешнего `.hmod`:
 
-• `hotaru/i18n.py`:
-  Internationalization manager. Loads core translations from `lexicon/*.json` and merges module-level lexicons. Implements locale auto-detection and language fallback cascades.
+- Не используй `ctx.runtime`, внутренний `app`, session, connection или database.
+- Не импортируй `hotaru`, `relay`, `goygram` во время выполнения. Не используй
+  Telethon/Pyrogram-объекты и их Request-классы как будто Hotaru предоставляет их.
+- `invocation` сокращён: проверяй наличие `name`, `args`, `raw_args`, `source`,
+  `chat_id`, `message_id`; не рассчитывай на `invocation.message`.
+- `ctx.message` — ограниченный объект, а не полноценное сообщение GoyGram.
+  Поля текста, вложения, out/sender и reply проверяй по реальному payload dispatch.
+  Значение `False`/`None` в таком объекте не всегда доказывает отсутствие поля
+  в исходном Telegram-сообщении. При необходимости получи сообщение через API.
+- `ctx.msg()`, `ctx.reply()` и `ctx.resolve()` могут возвращать TL-словари или
+  `None`, а не объекты с `.text`, `.download()`, `.edit()` и прочими методами.
+- `ctx.config` в проверенном worker — снимок `dict`, не изменяемый `ModuleConfig`.
+  Правка `ctx.config["x"]` не сохраняет значение. Найди поддерживаемую операцию
+  записи; не обещай её по сходству с host API.
+- Не сериализуй через IPC ctx, callback, coroutine, файловый объект, lock, Path
+  или экземпляр произвольного класса. Передавай примитивы, списки и словари.
+  Байты разрешены только там, где текущий IPC-кодек и конкретный метод их поддерживают.
 
-• `hotaru/backup.py`:
-  Automated backup engine. Creates encrypted archives of user state, session vaults, and installed modules with automatic rotation and integrity verification.
+Каждый используемый API проверяй по цепочке:
+**внешний proxy → IPC-запрос → host handler → фактическая операция**.
+В частности, это обязательно для медиа, input, rich UI, config-записи и tasks.
 
-### Relay Boundary Directory (`relay/`)
+## 5. Манифест и точки входа
 
-• `relay/sandbox.py`:
-  Process containment barrier. Spawns isolated worker processes using Linux namespaces (`CLONE_NEWNS`, `CLONE_NEWIPC`, `CLONE_NEWUTS`, `CLONE_NEWNET`), drops privileges to UID 65534 (`nobody`), applies seccomp filters, mounts an ephemeral tmpfs root, and sets `PR_SET_NO_NEW_PRIVS`.
+Первое AST-выражение файла — литеральный `HOTARU = {...}`. Перед ним не должно быть
+import, module docstring или `from __future__`. Обязательные поля: `id`, `version`,
+`commands`, `capabilities`; списки задавай именно списками литеральных строк.
 
-• `relay/caps.py`:
-  Capability enforcer. Verifies that incoming calls from worker processes match permissions declared in `HOTARU['capabilities']`. Unprivileged requests are immediately rejected with `CapabilityDeniedError`.
+Используй простой уникальный kebab-case ID и имена команд из ASCII letters/digits/
+underscore, совместимые с путями и dependency storage. Не занимай ID и команды ядра.
 
-• `relay/firewall.py`:
-  MTProto security firewall. Inspects all outbound MTProto RPC calls from modules and blocks dangerous or destructive calls (e.g. `auth.resetAuthorizations`, `account.deleteAccount`, `auth.exportAuthorization`, `messages.deleteAllHistory`).
+Основные соглашения:
 
-• `relay/rpc.py`:
-  Inter-Process Communication (IPC) transport. Serializes and dispatches calls and responses across UNIX domain sockets between the core userbot and isolated module workers.
+```python
+async def command_example(ctx, invocation):
+    ...
 
-• `relay/proxies.py`:
-  Network proxy gateway. Enforces TLS validation, DNS rebinding guards, and request timeouts for outbound HTTP requests issued via `ctx.net`.
+async def watcher_example(ctx, event):
+    ...
 
-## 3. Built-in Constellation Modules Reference (`constellations/*.hmod`)
+async def task_example(ctx):
+    ...
+```
 
-Hotaru ships with 15 production-grade built-in modules located in `constellations/`. These modules provide core userbot functionality and serve as architectural benchmarks for third-party module authors:
+`...` здесь обозначает сигнатуры, не допустимую заглушку в готовом результате.
+`watchers: ["example"]` связывается с `watcher_example`; task объявляется в
+`tasks` с `interval` и `autostart`; имена rise/fade указываются в манифесте явно.
+Inline handlers в проверенном worker вызываются как `inline_name(query, args)`,
+не как обычная команда с ctx. Маршрут `bot_commands` отдельно проследи в dispatch:
+название `bot_name` в host binder ещё не гарантирует такой target в worker.
 
-1. `accounts.hmod` (48 KB):
-   - Capabilities: `mt`, `state`
-   - Purpose: Multi-account management. Allows linking multiple Telegram accounts, switching active session contexts, viewing authorization dates, and cloning profile settings.
+Загрузчик может допускать более широкие имена, fallback handlers и поля, чем
+worker действительно обслуживает. Используй канонические `command_<name>`;
+не полагайся на host fallback, особенно для дефисов и специальных символов.
 
-2. `acl.hmod` (36 KB):
-   - Capabilities: `mt`, `state`
-   - Purpose: Granular Access Control Lists. Enables restricting specific commands to trusted user IDs, whitelisting or blacklisting chats, creating custom user groups, and setting rate limits per user.
+Поля `after` и `requires` различны: первое относится к порядку модулей,
+второе — к Python-зависимостям. Порядок загрузки не предоставляет прямой импорт
+или общий Python-объект другого модуля.
 
-3. `backups.hmod` (7.5 KB):
-   - Capabilities: `mt`, `state`, `files`
-   - Purpose: Encrypted backup creator. Bundles `sanctuary/` databases, installed `.hmod` files, and configuration vaults into password-protected archives sent directly to Saved Messages.
+## 6. Команды и ответы
 
-4. `catalyst.hmod` (9.7 KB):
-   - Capabilities: `mt`, `state`
-   - Purpose: Fast execution engine and alias manager. Manages custom command aliases, dynamic shortcuts, prefix overrides, and command chaining pipelines.
+- `invocation.args` — уже разделённые по whitespace аргументы; это не shell parser.
+  Для исходного текста используй `raw_args`. Если нужна обработка кавычек,
+  применяй явный parser к raw_args, не собирай исходник обратно через `join(args)`.
+- Не зашивай `.` в сообщения usage; получай актуальный префикс через доступный ctx.
+- В проверенном API `await ctx.reply()` получает reply-сообщение, а
+  `await ctx.reply_text()` его текст. Это не отправка ответа.
+- Для ответа используй `await ctx.respond(text, ...)`; для режима указывай
+  поддерживаемый `output="auto"`, `"edit"` или `"reply"` осознанно.
+- Последовательные status/result ответы проверяй на отсутствие дубликатов,
+  редактирование именно нужного сообщения и сохранение привязки к исходному чату.
+- Не выбирай адресата по принципу «первый доступный ID». Различай actor, peer,
+  message_id, topic_id, account и inline_message_id. Не теряй topic при reply.
+- Для raw MT используй проверенный `ctx.tg.call(method, kwargs)` с capability `mt`.
+  TL-конструкторы задаются словарями с ключом `_`. Проверяй форму результата;
+  не считай любой truthy dict подтверждением успешного действия.
+- Высокоуровневые операции из `relay/context.py` могут не требовать raw `mt`;
+  не добавляй эту capability «на всякий случай». Доступность метода не отменяет
+  серверных прав Telegram, denylist и ограничений политики ядра.
+- Сначала найди готовую операцию в [приложении A](#context-contract), а не заменяй её
+  raw RPC с лишней capability. «Без capabilities» относится к выбранному маршруту
+  вызова, не ко всему модулю: state, внешняя сеть и загрузка файла имеют свои права.
+- Escape пользовательский текст до вставки в HTML. Не escape целую готовую
+  разметку и не выполняй двойное экранирование. Учитывай entities и UTF-16 offsets.
+- Длинные ответы разбивай безопасно для HTML или отправляй файлом только через
+  реально поддерживаемый путь. Не обрезай молча существенные данные.
 
-5. `executor.hmod` (66 KB):
-   - Capabilities: `mt`, `state`, `files`
-   - Purpose: Dynamic evaluation terminal (`.e`, `.py`, `.sh`). Executes Python expressions and bash commands inside an isolated sub-sandbox with live stdout/stderr capture, result editing, and traceback formatting.
+## 7. Capabilities, данные и безопасность
 
-6. `genesis.hmod` (18 KB):
-   - Capabilities: `mt`, `state`, `files`
-   - Purpose: Module development generator. Scaffolds new `.hmod` projects from templates, validates manifest syntax, checks AST structures, and packages modules for distribution.
+Запрашивай минимум прав для реальных функций. В проверенной версии известны
+`mt`, `state`, `net`, `files`, `shell`, `inline`, `modules`, `assets`, `logs`, `fetch`;
+`logs` и `fetch` имеют отдельный всегда доступный маршрут. Перепроверь это для цели.
 
-7. `help.hmod` (12 KB):
-   - Capabilities: `mt`
-   - Purpose: Interactive command browser (`.help`, `.help <mod>`). Features interactive category pagination, search by trigger name, parameter usage display, and module about banners.
+- `net`: сеть через `ctx.net()` / `ctx.stream()` и поддерживаемые cap-операции.
+  Не открывай прямые sockets и не обходи запреты внутренних/частных адресов.
+- `files`: штатные операции workspace, не доступ к файловой системе хоста.
+- `assets`: в проверенном worker upload/download медиа используют этот provider;
+  наличие `files` само по себе не гарантирует отправку локального файла.
+- `shell`: только при реальной необходимости. Не заменяй обычную логику shell,
+  не интерполируй непроверенный ввод, не запускай установщики и привилегированные
+  команды. Учитывай отдельные synchronous/job пути и их разные ограничения.
+- `modules`: только если назначение — управление модулями; не выдавай для удобства.
+- Не обходи consent, ограничения аккаунта, защищённые peers, auth/payment policy,
+  seccomp и namespace-границы. Не предлагай portable как безопасный аналог strict.
+- Не читай/не меняй vault, master keys, сессии, глобальные настройки или чужой state.
+  Никогда не помещай секреты в код, callback payload, логи и диагностические ответы.
 
-8. `info.hmod` (5.4 KB):
-   - Capabilities: `mt`
-   - Purpose: System telemetry and diagnostic status card. Displays kernel uptime, Python version, GoyGram version, host OS, CPU load, memory utilization, and active module counts.
+`ctx.state` использует namespace данного модуля. В проверенном worker его методы
+`get/set/delete/keys` синхронные: не ставь `await` автоматически. `get()` способен
+вернуть default при отказе в capability; это не доказательство доступного хранения.
+Объявляй `state`, когда оно нужно; проверяй ошибки записи.
 
-9. `logger.hmod` (14 KB):
-   - Capabilities: `mt`, `state`
-   - Purpose: Real-time chat activity auditing. Monitors message edits, deleted messages, user bio updates, and group event notifications, forwarding logged events to a designated private logging channel.
+Используй короткие ключи, совместимые с `StateNamespace._validate_key`, и JSON-данные.
+Зарезервированные lifecycle-ключи не трогай. Изменение вложенного dict/list после
+`get()` не сохраняется автоматически — вызови `set()`. Read-modify-write не атомарен:
+предусмотри конкурентные команды, callbacks и повторные события.
 
-10. `power.hmod` (6.4 KB):
-    - Capabilities: `mt`
-    - Purpose: Userbot process lifecycle control. Handles `.restart`, `.reload`, `.poweroff`, and graceful self-exec upgrades without disconnecting Telegram sessions.
+Не называй state и module config зашифрованными без проверки: в изученном коде
+`runtime_settings` шифруется, а `module_state` хранит JSON. `secret` маскирует UI,
+но сам по себе не обеспечивает шифрование поля. Не обещай защиту секретов на диске.
 
-11. `settings.hmod` (27 KB):
-    - Capabilities: `mt`, `state`
-    - Purpose: Central configuration hub (`.config`). Provides an interactive settings screen for configuring command prefixes, active languages, theme colors, and defense sensitivity levels.
+## 8. Конфигурация и переводы
 
-12. `shield.hmod` (8.2 KB):
-    - Capabilities: `mt`, `state`
-    - Purpose: Defensive anti-flood and anti-raid sentinel. Intercepts incoming messages, detects rapid message bursts from spambots, automatically silences offending users, and deletes raid waves.
+- Объявляй `config_schema` литерально: тип, default, диапазон, длина, regex,
+  options, item-schema и secret — по актуальному `validator_from_spec`.
+- Не выдумывай JSON-формат для каждого Python validator: наличие класса в ядре
+  не означает поддержку его имени в литеральной схеме.
+- Валидируй границы, пустые строки, неверные типы, `None`, boolean вместо integer,
+  нечисловые/нефинитные значения там, где это применимо.
+- Различай конфиг пользователя и служебное состояние. Изменение default не должно
+  незаметно уничтожать уже сохранённое значение. Миграции делай повторяемыми.
+- Строки интерфейса централизуй; для однофайлового внешнего модуля допустим свой
+  словарь языков и явный helper с fallback. Не пиши в глобальный `lexicon/`.
+- `HOTARU.lexicon` обслуживает метаданные/справку, но не гарантирует автоматическую
+  доступность каждой строки в worker `ctx.t()`. Проследи, какой translations payload
+  передаётся каждому типу вызова; не смешивай глобальные ключи и локальные строки.
+- `template_fields` задавай явно; не используй eval/exec для шаблонов. Межмодульные
+  значения требуют штатного экспорта и `render_template_async`; сохраняй scopes.
 
-13. `singularity.hmod` (5.0 KB):
-    - Capabilities: `mt`, `state`, `net`
-    - Purpose: Web dashboard bridge. Connects the userbot core to the Node.js/Vite Singularity web panel, exporting live telemetry metrics and handling Cloudflare tunnel authentication.
+### Штатные tools вместо самодельных helpers
 
-14. `translations.hmod` (21 KB):
-    - Capabilities: `mt`, `net`
-    - Purpose: Multi-engine inline translator (`.tr`, `.translate`). Supports Telegram native MTProto translation RPCs and fallback translation providers with automatic language detection.
+Внешнему worker доступен `ctx.tools` из `TOOLKIT_FUNCS`; не импортируй
+`relay.toolkit`. Ищи готовые `message_text`, `entities_to_html`, `duration`,
+`file_size`, `search`, `regdate`, template/HTML и collection helpers в
+[приложении B](#tools-reference). Не путай чистый helper с выполняющим Telegram-действие API.
 
-15. `updater.hmod` (18 KB):
-    - Capabilities: `mt`, `net`
-    - Purpose: Automated core updater. Fetches git commit history from GitHub, checks for new releases on `main` and `develop`, executes schema migrations, and restarts the core smoothly.
+- `ctx.tools.regdate(user_id, registration_month=..., not_after=...)` синхронный,
+  локальный и без capabilities. Это **оценка** с `earliest/latest/error_days`,
+  `estimated=True` и `conflict`, не точная официальная дата Telegram.
+- `await ctx.tools.search(values, query, ...)` асинхронный локальный fuzzy search,
+  а не поиск сообщений в Telegram. Он возвращает records с value/score/matched/layout.
+- Не все функции экспортируемого namespace работоспособны в sandbox: например,
+  `prune_logs` импортирует ядро, а `check_restrictions` без host app не проверяет
+  реальное состояние аккаунта. Смотри ограничения в справочнике.
 
-16. `indusblock.hmod` (Example External Module):
-    - Capabilities: `mt`, `state`
-    - Purpose: Automated story viewer auditor. Inspects viewers of your Telegram stories, identifies suspicious promotional accounts and mass-viewing bots, and blocks them automatically.
+## 9. UI, callbacks и input
 
-## 4. Complete Manifest Schema Reference (HOTARU Dictionary)
+Сначала выбери один реально доступный путь: `ctx.respond(buttons=...)`, `ctx.ui`,
+`ctx.screens` или inline-form. Не смешивай host `Kit/Nav/ScreenRef` и worker-прокси.
 
-Every module declares its specification via the `HOTARU` dictionary. The dictionary **must be the first executable statement** in the `.hmod` file (parsed by Hotaru's AST analyzer before compiling bytecode).
+- Проверь сигнатуру callback: в worker UI handler может получать `(callback)`
+  либо `(callback, payload)`, screen navigation — `(ctx, nav)` только по своему
+  поддерживаемому маршруту. Не выбирай сигнатуру по внешнему виду кнопки.
+- Предпочитай именованные module-level handlers и сериализуемые payload ID.
+  Не захватывай ctx, исходное message, сеть или mutable данные в nested closures:
+  восстановление callback после рестарта/hibernation может потерять эти значения.
+- Callback context не равен командному ctx. Проверь доступные методы, наличие
+  языка/конфига/state и источник данных повторно при нажатии.
+- Используй штатные binding и проверку доступа. Не формируй собственный обход
+  подписанных callback_data; не доверяй actor, peer и ID из payload без проверки.
+- Подтверждение нажатия, редактирование формы и удаление — разные операции.
+  В проверенном callback API подтверждение — `respond`, а не `answer`.
+- Для input проверь весь маршрут: кнопка → запрос → ввод → авторизация → handler.
+  Наличие `input()` у host Kit или `SandboxNav.value` не гарантирует worker feature.
+- Поддержи истёкшие формы, повторное нажатие, отмену, ошибку ввода, отозванные права,
+  выгрузку/рестарт и отсутствие inline-бота. Проверяй актуальность целевого объекта
+  непосредственно перед необратимым действием.
+- Rich HTML и стили могут требовать Premium/другой транспорт. Предусмотри обычный
+  fallback без потери смысла; не выдавай сырой `<table>`/`<footer>` как готовый plain UI.
+- Не обещай host banner/иконки/ScreenRef на стороне worker без реализации proxy.
+
+## 10. Медиа и внешняя сеть
+
+Для медиа различай metadata attachment, сырое Telegram media, uploaded InputFile,
+байты, URL и путь. Это разные значения, не взаимозаменяемый `file`.
+
+- Проверь source/reply, вид вложения, caption, MIME, имя, размер и текстовую кодировку.
+- Для текста вложения используй `read_attachment_text()` с явным лимитом, если
+  его хватает: это отдельный bound-message путь, не произвольное чтение файлов.
+- Проследи upload/download и интерпретацию пути на host и worker. Общий абсолютный
+  путь или BytesIO нельзя считать работающими через IPC по умолчанию.
+- Для временных файлов используй допустимый workspace, уникальные имена и `finally`.
+  Не удаляй пользовательский файл после отправки и не переходи по чужим symlink.
+- Для HTTP проверяй status, content type, размер, `truncated` и тело ответа.
+  JSON разбирай отдельно; результат `ctx.net()` не является aiohttp/requests response.
+- Binary response может быть base64 с явным encoding; не декодируй его как UTF-8.
+- Задавай таймауты/лимиты, закрывай streams в `finally`. Retry ограничивай и
+  различай безопасное чтение и запись: повтор может дублировать действие.
+- Тестируй отказ capability, недоступность сервиса, redirect, не-JSON, пустой ответ,
+  timeout, rate limit и FloodWait. Не отправляй приватный текст стороннему сервису
+  без явного назначения функции и понятного пользователю поведения.
+
+## 11. Lifecycle, watchers и конкурентность
+
+Worker в изученной версии обслуживает запросы через потоки и отдельные
+`asyncio.run()`, не через единый вечный event loop модуля.
+
+- Не храни глобально loop-bound session, Future, asyncio.Lock или фоновые tasks,
+  рассчитывая использовать их из следующей команды или callback.
+- Не превращай `asyncio.create_task()` в команде в постоянный сервис: цикл вызова
+  завершится. Для расписаний используй манифест `tasks` и `task_<name>`.
+- Учитывай параллельные вызовы и shared Python globals. Не держи threading lock
+  через await/IPC; используй короткие critical sections и продуманную модель данных.
+- Worker может завершиться и пересоздаться при простое/сбое. Важные данные храни
+  через штатный state; не полагайся на глобальный cache как единственный источник.
+- Rise делай идемпотентным и ограниченным по времени, без дублей уведомлений и
+  внешних действий. Fade — best-effort cleanup; он не гарантирован при аварии.
+- Watcher не проходит тот же командный ACL-маршрут. Явно фильтруй chat, sender,
+  направление, тип события, собственные ответы и повторную обработку. Не вызывай
+  команду от чужого имени и не создавай reply-loop.
+- Фильтруй watcher до сетевых операций. Используй deduplication и ограниченную
+  нагрузку, не создавай бесконечный поток задач на каждое сообщение.
+- Уточни доступный payload watcher: text/sender/message могут не передаваться
+  целиком. При необходимости fetch; не подменяй отсутствие данных догадкой.
+
+## 12. Проверка: обязательные уровни
+
+### A. Статически, без выполнения модуля
+
+Не импортируй `.hmod` для проверки синтаксиса. Не делай обычный `import hotaru`:
+инициализация пакета может переисполнить Python или подготовить окружение.
+
+Этот скрипт принимает путь единственного модуля; сохраняй его во временной области
+или выполни через stdin средствами своей оболочки:
+
+```python
+import ast
+import io
+import sys
+import tokenize
+from pathlib import Path
+
+path = Path(sys.argv[1])
+source = path.read_text(encoding="utf-8")
+assert path.suffix == ".hmod", "Expected .hmod"
+tree = ast.parse(source, filename=str(path))
+assert tree.body, "Empty module"
+first = tree.body[0]
+assert isinstance(first, ast.Assign), "First statement must assign HOTARU"
+assert len(first.targets) == 1
+assert isinstance(first.targets[0], ast.Name) and first.targets[0].id == "HOTARU"
+manifest = ast.literal_eval(first.value)
+assert isinstance(manifest, dict)
+assert all(key in manifest for key in ("id", "version", "commands", "capabilities"))
+assert isinstance(manifest["id"], str) and manifest["id"]
+assert isinstance(manifest["version"], str) and manifest["version"]
+for key in ("commands", "capabilities"):
+    assert isinstance(manifest[key], list)
+    assert all(isinstance(value, str) and value for value in manifest[key])
+functions = {node.name for node in tree.body if isinstance(node, ast.AsyncFunctionDef)}
+assert all("command_" + name in functions for name in manifest["commands"])
+assert not any(token.type == tokenize.COMMENT for token in tokenize.generate_tokens(io.StringIO(source).readline))
+compile(tree, str(path), "exec", dont_inherit=True)
+print("Static checks passed; runtime compatibility not tested")
+```
+
+Это минимальный консервативный smoke-check канонического модуля, не замена
+`HmodLoader` и не полный валидатор всех optional полей. Проверяй также манифест
+штатным загрузчиком в подготовленной целевой Linux-среде без запуска Telegram,
+когда такой безопасный harness уже доступен. Не запускай bootstrap ради проверки.
+
+### B. Unit и contract tests
+
+- Pure-функции: разбор аргументов, валидация, escape, форматирование и миграции.
+- Mock ctx, максимально похожий на SandboxContext, а не на богатый host ctx.
+  Отсутствующие методы должны давать ошибку, а не универсальный MagicMock success.
+- IPC/host-контракты проверяй отдельно; mock не доказывает наличие provider.
+- Покрой happy path, пустые args/reply, неверный ввод, старые данные, отказ прав,
+  сетевые/Telegram ошибки и отсутствие целевого объекта.
+- При правке воспроизведи исходный баг до изменения и проверь устранение после.
+  Если воспроизведение невозможно, прямо скажи это. При расширении добавь регрессии
+  для прежних команд, форматов ответа и state.
+
+### C. Реальная интеграция — только с разрешения пользователя
+
+Используй тестовую Linux-установку, штатную загрузку `.hmod`, фактический strict
+sandbox и тестовый чат/аккаунт. Без явного разрешения не авторизуйся в Telegram,
+не загружай модуль в рабочий userbot и не отправляй реальные сообщения.
+
+Проверь объявленные capabilities; отсутствие случайных пакетов и файлов рядом;
+другой CWD; команды, aliases, edit/reply/topic; медиа; callbacks/input; рестарт;
+unload/reload; восстановление state; совместимость со старыми данными.
+Не проверяй обработку критических сессионных ошибок на рабочем аккаунте: в
+некоторых версиях обработчик Hotaru удаляет каталог проблемного аккаунта.
+
+Не утверждай «работает в Hotaru», если выполнены только compile или mocks.
+Чётко разделяй: статически проверено / mock tests / IPC contract / live integration.
+
+## 13. Минимальный шаблон внешнего модуля
+
+Этот пример использует только bound response и не требует capabilities. Он не
+объявляет лишних API, не зависит от файлов рядом и не выполняет действия на import.
 
 ```python
 HOTARU = {
-    "id": "vault_sync",
-    "version": "1.2.0",
-    "commands": {
-        "sync": "sync_command",
-        "status": "status_command",
-    },
-    "capabilities": ["net", "state"],  # Declare ONLY what is actually needed (mt is NOT needed for ctx 292 methods!)
-    "watchers": ["message_watcher"],
-    "tasks": {
-        "sync_loop": {
-            "interval": 300.0,
-            "autostart": True,
-        },
-    },
-    "aliases": {
-        "vstatus": "status",
-        "vsync": "sync",
-    },
-    "config_schema": {
-        "remote_endpoint": {
-            "type": "string",
-            "default": "https://api.vault.internal/sync",
-            "description": "Remote vault sync URL",
-            "category": "Network",
-            "min_len": 5,
-            "max_len": 200,
-        },
-        "sync_interval": {
-            "type": "int",
-            "default": 300,
-            "min": 30,
-            "max": 86400,
-            "description": "Interval between background syncs (seconds)",
-            "category": "Timing",
-            "requires_restart": True,
-        },
-        "auto_notify": {
-            "type": "bool",
-            "default": True,
-            "description": "Send notification upon successful sync",
-            "category": "Notifications",
-        },
-        "sync_mode": {
-            "type": "select",
-            "options": ["fast", "deep", "stealth"],
-            "default": "fast",
-            "description": "Synchronization strategy",
-            "category": "Engine",
-        },
-        "api_token": {
-            "type": "string",
-            "secret": True,
-            "default": "",
-            "description": "Private API token",
-            "category": "Security",
-        },
-    },
+    "id": "example",
+    "version": "1.0.0",
+    "commands": ["example"],
+    "capabilities": [],
     "lexicon": {
         "en": {
-            "syncing": "Synchronizing vault with remote...",
-            "done": "Vault sync completed in {duration}ms.",
-            "error": "Sync failed: {reason}",
+            "description": "A minimal example",
+            "commands": {"example": {"description": "Show a greeting"}},
         },
         "ru": {
-            "syncing": "Синхронизация хранилища с сервером...",
-            "done": "Синхронизация завершена за {duration}мс.",
-            "error": "Ошибка синхронизации: {reason}",
-        },
-    },
-    "requires": ["common_crypto"],
-    "after": ["accounts", "shield"],
-    "inline_commands": ["vault_query"],
-    "rise": "on_startup",
-    "fade": "on_shutdown",
-    "template_fields": {
-        "vault_health": {
-            "scope": "global",
-            "provider": "vault_health_provider",
-        },
-    },
-    "banner": "https://example.com/banner.png",
-    "bot_commands": ["sync", "status"],
-}
-```
-
-### Field Rules & Verification
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `id` | `str` | Yes | **Module name** (e.g. `'notes'`, `'calc'`). The primary identifier used in Telegram commands (`.rl <id>`, `.ul <id>`, `.ex <id>`, `.config <id>`, `.resetdb <id>`), in the `.mods` list, and names its database `sanctuary/modules/<id>.db`. |
-| `version` | `str` | Yes | Semantic version string (`x.y.z`). |
-| `commands` | `dict[str, str] \| list[str]` | Yes | Map of chat command triggers to handler functions (e.g. `{'calc': 'calc_cmd'}` triggers on `.calc`). |
-| `capabilities` | `list[str]` | Yes | List of requested permissions (`mt`, `state`, `net`, `files`, `shell`, `inline`, `modules`, `assets`). Default is `[]` for standard modules using `ctx` methods. |
-| `tasks` | `dict[str, dict]` | No | Supervised background periodic workers. Schema: `{"<name>": {"interval": float, "autostart": bool}}`. Handler must be `async def task_<name>(ctx):`. |
-| `config_schema`| `dict[str, dict]`| No | User settings schema configured in Telegram via `.config <id>` (NOT web panel). Hotaru renders interactive inline buttons/toggles. |
-| `watchers` | `list[str]` | No | List of message interceptors called on all updates without command prefix. |
-| `aliases` | `dict[str, str]` | No | Command aliases (`{'alias': 'target'}`). |
-| `lexicon` | `dict[str, dict]`| No | Localized strings for multi-language support (`ctx.t("key", **kwargs)`). |
-| `requires` | `list[str]` | No | Module dependencies that must be active. |
-| `after` | `list[str]` | No | Initialization ordering constraints. |
-| `inline_commands`| `list[str]` | No | Triggers for inline queries via `@bot`. |
-| `rise` | `str` | No | Startup initialization hook coroutine. |
-| `fade` | `str` | No | Shutdown teardown hook coroutine. |
-| `template_fields`| `dict[str, dict]`| No | Dynamic placeholder variables for formatting layouts. |
-| `banner` | `str` | No | URL or local path to module banner image for `.help` and `.config`. |
-| `bot_commands` | `list[str]` | No | Commands exported to Telegram autocomplete. |
-
-### Deep Dive: Module Identifier (`id`)
-
-The `id` field is the official **Module Name**. It is the name you use when managing the module in chat:
-- `.rl <id>` — Hot-reload module code in runtime without stopping Hotaru (e.g. `.rl notes`).
-- `.ul <id>` — Unload and deactivate the module (`.ul notes`).
-- `.ex <id>` — Export the module's `.hmod` file into Telegram (`.ex notes`).
-- `.config <id>` — Open the module's interactive configuration menu in Telegram (`.config notes`).
-- `.resetdb <id>` — Wipe the module's private SQLite state store (`.resetdb notes`).
-- Appears in `.mods` and determines the database path: `sanctuary/modules/<id>.db`.
-
-### Deep Dive: Supervised Background Tasks (`tasks`)
-
-Hotaru features a built-in supervisor for resilient background jobs:
-```python
-"tasks": {
-    "sync_loop": {
-        "interval": 30.0,   # Seconds between iterations (default: 60.0)
-        "autostart": True,  # Auto-start upon module activation (default: False)
-    },
-}
-```
-
-1. **Parameters**:
-   - `interval` (float | int, default `60.0`): The period in seconds between task runs. The supervisor calls your handler, awaits its completion, and sleeps for `interval` seconds before running it again.
-   - `autostart` (bool, default `False`): If `True`, the task starts automatically as soon as the module is loaded or reloaded. If `False`, it stays idle until explicitly started.
-2. **Worker Function**:
-   - The handler coroutine MUST follow the naming convention `task_<task_name>(ctx)`. For example, for task `"sync_loop"`, define:
-     ```python
-     async def task_sync_loop(ctx):
-         # Periodic background logic
-         pass
-     ```
-   - Receives the standard `ctx` with all capabilities and helpers.
-3. **Supervisor Resilience & Teardown**:
-   - If an unhandled exception occurs inside `task_<name>`, the supervisor catches it, logs it to observatory logs (`sanctuary/logs/`), and waits `interval` seconds before retrying. It **never crashes Hotaru or the userbot**.
-   - On reload (`.rl`) or unload (`.ul`), the supervisor cleanly cancels running tasks via `asyncio.CancelledError`.
-
-### Deep Dive: Configuration Schema (`config_schema`)
-
-> [!IMPORTANT]
-> **Module settings are configured in Telegram, NOT in the web panel!**
-> The Singularity web panel is purely a telemetry dashboard (CPU, RAM, Uptime, process status, and logs); it does NOT edit module configs.
-> Module settings are configured directly inside Telegram via the `.config <id>` command (or `.settings`) using interactive inline keyboard screens (`ctx.screens`) with toggle buttons, selectors, and text prompts.
-
-#### Reading Config Values in Code
-```python
-# With default fallback
-endpoint = ctx.config.get("remote_endpoint", "https://api.vault.internal/sync")
-# Or direct lookup
-interval = ctx.config["sync_interval"]
-```
-
-#### Supported Data Types (`type`)
-- `"bool"` / `"boolean"`: Boolean flag. In Telegram UI rendered with interactive one-click toggle buttons `[ON / OFF]` / `[ВКЛ / ВЫКЛ]`.
-- `"int"` / `"integer"`: Integer number. Supports `min` (or `minimum`) and `max` (or `maximum`) bounds. Telegram UI enables adjustments or direct numeric entry.
-- `"float"`: Floating-point number. Supports `min` / `max` bounds.
-- `"str"` / `"string"`: Text string. Supports `min_len` / `min_length`, `max_len` / `max_length`, and `regex` validation.
-- `"choice"` / `"select"`: Single selection from a predefined list. Requires `options: ["val1", "val2", ...]`. Telegram UI presents clickable choice buttons.
-- `"series"` / `"list"`: A sequence/list of values. Supports `item` (specification for items, e.g. `{"type": "str"}`), `separator` (delimiter, default `","`), `min_items`, and `max_items`.
-
-#### Field Configuration Attributes
-| Attribute | Type | Default | Description |
-|---|---|---|---|
-| `default` | Any | `None` | Default value when the user hasn't configured one. |
-| `description`| `str` | `""` | Readable label shown next to the setting in `.config`. |
-| `category` | `str` | `"General"`| Section/tab grouping in the Telegram settings menu. |
-| `doc` | `str` | `""` | Extended documentation or help tooltip displayed when expanding setting details. |
-| `secret` | `bool` | `False` | When `True`, masks the value in Telegram UI as `••••••••` to keep tokens, API keys, and passwords safe. |
-| `requires_restart` | `bool` | `False` | Displays an indicator in Telegram that changing this parameter requires reloading the module (`.rl <id>`). |
-| `min` / `max` | number | `None` | Numeric limits for `int` and `float`. |
-| `min_len` / `max_len` | `int` | `None` | String length bounds for `str`. |
-| `regex` | `str` | `None` | Regular expression pattern for validating text input. |
-| `options` | `list` | `None` | Allowed options for `choice` / `select`. |
-| `item` | `dict` | `{"type": "str"}` | Sub-schema definition for items in `series` / `list`. |
-| `separator` | `str` | `","` | Delimiter string for `series` / `list` input. |
-
-### Complete Capability Classification & Sandbox Security Model
-
-Hotaru enforces a capability-based security model. Modules execute in isolated unprivileged worker processes and must explicitly request privileged capabilities in `HOTARU['capabilities']`. Unprivileged requests are immediately rejected with `CapabilityDeniedError`.
-
-#### Principle of Least Privilege: What Requires Capabilities vs What Is Free
-
-| Resource / API | Capability Required | Description |
-|---|---|---|
-| **Everyday Messaging** | **None (`[]`)** | `ctx.respond()`, `ctx.reply()`, `ctx.edit()`, `ctx.delete()`, `ctx.react()`, `ctx.pin()`, etc. |
-| **Media Senders** | **None (`[]`)** | `ctx.reply_photo()`, `ctx.reply_file()`, `ctx.reply_video()`, `ctx.reply_audio()`, `ctx.reply_voice()`, `ctx.reply_dice()` |
-| **All 292 Extended MTProto Methods** | **None (`[]`)** | Built-in Telegram methods on `ctx` (`ctx.send_message()`, `ctx.block_peer()`, `ctx.channel_details()`, `ctx.post_story()`, `ctx.create_forum_topic()`, `ctx.send_poll()`, `ctx.set_slow_mode()`, `ctx.ban_channel_member()`, etc.) with automatic defaults for current chat and message. |
-| **Interactive Screens & UI** | **None (`[]`)** | `ctx.screens` (buttons, forms, paginators, tables) and `ctx.ui` |
-| **HTML Formatting** | **None (`[]`)** | `ctx.html.bold()`, `ctx.html.italic()`, `ctx.html.code()`, `ctx.html.pre()`, `ctx.html.escape()`, etc. |
-| **Localization & Lexicon** | **None (`[]`)** | `ctx.t("key", **kwargs)` multi-language string lookup |
-| **Context & Inspection Data** | **None (`[]`)** | `ctx.chat_id`, `ctx.peer_id`, `ctx.message`, `ctx.reply_to`, `ctx.sender_id`, `ctx.args`, `ctx.memory`, `ctx.uptime` |
-| **Structured Logging** | **None (`[]`)** | `ctx.logs.info()`, `ctx.logs.warning()`, `ctx.logs.error()` (always granted) |
-| **Read-Only Message Fetching** | **None (`[]`)** | `fetch` capability is always granted |
-| **Persistent Storage** | **`"state"`** | Module-isolated SQLite key-value database (`ctx.state`) |
-| **Internet & Web Requests** | **`"net"`** | Outbound HTTP/HTTPS, WebSocket, and streaming (`ctx.net`, `ctx.stream`) with SSRF firewall |
-| **Sandboxed Filesystem** | **`"files"`** | File read/write inside the module's tmpfs workspace directory (`ctx.files`) |
-| **Sandboxed Shell Execution** | **`"shell"`** | Running shell commands in workspace namespace jail (`ctx.shell`) |
-| **Inline Bot Gateway** | **`"inline"`** | Querying and forwarding results from external Telegram inline bots (`ctx.inline`) |
-| **Module Management** | **`"modules"`** | Managing other modules: load, unload, reload, inspect (`ctx.modules`) |
-| **Encrypted Asset Storage** | **`"assets"`** | Hidden assets storage and file downloads (`ctx.assets`, `ctx.download_file`) |
-| **Raw Telegram MTProto RPC** | **`"mt"`** | **ONLY for direct raw calls** via `await ctx.tg.call(method, kwargs)`, `await ctx.tg.send(...)`, `await ctx.cap("mt", ...)`, or `await mt(...)`. |
-
-> [!IMPORTANT]
-> **The `mt` capability is NOT needed for the 292 extended MTProto methods on `ctx`!**
-> The 292 extended methods on `ctx` (e.g. `ctx.block_peer`, `ctx.send_message`, `ctx.channel_details`, `ctx.post_story`) work out of the box with zero permissions. You only need `"capabilities": ["mt"]` when making raw, direct MTProto calls via `ctx.tg.call("some.method", { ... })`.
-
-## 5. Daemon Subsystem: 29 Supported Init Systems (`hotaru/daemon.py`)
-
-Hotaru includes built-in auto-detection and service registration for 29 distinct init systems and process supervisors. This enables Hotaru to operate as a native background daemon across virtually any Linux, BSD, Android (Termux), or macOS environment.
-
-| ID | Init System | Detection Mechanism | Status Command | Unit / Service Location |
-|---|---|---|---|---|
-| `termux-services` | Termux Services | `$PREFIX/var/service` | `sv status hotaru` | `$PREFIX/var/service/hotaru/run` |
-| `termux-boot` | Termux Boot | `~/.termux/boot` directory | `ps -ef \| grep hotaru` | `~/.termux/boot/start-hotaru` |
-| `systemd` | Systemd (Linux) | `systemctl`, `/run/systemd/system` | `systemctl status hotaru` | `/etc/systemd/system/hotaru.service` |
-| `dinit` | Dinit (Void/Artix/Chimera) | `dinitctl`, `/etc/dinit.d` | `dinitctl status hotaru` | `/etc/dinit.d/hotaru` |
-| `openrc` | OpenRC (Alpine/Gentoo) | `rc-service`, `/etc/init.d` | `rc-service hotaru status` | `/etc/init.d/hotaru` |
-| `runit` | Runit (Void/Artix) | `sv`, `/etc/service` | `sv status hotaru` | `/etc/sv/hotaru/run` |
-| `s6` | S6 Supervision Suite | `s6-rc`, `s6-svc` | `s6-svstat /run/service/hotaru` | `/etc/s6/sv/hotaru/run` |
-| `66` | Obarun 66 Suite | `66-info`, `66-enable` | `66-info hotaru` | `/etc/66/service/hotaru` |
-| `launchd` | macOS Launchd | Darwin kernel, `launchctl` | `launchctl list hotaru` | `~/Library/LaunchAgents/hotaru.plist` |
-| `procd` | OpenWrt Procd | `/etc/init.d/rc.common` | `/etc/init.d/hotaru status` | `/etc/init.d/hotaru` |
-| `sysvinit` | SysV Init (Debian/CentOS 6) | `/etc/init.d` | `service hotaru status` | `/etc/init.d/hotaru` |
-| `upstart` | Ubuntu Upstart | `/etc/init`, `initctl` | `initctl status hotaru` | `/etc/init/hotaru.conf` |
-| `shepherd` | GNU Guix Shepherd | `herd`, `/etc/shepherd` | `herd status hotaru` | `/etc/shepherd.d/hotaru.scm` |
-| `supervisord` | Python Supervisor | `supervisorctl` | `supervisorctl status hotaru`| `/etc/supervisor/conf.d/hotaru.conf` |
-| `circus` | Mozilla Circus | `circusctl` | `circusctl status hotaru` | `/etc/circus.d/hotaru.ini` |
-| `monit` | Monit System Monitor | `monit`, `/etc/monit` | `monit status hotaru` | `/etc/monit/conf.d/hotaru` |
-| `pm2` | PM2 Process Manager | `pm2` CLI | `pm2 status hotaru` | `~/.pm2/dump.pm2` |
-| `god` | God Process Monitor | `god` CLI | `god status hotaru` | `/etc/god/hotaru.god` |
-| `daemontools` | DJB Daemontools | `supervise`, `svc` | `svstat /service/hotaru` | `/service/hotaru/run` |
-| `perp` | Perp Supervision | `perpctls`, `perpmon` | `perptab hotaru` | `/etc/perp/hotaru/rc.main` |
-| `finit` | Fast Init for Linux | `/etc/finit.d` | `initctl status hotaru` | `/etc/finit.d/hotaru.conf` |
-| `busybox-init` | BusyBox Init | `/etc/inittab` | `ps \| grep hotaru` | `/etc/inittab` |
-| `minit` | Minit Minimal Init | `minit`, `/etc/minit` | `msvc -u hotaru` | `/etc/minit/hotaru/run` |
-| `cinit` | Cinit Init System | `/etc/cinit` | `cinit status hotaru` | `/etc/cinit/services/hotaru` |
-| `smf` | Solaris / Illumos SMF | `svcs`, `svcadm` | `svcs hotaru` | `/var/svc/manifest/site/hotaru.xml` |
-| `nosh` | Nosh System Manager | `system-control` | `system-control is-active hotaru`| `/etc/service-bundles/services/hotaru` |
-| `bsd-rc` | FreeBSD / NetBSD rc | `/etc/rc.d` | `service hotaru status` | `/usr/local/etc/rc.d/hotaru` |
-| `openbsd-rc` | OpenBSD rc.d | `/etc/rc.d/rc.subr` | `/etc/rc.d/hotaru check` | `/etc/rc.d/hotaru` |
-| `simple-daemon` | POSIX Forking Daemon | Standard POSIX OS | `kill -0 $(cat hotaru.pid)` | `sanctuary/hotaru.pid` |
-
-### Interacting with the Daemon from Python
-
-```python
-from hotaru.daemon import detect_init_system, install_daemon, daemon_status, uninstall_daemon
-
-# Auto-detect the running init system on the current host
-init = detect_init_system()
-print(f'Detected Init System: {init.name} ({init.id})')
-print(f'Check Status Command: {init.status_command()}')
-
-# Install and enable background service
-result = install_daemon()
-print(result.message)
-
-# Query live status
-status = daemon_status()
-print(f'Installed: {status.installed}, Running: {status.running}, PID: {status.pid}')
-```
-
-## 6. ModuleContext API & Everyday Methods (`hotaru/response.py`)
-
-Every handler coroutine receives an instance of `ModuleContext` (`ctx`). Below is the complete catalog of everyday methods:
-
-### Text Messaging Operations
-
-• `await ctx.respond(text, parse_mode='html')`: Edits the message if sent by userbot, or sends a reply if sent by another user.
-• `await ctx.reply(text, parse_mode='html')`: Sends a new reply to the triggering message.
-• `await ctx.edit(text, parse_mode='html')`: Edits the triggering message in place.
-• `await ctx.delete(revoke=True)`: Deletes the triggering message (for all participants if revoke=True).
-• `await ctx.react(emoji)`: Places native emoji reaction on the triggering message (`👍`, `❤️`, `🔥`, etc.).
-• `await ctx.pin(silent=False)`: Pins the triggering message in the chat.
-• `await ctx.unpin()`: Unpins the message.
-• `await ctx.forward_to(peer_id)`: Forwards the message with forward attribution.
-• `await ctx.copy_to(peer_id)`: Copies the message without forward headers.
-• `await ctx.save()`: Forwards the message to your personal Saved Messages chat.
-• `await ctx.typing(action='typing')`: Broadcasts action indicator (`typing`, `upload_photo`, `record_video`, `upload_document`).
-
-### Media Uploading & Downloading
-
-• `await ctx.reply_photo(photo, caption='')`: Sends photo from bytes, file path, or URL.
-• `await ctx.reply_file(file, filename='doc.txt', caption='')`: Sends a document file.
-• `await ctx.reply_video(video, caption='', supports_streaming=True)`: Sends an MP4 video.
-• `await ctx.reply_audio(audio, title='', performer='', caption='')`: Sends an audio file with ID3 tags.
-• `await ctx.reply_voice(opus_bytes)`: Sends an audio voice note in OGG Opus format.
-• `await ctx.reply_animation(gif_bytes)`: Sends an animated GIF or silent MP4 video.
-• `await ctx.reply_dice(emoji='🎲')`: Sends native animated dice (`🎲`, `🎯`, `🏀`, `⚽`, `🎰`, `🎳`).
-• `bytes_data = await ctx.download(attachment)`: Downloads any attached media into memory bytes.
-
-### Persistent State (`ctx.state`)
-
-• `await ctx.state.get(key, default=None)`: Retrieves value from module SQLite database.
-• `await ctx.state.set(key, value)`: Stores any JSON-serializable value (`dict`, `list`, `int`, `str`, `bool`).
-• `await ctx.state.delete(key)`: Deletes key from storage.
-• `await ctx.state.clear()`: Wipes all keys for this module.
-• `await ctx.state.all()`: Returns dictionary of all stored key-value pairs.
-
-### Sandboxed Network (`ctx.net` & `ctx.stream`)
-
-• `await ctx.net(url, method='GET', headers=None, json=None, data=None, timeout=15)`: Issues TLS-guarded HTTP request.
-• `async for chunk in ctx.stream(url, chunk_size=8192)`: Streams large files asynchronously in chunks.
-
-### Interactive Screens (`ctx.screens`)
-
-• `await ctx.screens.show(title, body, buttons)`: Displays or updates an interactive Telegram screen.
-• `ctx.screens.button(text, callback)`: Neutral button.
-• `ctx.screens.primary(text, callback)`: Accent button.
-• `ctx.screens.danger(text, callback)`: Red destructive action button.
-• `ctx.screens.success(text, callback)`: Green confirmation button.
-• `ctx.screens.close()`: Dismiss button.
-• `ctx.screens.pager(current, total, callback)`: Pagination navigation component.
-• `ctx.screens.table(headers, rows)`: Formatted monospaced ASCII table generator.
-
-## 7. Exhaustive Reference: All 292 MTProto RPC Methods on `ctx`
-
-Hotaru exposes 292 built-in Telegram methods directly on `ctx`. **Crucially, these 292 methods do NOT require the `'mt'` capability!** They work out of the box in any module with `capabilities: []`. Default arguments are automatically filled in when omitted (`$peer` -> current chat, `$message` -> current message, `$self` -> userbot account ID).
-
-The `'mt'` capability is strictly reserved for rare, raw low-level Telegram API calls made via `await ctx.tg.call(method, kwargs)` or `await mt(...)`.
-
-Below is the complete indexed reference of every method:
-
-### 1. `ctx.set_checklist_completed`
-- **MTProto RPC**: `messages.toggleTodoCompleted`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_checklist_completed(peer: InputPeer, msg_id: int, completed: Vector<int>, incompleted: Vector<int>)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram messages.toggleTodoCompleted. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.toggleTodoCompleted. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-  • `completed` (Vector<int>, Required)
-  • `incompleted` (Vector<int>, Required)
-
-### 2. `ctx.add_poll_answer`
-- **MTProto RPC**: `messages.addPollAnswer`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.add_poll_answer(peer: InputPeer, msg_id: int, answer: PollAnswer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.addPollAnswer. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.addPollAnswer. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-  • `answer` (PollAnswer, Required)
-
-### 3. `ctx.remove_poll_answer`
-- **MTProto RPC**: `messages.deletePollAnswer`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.remove_poll_answer(peer: InputPeer, msg_id: int, option: bytes)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deletePollAnswer. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deletePollAnswer. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-  • `option` (bytes, Required)
-
-### 4. `ctx.unread_poll_votes`
-- **MTProto RPC**: `messages.getUnreadPollVotes`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.unread_poll_votes(peer: InputPeer, top_msg_id: flags.0?int = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.getUnreadPollVotes. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getUnreadPollVotes. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (flags.0?int, Optional)
-  • `offset_id` (int, Required) (default: `0`)
-  • `add_offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `max_id` (int, Required) (default: `0`)
-  • `min_id` (int, Required) (default: `0`)
-
-### 5. `ctx.mark_poll_votes_read`
-- **MTProto RPC**: `messages.readPollVotes`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mark_poll_votes_read(peer: InputPeer, top_msg_id: flags.0?int = None)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.readPollVotes. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.readPollVotes. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (flags.0?int, Optional)
-
-### 6. `ctx.poll_statistics`
-- **MTProto RPC**: `stats.getPollStats`
-- **Namespace**: `stats`
-- **Signature**: `await ctx.poll_statistics(dark: flags.0?true = None, peer: InputPeer, msg_id: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stats.getPollStats. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stats.getPollStats. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `dark` (flags.0?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-
-### 7. `ctx.scheduled_messages`
-- **MTProto RPC**: `messages.getScheduledHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.scheduled_messages(peer: InputPeer, hash: long)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram messages.getScheduledHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getScheduledHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `hash` (long, Required) (default: `0`)
-
-### 8. `ctx.scheduled_by_ids`
-- **MTProto RPC**: `messages.getScheduledMessages`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.scheduled_by_ids(peer: InputPeer, id: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getScheduledMessages. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getScheduledMessages. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `id` (Vector<int>, Required)
-
-### 9. `ctx.publish_scheduled`
-- **MTProto RPC**: `messages.sendScheduledMessages`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.publish_scheduled(peer: InputPeer, id: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.sendScheduledMessages. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.sendScheduledMessages. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `id` (Vector<int>, Required)
-
-### 10. `ctx.cancel_scheduled`
-- **MTProto RPC**: `messages.deleteScheduledMessages`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.cancel_scheduled(peer: InputPeer, id: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.deleteScheduledMessages. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteScheduledMessages. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `id` (Vector<int>, Required)
-
-### 11. `ctx.configure_chat_reactions`
-- **MTProto RPC**: `messages.setChatAvailableReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.configure_chat_reactions(peer: InputPeer, available_reactions: ChatReactions, reactions_limit: flags.0?int = None, paid_enabled: flags.1?Bool = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.setChatAvailableReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.setChatAvailableReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `available_reactions` (ChatReactions, Required)
-  • `reactions_limit` (flags.0?int, Optional)
-  • `paid_enabled` (flags.1?Bool, Optional)
-
-### 12. `ctx.available_reactions`
-- **MTProto RPC**: `messages.getAvailableReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.available_reactions(hash: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getAvailableReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getAvailableReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (int, Required) (default: `0`)
-
-### 13. `ctx.set_default_reaction`
-- **MTProto RPC**: `messages.setDefaultReaction`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_default_reaction(reaction: Reaction)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.setDefaultReaction. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.setDefaultReaction. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `reaction` (Reaction, Required)
-
-### 14. `ctx.unread_reactions`
-- **MTProto RPC**: `messages.getUnreadReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.unread_reactions(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.getUnreadReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getUnreadReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (flags.0?int, Optional)
-  • `saved_peer_id` (flags.1?InputPeer, Optional)
-  • `offset_id` (int, Required) (default: `0`)
-  • `add_offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `max_id` (int, Required) (default: `0`)
-  • `min_id` (int, Required) (default: `0`)
-
-### 15. `ctx.mark_reactions_read`
-- **MTProto RPC**: `messages.readReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mark_reactions_read(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.readReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.readReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (flags.0?int, Optional)
-  • `saved_peer_id` (flags.1?InputPeer, Optional)
-
-### 16. `ctx.popular_reactions`
-- **MTProto RPC**: `messages.getTopReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.popular_reactions(limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getTopReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getTopReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 17. `ctx.recent_reactions`
-- **MTProto RPC**: `messages.getRecentReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.recent_reactions(limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getRecentReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getRecentReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 18. `ctx.clear_recent_reactions`
-- **MTProto RPC**: `messages.clearRecentReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.clear_recent_reactions()`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.clearRecentReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.clearRecentReactions. Передает параметры и возвращает типизированный ответ.
-
-### 19. `ctx.remove_member_reactions`
-- **MTProto RPC**: `messages.deleteParticipantReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.remove_member_reactions(peer: InputPeer, participant: InputPeer)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteParticipantReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteParticipantReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `participant` (InputPeer, Required)
-
-### 20. `ctx.remove_member_message_reaction`
-- **MTProto RPC**: `messages.deleteParticipantReaction`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.remove_member_message_reaction(peer: InputPeer, msg_id: int, participant: InputPeer)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteParticipantReaction. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteParticipantReaction. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-  • `participant` (InputPeer, Required)
-
-### 21. `ctx.saved_dialogs`
-- **MTProto RPC**: `messages.getSavedDialogs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.saved_dialogs(exclude_pinned: flags.0?true = None, parent_peer: flags.1?InputPeer = None, offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSavedDialogs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSavedDialogs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `exclude_pinned` (flags.0?true, Optional)
-  • `parent_peer` (flags.1?InputPeer, Optional)
-  • `offset_date` (int, Required) (default: `0`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `offset_peer` (InputPeer, Required) (default: `{'_': 'inputPeerEmpty'}`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 22. `ctx.saved_history`
-- **MTProto RPC**: `messages.getSavedHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.saved_history(parent_peer: flags.0?InputPeer = None, peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSavedHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSavedHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `parent_peer` (flags.0?InputPeer, Optional)
-  • `peer` (InputPeer, Required)
-  • `offset_id` (int, Required) (default: `0`)
-  • `offset_date` (int, Required) (default: `0`)
-  • `add_offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `max_id` (int, Required) (default: `0`)
-  • `min_id` (int, Required) (default: `0`)
-  • `hash` (long, Required) (default: `0`)
-
-### 23. `ctx.clear_saved_history`
-- **MTProto RPC**: `messages.deleteSavedHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.clear_saved_history(parent_peer: flags.0?InputPeer = None, peer: InputPeer, max_id: int, min_date: flags.2?int = None, max_date: flags.3?int = None)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteSavedHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteSavedHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `parent_peer` (flags.0?InputPeer, Optional)
-  • `peer` (InputPeer, Required)
-  • `max_id` (int, Required)
-  • `min_date` (flags.2?int, Optional)
-  • `max_date` (flags.3?int, Optional)
-
-### 24. `ctx.pinned_saved_dialogs`
-- **MTProto RPC**: `messages.getPinnedSavedDialogs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.pinned_saved_dialogs()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getPinnedSavedDialogs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getPinnedSavedDialogs. Передает параметры и возвращает типизированный ответ.
-
-### 25. `ctx.set_saved_dialog_pinned`
-- **MTProto RPC**: `messages.toggleSavedDialogPin`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_saved_dialog_pinned(pinned: flags.0?true = None, peer: InputDialogPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.toggleSavedDialogPin. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.toggleSavedDialogPin. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `pinned` (flags.0?true, Optional)
-  • `peer` (InputDialogPeer, Required)
-
-### 26. `ctx.reorder_saved_pins`
-- **MTProto RPC**: `messages.reorderPinnedSavedDialogs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.reorder_saved_pins(force: flags.0?true = None, order: Vector<InputDialogPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.reorderPinnedSavedDialogs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.reorderPinnedSavedDialogs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `force` (flags.0?true, Optional)
-  • `order` (Vector<InputDialogPeer>, Required)
-
-### 27. `ctx.saved_reaction_tags`
-- **MTProto RPC**: `messages.getSavedReactionTags`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.saved_reaction_tags(peer: flags.0?InputPeer = None, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSavedReactionTags. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSavedReactionTags. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (flags.0?InputPeer, Optional)
-  • `hash` (long, Required) (default: `0`)
-
-### 28. `ctx.rename_saved_tag`
-- **MTProto RPC**: `messages.updateSavedReactionTag`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.rename_saved_tag(reaction: Reaction, title: flags.0?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.updateSavedReactionTag. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.updateSavedReactionTag. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `reaction` (Reaction, Required)
-  • `title` (flags.0?string, Optional)
-
-### 29. `ctx.suggested_saved_tags`
-- **MTProto RPC**: `messages.getDefaultTagReactions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.suggested_saved_tags(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getDefaultTagReactions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getDefaultTagReactions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 30. `ctx.saved_dialogs_by_peers`
-- **MTProto RPC**: `messages.getSavedDialogsByID`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.saved_dialogs_by_peers(parent_peer: flags.1?InputPeer = None, ids: Vector<InputPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSavedDialogsByID. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSavedDialogsByID. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `parent_peer` (flags.1?InputPeer, Optional)
-  • `ids` (Vector<InputPeer>, Required)
-
-### 31. `ctx.mark_saved_history_read`
-- **MTProto RPC**: `messages.readSavedHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mark_saved_history_read(parent_peer: InputPeer, peer: InputPeer, max_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.readSavedHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.readSavedHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `parent_peer` (InputPeer, Required)
-  • `peer` (InputPeer, Required)
-  • `max_id` (int, Required)
-
-### 32. `ctx.forum_topics`
-- **MTProto RPC**: `messages.getForumTopics`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.forum_topics(peer: InputPeer, q: flags.0?string = None, offset_date: int, offset_id: int, offset_topic: int, limit: int)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram messages.getForumTopics. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getForumTopics. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `q` (flags.0?string, Optional)
-  • `offset_date` (int, Required) (default: `0`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `offset_topic` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 33. `ctx.forum_topics_by_ids`
-- **MTProto RPC**: `messages.getForumTopicsByID`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.forum_topics_by_ids(peer: InputPeer, topics: Vector<int>)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram messages.getForumTopicsByID. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getForumTopicsByID. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `topics` (Vector<int>, Required)
-
-### 34. `ctx.edit_forum_topic`
-- **MTProto RPC**: `messages.editForumTopic`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.edit_forum_topic(peer: InputPeer, topic_id: int, title: flags.0?string = None, icon_emoji_id: flags.1?long = None, closed: flags.2?Bool = None, hidden: flags.3?Bool = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editForumTopic. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editForumTopic. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `topic_id` (int, Required)
-  • `title` (flags.0?string, Optional)
-  • `icon_emoji_id` (flags.1?long, Optional)
-  • `closed` (flags.2?Bool, Optional)
-  • `hidden` (flags.3?Bool, Optional)
-
-### 35. `ctx.set_forum_topic_pinned`
-- **MTProto RPC**: `messages.updatePinnedForumTopic`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_forum_topic_pinned(peer: InputPeer, topic_id: int, pinned: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.updatePinnedForumTopic. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.updatePinnedForumTopic. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `topic_id` (int, Required)
-  • `pinned` (Bool, Required)
-
-### 36. `ctx.reorder_forum_pins`
-- **MTProto RPC**: `messages.reorderPinnedForumTopics`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.reorder_forum_pins(force: flags.0?true = None, peer: InputPeer, order: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.reorderPinnedForumTopics. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.reorderPinnedForumTopics. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `force` (flags.0?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `order` (Vector<int>, Required)
-
-### 37. `ctx.create_forum_topic`
-- **MTProto RPC**: `messages.createForumTopic`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.create_forum_topic(title_missing: flags.4?true = None, peer: InputPeer, title: string, icon_color: flags.0?int = None, icon_emoji_id: flags.3?long = None, random_id: long, send_as: flags.2?InputPeer = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.createForumTopic. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.createForumTopic. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `title_missing` (flags.4?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `title` (string, Required)
-  • `icon_color` (flags.0?int, Optional)
-  • `icon_emoji_id` (flags.3?long, Optional)
-  • `random_id` (long, Required) (default: `$random`)
-  • `send_as` (flags.2?InputPeer, Optional)
-
-### 38. `ctx.remove_forum_topic`
-- **MTProto RPC**: `messages.deleteTopicHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.remove_forum_topic(peer: InputPeer, top_msg_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteTopicHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteTopicHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (int, Required)
-
-### 39. `ctx.set_forum_enabled`
-- **MTProto RPC**: `channels.toggleForum`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_forum_enabled(channel: InputChannel, enabled: Bool, tabs: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleForum. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleForum. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-  • `tabs` (Bool, Required)
-
-### 40. `ctx.set_forum_message_view`
-- **MTProto RPC**: `channels.toggleViewForumAsMessages`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_forum_message_view(channel: InputChannel, enabled: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleViewForumAsMessages. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleViewForumAsMessages. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-
-### 41. `ctx.story_posting_quota`
-- **MTProto RPC**: `stories.canSendStory`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_posting_quota(peer: InputPeer)`
-- **Returns**: `int`
-- **Description**: Calls Telegram stories.canSendStory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.canSendStory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-
-### 42. `ctx.post_story`
-- **MTProto RPC**: `stories.sendStory`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.post_story(pinned: flags.2?true = None, noforwards: flags.4?true = None, fwd_modified: flags.7?true = None, peer: InputPeer, media: InputMedia, media_areas: flags.5?Vector<MediaArea> = None, caption: flags.0?string = None, entities: flags.1?Vector<MessageEntity> = None, privacy_rules: Vector<InputPrivacyRule>, random_id: long, period: flags.3?int = None, fwd_from_id: flags.6?InputPeer = None, fwd_from_story: flags.6?int = None, albums: flags.8?Vector<int> = None, music: flags.9?InputDocument = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.sendStory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.sendStory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `pinned` (flags.2?true, Optional)
-  • `noforwards` (flags.4?true, Optional)
-  • `fwd_modified` (flags.7?true, Optional)
-  • `peer` (InputPeer, Required)
-  • `media` (InputMedia, Required)
-  • `media_areas` (flags.5?Vector<MediaArea>, Optional)
-  • `caption` (flags.0?string, Optional)
-  • `entities` (flags.1?Vector<MessageEntity>, Optional)
-  • `privacy_rules` (Vector<InputPrivacyRule>, Required)
-  • `random_id` (long, Required) (default: `$random`)
-  • `period` (flags.3?int, Optional)
-  • `fwd_from_id` (flags.6?InputPeer, Optional)
-  • `fwd_from_story` (flags.6?int, Optional)
-  • `albums` (flags.8?Vector<int>, Optional)
-  • `music` (flags.9?InputDocument, Optional)
-
-### 43. `ctx.edit_story`
-- **MTProto RPC**: `stories.editStory`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.edit_story(peer: InputPeer, id: int, media: flags.0?InputMedia = None, media_areas: flags.3?Vector<MediaArea> = None, caption: flags.1?string = None, entities: flags.1?Vector<MessageEntity> = None, privacy_rules: flags.2?Vector<InputPrivacyRule> = None, music: flags.4?InputDocument = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.editStory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.editStory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `id` (int, Required)
-  • `media` (flags.0?InputMedia, Optional)
-  • `media_areas` (flags.3?Vector<MediaArea>, Optional)
-  • `caption` (flags.1?string, Optional)
-  • `entities` (flags.1?Vector<MessageEntity>, Optional)
-  • `privacy_rules` (flags.2?Vector<InputPrivacyRule>, Optional)
-  • `music` (flags.4?InputDocument, Optional)
-
-### 44. `ctx.delete_stories`
-- **MTProto RPC**: `stories.deleteStories`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.delete_stories(peer: InputPeer, id: Vector<int>)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram stories.deleteStories. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.deleteStories. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `id` (Vector<int>, Required)
-
-### 45. `ctx.set_stories_on_profile`
-- **MTProto RPC**: `stories.togglePinned`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.set_stories_on_profile(peer: InputPeer, id: Vector<int>, pinned: Bool)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.togglePinned. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.togglePinned. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `id` (Vector<int>, Required)
-  • `pinned` (Bool, Required)
-
-### 46. `ctx.story_feed`
-- **MTProto RPC**: `stories.getAllStories`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_feed(next: flags.1?true = None, hidden: flags.2?true = None, state: flags.0?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.getAllStories. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getAllStories. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `next` (flags.1?true, Optional)
-  • `hidden` (flags.2?true, Optional)
-  • `state` (flags.0?string, Optional)
-
-### 47. `ctx.profile_stories`
-- **MTProto RPC**: `stories.getPinnedStories`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.profile_stories(peer: InputPeer, offset_id: int, limit: int)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.getPinnedStories. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getPinnedStories. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `offset_id` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 48. `ctx.archived_stories`
-- **MTProto RPC**: `stories.getStoriesArchive`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.archived_stories(peer: InputPeer, offset_id: int, limit: int)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.getStoriesArchive. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getStoriesArchive. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `offset_id` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 49. `ctx.stories_by_ids`
-- **MTProto RPC**: `stories.getStoriesByID`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.stories_by_ids(peer: InputPeer, id: Vector<int>)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.getStoriesByID. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getStoriesByID. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `id` (Vector<int>, Required)
-
-### 50. `ctx.mark_stories_read`
-- **MTProto RPC**: `stories.readStories`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.mark_stories_read(peer: InputPeer, max_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram stories.readStories. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.readStories. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `max_id` (int, Required) (default: `0`)
-
-### 51. `ctx.story_viewers`
-- **MTProto RPC**: `stories.getStoryViewsList`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_viewers(just_contacts: flags.0?true = None, reactions_first: flags.2?true = None, forwards_first: flags.3?true = None, peer: InputPeer, q: flags.1?string = None, id: int, offset: string, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.getStoryViewsList. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getStoryViewsList. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `just_contacts` (flags.0?true, Optional)
-  • `reactions_first` (flags.2?true, Optional)
-  • `forwards_first` (flags.3?true, Optional)
-  • `peer` (InputPeer, Required)
-  • `q` (flags.1?string, Optional)
-  • `id` (int, Required)
-  • `offset` (string, Required) (default: ``)
-  • `limit` (int, Required) (default: `50`)
-
-### 52. `ctx.story_view_counts`
-- **MTProto RPC**: `stories.getStoriesViews`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_view_counts(peer: InputPeer, id: Vector<int>)`
-- **Returns**: `int`
-- **Description**: Calls Telegram stories.getStoriesViews. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getStoriesViews. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `id` (Vector<int>, Required)
-
-### 53. `ctx.story_link`
-- **MTProto RPC**: `stories.exportStoryLink`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_link(peer: InputPeer, id: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.exportStoryLink. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.exportStoryLink. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `id` (int, Required)
-
-### 54. `ctx.activate_story_stealth`
-- **MTProto RPC**: `stories.activateStealthMode`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.activate_story_stealth(past: flags.0?true = None, future: flags.1?true = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.activateStealthMode. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.activateStealthMode. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `past` (flags.0?true, Optional)
-  • `future` (flags.1?true, Optional)
-
-### 55. `ctx.react_to_story`
-- **MTProto RPC**: `stories.sendReaction`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.react_to_story(add_to_recent: flags.0?true = None, peer: InputPeer, story_id: int, reaction: Reaction)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.sendReaction. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.sendReaction. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `add_to_recent` (flags.0?true, Optional)
-  • `peer` (InputPeer, Required)
-  • `story_id` (int, Required)
-  • `reaction` (Reaction, Required)
-
-### 56. `ctx.peer_stories`
-- **MTProto RPC**: `stories.getPeerStories`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.peer_stories(peer: InputPeer)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.getPeerStories. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getPeerStories. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-
-### 57. `ctx.story_read_markers`
-- **MTProto RPC**: `stories.getAllReadPeerStories`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_read_markers()`
-- **Returns**: `bool`
-- **Description**: Calls Telegram stories.getAllReadPeerStories. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getAllReadPeerStories. Передает параметры и возвращает типизированный ответ.
-
-### 58. `ctx.peer_latest_story_ids`
-- **MTProto RPC**: `stories.getPeerMaxIDs`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.peer_latest_story_ids(id: Vector<InputPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.getPeerMaxIDs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getPeerMaxIDs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (Vector<InputPeer>, Required)
-
-### 59. `ctx.story_posting_chats`
-- **MTProto RPC**: `stories.getChatsToSend`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_posting_chats()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.getChatsToSend. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getChatsToSend. Передает параметры и возвращает типизированный ответ.
-
-### 60. `ctx.set_peer_stories_hidden`
-- **MTProto RPC**: `stories.togglePeerStoriesHidden`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.set_peer_stories_hidden(peer: InputPeer, hidden: Bool)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.togglePeerStoriesHidden. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.togglePeerStoriesHidden. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `hidden` (Bool, Required)
-
-### 61. `ctx.story_reaction_senders`
-- **MTProto RPC**: `stories.getStoryReactionsList`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_reaction_senders(forwards_first: flags.2?true = None, peer: InputPeer, id: int, reaction: flags.0?Reaction = None, offset: flags.1?string = None, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.getStoryReactionsList. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getStoryReactionsList. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `forwards_first` (flags.2?true, Optional)
-  • `peer` (InputPeer, Required)
-  • `id` (int, Required)
-  • `reaction` (flags.0?Reaction, Optional)
-  • `offset` (flags.1?string, Optional)
-  • `limit` (int, Required) (default: `50`)
-
-### 62. `ctx.reorder_profile_story_pins`
-- **MTProto RPC**: `stories.togglePinnedToTop`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.reorder_profile_story_pins(peer: InputPeer, id: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.togglePinnedToTop. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.togglePinnedToTop. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `id` (Vector<int>, Required)
-
-### 63. `ctx.search_stories`
-- **MTProto RPC**: `stories.searchPosts`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.search_stories(hashtag: flags.0?string = None, area: flags.1?MediaArea = None, peer: flags.2?InputPeer = None, offset: string, limit: int)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.searchPosts. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.searchPosts. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hashtag` (flags.0?string, Optional)
-  • `area` (flags.1?MediaArea, Optional)
-  • `peer` (flags.2?InputPeer, Optional)
-  • `offset` (string, Required) (default: ``)
-  • `limit` (int, Required) (default: `50`)
-
-### 64. `ctx.create_story_album`
-- **MTProto RPC**: `stories.createAlbum`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.create_story_album(peer: InputPeer, title: string, stories: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.createAlbum. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.createAlbum. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `title` (string, Required)
-  • `stories` (Vector<int>, Required)
-
-### 65. `ctx.edit_story_album`
-- **MTProto RPC**: `stories.updateAlbum`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.edit_story_album(peer: InputPeer, album_id: int, title: flags.0?string = None, delete_stories: flags.1?Vector<int> = None, add_stories: flags.2?Vector<int> = None, order: flags.3?Vector<int> = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.updateAlbum. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.updateAlbum. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `album_id` (int, Required)
-  • `title` (flags.0?string, Optional)
-  • `delete_stories` (flags.1?Vector<int>, Optional)
-  • `add_stories` (flags.2?Vector<int>, Optional)
-  • `order` (flags.3?Vector<int>, Optional)
-
-### 66. `ctx.reorder_story_albums`
-- **MTProto RPC**: `stories.reorderAlbums`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.reorder_story_albums(peer: InputPeer, order: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.reorderAlbums. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.reorderAlbums. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `order` (Vector<int>, Required)
-
-### 67. `ctx.remove_story_album`
-- **MTProto RPC**: `stories.deleteAlbum`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.remove_story_album(peer: InputPeer, album_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram stories.deleteAlbum. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.deleteAlbum. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `album_id` (int, Required)
-
-### 68. `ctx.story_albums`
-- **MTProto RPC**: `stories.getAlbums`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_albums(peer: InputPeer, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stories.getAlbums. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getAlbums. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `hash` (long, Required) (default: `0`)
-
-### 69. `ctx.story_album_items`
-- **MTProto RPC**: `stories.getAlbumStories`
-- **Namespace**: `stories`
-- **Signature**: `await ctx.story_album_items(peer: InputPeer, album_id: int, offset: int, limit: int)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram stories.getAlbumStories. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stories.getAlbumStories. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required)
-  • `album_id` (int, Required)
-  • `offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 70. `ctx.stickers_for_emoji`
-- **MTProto RPC**: `messages.getStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.stickers_for_emoji(emoticon: string, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `emoticon` (string, Required)
-  • `hash` (long, Required) (default: `0`)
-
-### 71. `ctx.installed_sticker_sets`
-- **MTProto RPC**: `messages.getAllStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.installed_sticker_sets(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getAllStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getAllStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 72. `ctx.sticker_set`
-- **MTProto RPC**: `messages.getStickerSet`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.sticker_set(stickerset: InputStickerSet, hash: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getStickerSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getStickerSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `stickerset` (InputStickerSet, Required)
-  • `hash` (int, Required) (default: `0`)
-
-### 73. `ctx.install_sticker_set`
-- **MTProto RPC**: `messages.installStickerSet`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.install_sticker_set(stickerset: InputStickerSet, archived: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.installStickerSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.installStickerSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `stickerset` (InputStickerSet, Required)
-  • `archived` (Bool, Required) (default: `False`)
-
-### 74. `ctx.uninstall_sticker_set`
-- **MTProto RPC**: `messages.uninstallStickerSet`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.uninstall_sticker_set(stickerset: InputStickerSet)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.uninstallStickerSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.uninstallStickerSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `stickerset` (InputStickerSet, Required)
-
-### 75. `ctx.reorder_sticker_sets`
-- **MTProto RPC**: `messages.reorderStickerSets`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.reorder_sticker_sets(masks: flags.0?true = None, emojis: flags.1?true = None, order: Vector<long>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.reorderStickerSets. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.reorderStickerSets. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `masks` (flags.0?true, Optional)
-  • `emojis` (flags.1?true, Optional)
-  • `order` (Vector<long>, Required)
-
-### 76. `ctx.saved_gifs`
-- **MTProto RPC**: `messages.getSavedGifs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.saved_gifs(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSavedGifs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSavedGifs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 77. `ctx.set_gif_saved`
-- **MTProto RPC**: `messages.saveGif`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_gif_saved(id: InputDocument, unsave: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.saveGif. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.saveGif. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputDocument, Required)
-  • `unsave` (Bool, Required)
-
-### 78. `ctx.featured_sticker_sets`
-- **MTProto RPC**: `messages.getFeaturedStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.featured_sticker_sets(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getFeaturedStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getFeaturedStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 79. `ctx.mark_featured_stickers_seen`
-- **MTProto RPC**: `messages.readFeaturedStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mark_featured_stickers_seen(id: Vector<long>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.readFeaturedStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.readFeaturedStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (Vector<long>, Required)
-
-### 80. `ctx.recent_stickers`
-- **MTProto RPC**: `messages.getRecentStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.recent_stickers(attached: flags.0?true = None, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getRecentStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getRecentStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `attached` (flags.0?true, Optional)
-  • `hash` (long, Required) (default: `0`)
-
-### 81. `ctx.set_sticker_recent`
-- **MTProto RPC**: `messages.saveRecentSticker`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_sticker_recent(attached: flags.0?true = None, id: InputDocument, unsave: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.saveRecentSticker. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.saveRecentSticker. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `attached` (flags.0?true, Optional)
-  • `id` (InputDocument, Required)
-  • `unsave` (Bool, Required)
-
-### 82. `ctx.clear_recent_stickers`
-- **MTProto RPC**: `messages.clearRecentStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.clear_recent_stickers(attached: flags.0?true = None)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.clearRecentStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.clearRecentStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `attached` (flags.0?true, Optional)
-
-### 83. `ctx.archived_sticker_sets`
-- **MTProto RPC**: `messages.getArchivedStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.archived_sticker_sets(masks: flags.0?true = None, emojis: flags.1?true = None, offset_id: long, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getArchivedStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getArchivedStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `masks` (flags.0?true, Optional)
-  • `emojis` (flags.1?true, Optional)
-  • `offset_id` (long, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 84. `ctx.installed_masks`
-- **MTProto RPC**: `messages.getMaskStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.installed_masks(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getMaskStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getMaskStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 85. `ctx.media_sticker_sets`
-- **MTProto RPC**: `messages.getAttachedStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.media_sticker_sets(media: InputStickeredMedia)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getAttachedStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getAttachedStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `media` (InputStickeredMedia, Required)
-
-### 86. `ctx.favorite_stickers`
-- **MTProto RPC**: `messages.getFavedStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.favorite_stickers(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getFavedStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getFavedStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 87. `ctx.set_sticker_favorite`
-- **MTProto RPC**: `messages.faveSticker`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_sticker_favorite(id: InputDocument, unfave: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.faveSticker. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.faveSticker. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputDocument, Required)
-  • `unfave` (Bool, Required)
-
-### 88. `ctx.search_sticker_sets`
-- **MTProto RPC**: `messages.searchStickerSets`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.search_sticker_sets(exclude_featured: flags.0?true = None, q: string, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.searchStickerSets. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.searchStickerSets. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `exclude_featured` (flags.0?true, Optional)
-  • `q` (string, Required)
-  • `hash` (long, Required) (default: `0`)
-
-### 89. `ctx.bulk_sticker_set_action`
-- **MTProto RPC**: `messages.toggleStickerSets`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.bulk_sticker_set_action(uninstall: flags.0?true = None, archive: flags.1?true = None, unarchive: flags.2?true = None, stickersets: Vector<InputStickerSet>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.toggleStickerSets. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.toggleStickerSets. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `uninstall` (flags.0?true, Optional)
-  • `archive` (flags.1?true, Optional)
-  • `unarchive` (flags.2?true, Optional)
-  • `stickersets` (Vector<InputStickerSet>, Required)
-
-### 90. `ctx.older_featured_sticker_sets`
-- **MTProto RPC**: `messages.getOldFeaturedStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.older_featured_sticker_sets(offset: int, limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getOldFeaturedStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getOldFeaturedStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 91. `ctx.custom_emoji_documents`
-- **MTProto RPC**: `messages.getCustomEmojiDocuments`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.custom_emoji_documents(document_id: Vector<long>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getCustomEmojiDocuments. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getCustomEmojiDocuments. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `document_id` (Vector<long>, Required)
-
-### 92. `ctx.installed_emoji_sets`
-- **MTProto RPC**: `messages.getEmojiStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.installed_emoji_sets(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getEmojiStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getEmojiStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 93. `ctx.featured_emoji_sets`
-- **MTProto RPC**: `messages.getFeaturedEmojiStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.featured_emoji_sets(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getFeaturedEmojiStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getFeaturedEmojiStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 94. `ctx.search_custom_emoji`
-- **MTProto RPC**: `messages.searchCustomEmoji`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.search_custom_emoji(emoticon: string, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.searchCustomEmoji. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.searchCustomEmoji. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `emoticon` (string, Required)
-  • `hash` (long, Required) (default: `0`)
-
-### 95. `ctx.search_emoji_sets`
-- **MTProto RPC**: `messages.searchEmojiStickerSets`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.search_emoji_sets(exclude_featured: flags.0?true = None, q: string, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.searchEmojiStickerSets. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.searchEmojiStickerSets. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `exclude_featured` (flags.0?true, Optional)
-  • `q` (string, Required)
-  • `hash` (long, Required) (default: `0`)
-
-### 96. `ctx.owned_sticker_sets`
-- **MTProto RPC**: `messages.getMyStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.owned_sticker_sets(offset_id: long, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getMyStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getMyStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `offset_id` (long, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 97. `ctx.search_stickers`
-- **MTProto RPC**: `messages.searchStickers`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.search_stickers(emojis: flags.0?true = None, q: string, emoticon: string, lang_code: Vector<string>, offset: int, limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.searchStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.searchStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `emojis` (flags.0?true, Optional)
-  • `q` (string, Required)
-  • `emoticon` (string, Required)
-  • `lang_code` (Vector<string>, Required)
-  • `offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 98. `ctx.create_sticker_set`
-- **MTProto RPC**: `stickers.createStickerSet`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.create_sticker_set(masks: flags.0?true = None, emojis: flags.5?true = None, text_color: flags.6?true = None, user_id: InputUser, title: string, short_name: string, thumb: flags.2?InputDocument = None, stickers: Vector<InputStickerSetItem>, software: flags.3?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.createStickerSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.createStickerSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `masks` (flags.0?true, Optional)
-  • `emojis` (flags.5?true, Optional)
-  • `text_color` (flags.6?true, Optional)
-  • `user_id` (InputUser, Required)
-  • `title` (string, Required)
-  • `short_name` (string, Required)
-  • `thumb` (flags.2?InputDocument, Optional)
-  • `stickers` (Vector<InputStickerSetItem>, Required)
-  • `software` (flags.3?string, Optional)
-
-### 99. `ctx.remove_sticker`
-- **MTProto RPC**: `stickers.removeStickerFromSet`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.remove_sticker(sticker: InputDocument)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram stickers.removeStickerFromSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.removeStickerFromSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `sticker` (InputDocument, Required)
-
-### 100. `ctx.move_sticker`
-- **MTProto RPC**: `stickers.changeStickerPosition`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.move_sticker(sticker: InputDocument, position: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.changeStickerPosition. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.changeStickerPosition. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `sticker` (InputDocument, Required)
-  • `position` (int, Required)
-
-### 101. `ctx.add_sticker`
-- **MTProto RPC**: `stickers.addStickerToSet`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.add_sticker(stickerset: InputStickerSet, sticker: InputStickerSetItem)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.addStickerToSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.addStickerToSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `stickerset` (InputStickerSet, Required)
-  • `sticker` (InputStickerSetItem, Required)
-
-### 102. `ctx.set_sticker_set_thumbnail`
-- **MTProto RPC**: `stickers.setStickerSetThumb`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.set_sticker_set_thumbnail(stickerset: InputStickerSet, thumb: flags.0?InputDocument = None, thumb_document_id: flags.1?long = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.setStickerSetThumb. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.setStickerSetThumb. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `stickerset` (InputStickerSet, Required)
-  • `thumb` (flags.0?InputDocument, Optional)
-  • `thumb_document_id` (flags.1?long, Optional)
-
-### 103. `ctx.check_sticker_set_name`
-- **MTProto RPC**: `stickers.checkShortName`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.check_sticker_set_name(short_name: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.checkShortName. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.checkShortName. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `short_name` (string, Required)
-
-### 104. `ctx.suggest_sticker_set_name`
-- **MTProto RPC**: `stickers.suggestShortName`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.suggest_sticker_set_name(title: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.suggestShortName. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.suggestShortName. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `title` (string, Required)
-
-### 105. `ctx.edit_sticker_metadata`
-- **MTProto RPC**: `stickers.changeSticker`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.edit_sticker_metadata(sticker: InputDocument, emoji: flags.0?string = None, mask_coords: flags.1?MaskCoords = None, keywords: flags.2?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.changeSticker. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.changeSticker. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `sticker` (InputDocument, Required)
-  • `emoji` (flags.0?string, Optional)
-  • `mask_coords` (flags.1?MaskCoords, Optional)
-  • `keywords` (flags.2?string, Optional)
-
-### 106. `ctx.rename_sticker_set`
-- **MTProto RPC**: `stickers.renameStickerSet`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.rename_sticker_set(stickerset: InputStickerSet, title: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.renameStickerSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.renameStickerSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `stickerset` (InputStickerSet, Required)
-  • `title` (string, Required)
-
-### 107. `ctx.remove_sticker_set`
-- **MTProto RPC**: `stickers.deleteStickerSet`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.remove_sticker_set(stickerset: InputStickerSet)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram stickers.deleteStickerSet. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.deleteStickerSet. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `stickerset` (InputStickerSet, Required)
-
-### 108. `ctx.replace_sticker`
-- **MTProto RPC**: `stickers.replaceSticker`
-- **Namespace**: `stickers`
-- **Signature**: `await ctx.replace_sticker(sticker: InputDocument, new_sticker: InputStickerSetItem)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stickers.replaceSticker. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stickers.replaceSticker. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `sticker` (InputDocument, Required)
-  • `new_sticker` (InputStickerSetItem, Required)
-
-### 109. `ctx.contact_ids`
-- **MTProto RPC**: `contacts.getContactIDs`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.contact_ids(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.getContactIDs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.getContactIDs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 110. `ctx.contact_statuses`
-- **MTProto RPC**: `contacts.getStatuses`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.contact_statuses()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.getStatuses. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.getStatuses. Передает параметры и возвращает типизированный ответ.
-
-### 111. `ctx.contacts_list`
-- **MTProto RPC**: `contacts.getContacts`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.contacts_list(hash: long)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram contacts.getContacts. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.getContacts. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 112. `ctx.import_contacts`
-- **MTProto RPC**: `contacts.importContacts`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.import_contacts(contacts: Vector<InputContact>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.importContacts. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.importContacts. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `contacts` (Vector<InputContact>, Required)
-
-### 113. `ctx.remove_contacts`
-- **MTProto RPC**: `contacts.deleteContacts`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.remove_contacts(id: Vector<InputUser>)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram contacts.deleteContacts. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.deleteContacts. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (Vector<InputUser>, Required)
-
-### 114. `ctx.remove_contacts_by_phone`
-- **MTProto RPC**: `contacts.deleteByPhones`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.remove_contacts_by_phone(phones: Vector<string>)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram contacts.deleteByPhones. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.deleteByPhones. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `phones` (Vector<string>, Required)
-
-### 115. `ctx.block_peer`
-- **MTProto RPC**: `contacts.block`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.block_peer(my_stories_from: flags.0?true = None, id: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.block. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.block. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `my_stories_from` (flags.0?true, Optional)
-  • `id` (InputPeer, Required)
-
-### 116. `ctx.unblock_peer`
-- **MTProto RPC**: `contacts.unblock`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.unblock_peer(my_stories_from: flags.0?true = None, id: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.unblock. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.unblock. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `my_stories_from` (flags.0?true, Optional)
-  • `id` (InputPeer, Required)
-
-### 117. `ctx.blocked_peers`
-- **MTProto RPC**: `contacts.getBlocked`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.blocked_peers(my_stories_from: flags.0?true = None, offset: int, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.getBlocked. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.getBlocked. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `my_stories_from` (flags.0?true, Optional)
-  • `offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 118. `ctx.search_public_peers`
-- **MTProto RPC**: `contacts.search`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.search_public_peers(broadcasts: flags.0?true = None, bots: flags.1?true = None, q: string, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.search. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.search. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `broadcasts` (flags.0?true, Optional)
-  • `bots` (flags.1?true, Optional)
-  • `q` (string, Required)
-  • `limit` (int, Required) (default: `50`)
-
-### 119. `ctx.frequent_peers`
-- **MTProto RPC**: `contacts.getTopPeers`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.frequent_peers(correspondents: flags.0?true = None, bots_pm: flags.1?true = None, bots_inline: flags.2?true = None, phone_calls: flags.3?true = None, forward_users: flags.4?true = None, forward_chats: flags.5?true = None, groups: flags.10?true = None, channels: flags.15?true = None, bots_app: flags.16?true = None, bots_guestchat: flags.17?true = None, offset: int, limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.getTopPeers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.getTopPeers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `correspondents` (flags.0?true, Optional)
-  • `bots_pm` (flags.1?true, Optional)
-  • `bots_inline` (flags.2?true, Optional)
-  • `phone_calls` (flags.3?true, Optional)
-  • `forward_users` (flags.4?true, Optional)
-  • `forward_chats` (flags.5?true, Optional)
-  • `groups` (flags.10?true, Optional)
-  • `channels` (flags.15?true, Optional)
-  • `bots_app` (flags.16?true, Optional)
-  • `bots_guestchat` (flags.17?true, Optional)
-  • `offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 120. `ctx.reset_peer_rating`
-- **MTProto RPC**: `contacts.resetTopPeerRating`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.reset_peer_rating(category: TopPeerCategory, peer: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.resetTopPeerRating. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.resetTopPeerRating. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `category` (TopPeerCategory, Required)
-  • `peer` (InputPeer, Required)
-
-### 121. `ctx.clear_imported_contacts`
-- **MTProto RPC**: `contacts.resetSaved`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.clear_imported_contacts()`
-- **Returns**: `bool`
-- **Description**: Calls Telegram contacts.resetSaved. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.resetSaved. Передает параметры и возвращает типизированный ответ.
-
-### 122. `ctx.imported_contacts`
-- **MTProto RPC**: `contacts.getSaved`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.imported_contacts()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.getSaved. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.getSaved. Передает параметры и возвращает типизированный ответ.
-
-### 123. `ctx.set_frequent_peers_enabled`
-- **MTProto RPC**: `contacts.toggleTopPeers`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.set_frequent_peers_enabled(enabled: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.toggleTopPeers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.toggleTopPeers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `enabled` (Bool, Required)
-
-### 124. `ctx.add_contact`
-- **MTProto RPC**: `contacts.addContact`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.add_contact(add_phone_privacy_exception: flags.0?true = None, id: InputUser, first_name: string, last_name: string, phone: string, note: flags.1?TextWithEntities = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.addContact. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.addContact. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `add_phone_privacy_exception` (flags.0?true, Optional)
-  • `id` (InputUser, Required)
-  • `first_name` (string, Required)
-  • `last_name` (string, Required)
-  • `phone` (string, Required)
-  • `note` (flags.1?TextWithEntities, Optional)
-
-### 125. `ctx.accept_contact`
-- **MTProto RPC**: `contacts.acceptContact`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.accept_contact(id: InputUser)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.acceptContact. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.acceptContact. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputUser, Required)
-
-### 126. `ctx.set_close_friends`
-- **MTProto RPC**: `contacts.editCloseFriends`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.set_close_friends(id: Vector<long>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.editCloseFriends. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.editCloseFriends. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (Vector<long>, Required)
-
-### 127. `ctx.replace_blocklist`
-- **MTProto RPC**: `contacts.setBlocked`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.replace_blocklist(my_stories_from: flags.0?true = None, id: Vector<InputPeer>, limit: int)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram contacts.setBlocked. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.setBlocked. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `my_stories_from` (flags.0?true, Optional)
-  • `id` (Vector<InputPeer>, Required)
-  • `limit` (int, Required) (default: `50`)
-
-### 128. `ctx.contact_birthdays`
-- **MTProto RPC**: `contacts.getBirthdays`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.contact_birthdays()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.getBirthdays. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.getBirthdays. Передает параметры и возвращает типизированный ответ.
-
-### 129. `ctx.edit_contact_note`
-- **MTProto RPC**: `contacts.updateContactNote`
-- **Namespace**: `contacts`
-- **Signature**: `await ctx.edit_contact_note(id: InputUser, note: TextWithEntities)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram contacts.updateContactNote. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram contacts.updateContactNote. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputUser, Required)
-  • `note` (TextWithEntities, Required)
-
-### 130. `ctx.dialogs`
-- **MTProto RPC**: `messages.getDialogs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.dialogs(exclude_pinned: flags.0?true = None, folder_id: flags.1?int = None, offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getDialogs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getDialogs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `exclude_pinned` (flags.0?true, Optional)
-  • `folder_id` (flags.1?int, Optional)
-  • `offset_date` (int, Required) (default: `0`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `offset_peer` (InputPeer, Required) (default: `{'_': 'inputPeerEmpty'}`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 131. `ctx.chat_history`
-- **MTProto RPC**: `messages.getHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.chat_history(peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `offset_date` (int, Required) (default: `0`)
-  • `add_offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `max_id` (int, Required) (default: `0`)
-  • `min_id` (int, Required) (default: `0`)
-  • `hash` (long, Required) (default: `0`)
-
-### 132. `ctx.search_chat_messages`
-- **MTProto RPC**: `messages.search`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.search_chat_messages(peer: InputPeer, q: string, from_id: flags.0?InputPeer = None, saved_peer_id: flags.2?InputPeer = None, saved_reaction: flags.3?Vector<Reaction> = None, top_msg_id: flags.1?int = None, filter: MessagesFilter, min_date: int, max_date: int, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram messages.search. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.search. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `q` (string, Required)
-  • `from_id` (flags.0?InputPeer, Optional)
-  • `saved_peer_id` (flags.2?InputPeer, Optional)
-  • `saved_reaction` (flags.3?Vector<Reaction>, Optional)
-  • `top_msg_id` (flags.1?int, Optional)
-  • `filter` (MessagesFilter, Required) (default: `{'_': 'inputMessagesFilterEmpty'}`)
-  • `min_date` (int, Required) (default: `0`)
-  • `max_date` (int, Required) (default: `0`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `add_offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `max_id` (int, Required) (default: `0`)
-  • `min_id` (int, Required) (default: `0`)
-  • `hash` (long, Required) (default: `0`)
-
-### 133. `ctx.mark_chat_read`
-- **MTProto RPC**: `messages.readHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mark_chat_read(peer: InputPeer, max_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.readHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.readHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `max_id` (int, Required)
-
-### 134. `ctx.clear_chat_history`
-- **MTProto RPC**: `messages.deleteHistory`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.clear_chat_history(just_clear: flags.0?true = None, revoke: flags.1?true = None, peer: InputPeer, max_id: int, min_date: flags.2?int = None, max_date: flags.3?int = None)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `just_clear` (flags.0?true, Optional)
-  • `revoke` (flags.1?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `max_id` (int, Required)
-  • `min_date` (flags.2?int, Optional)
-  • `max_date` (flags.3?int, Optional)
-
-### 135. `ctx.peer_settings`
-- **MTProto RPC**: `messages.getPeerSettings`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.peer_settings(peer: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getPeerSettings. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getPeerSettings. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-
-### 136. `ctx.basic_groups`
-- **MTProto RPC**: `messages.getChats`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.basic_groups(id: Vector<long>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getChats. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getChats. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (Vector<long>, Required)
-
-### 137. `ctx.basic_group_details`
-- **MTProto RPC**: `messages.getFullChat`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.basic_group_details(chat_id: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getFullChat. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getFullChat. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chat_id` (long, Required)
-
-### 138. `ctx.search_all_messages`
-- **MTProto RPC**: `messages.searchGlobal`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.search_all_messages(broadcasts_only: flags.1?true = None, groups_only: flags.2?true = None, users_only: flags.3?true = None, folder_id: flags.0?int = None, community: flags.4?InputChannel = None, q: string, filter: MessagesFilter, min_date: int, max_date: int, offset_rate: int, offset_peer: InputPeer, offset_id: int, limit: int)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram messages.searchGlobal. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.searchGlobal. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `broadcasts_only` (flags.1?true, Optional)
-  • `groups_only` (flags.2?true, Optional)
-  • `users_only` (flags.3?true, Optional)
-  • `folder_id` (flags.0?int, Optional)
-  • `community` (flags.4?InputChannel, Optional)
-  • `q` (string, Required)
-  • `filter` (MessagesFilter, Required) (default: `{'_': 'inputMessagesFilterEmpty'}`)
-  • `min_date` (int, Required) (default: `0`)
-  • `max_date` (int, Required) (default: `0`)
-  • `offset_rate` (int, Required) (default: `0`)
-  • `offset_peer` (InputPeer, Required) (default: `{'_': 'inputPeerEmpty'}`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 139. `ctx.message_editability`
-- **MTProto RPC**: `messages.getMessageEditData`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.message_editability(peer: InputPeer, id: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getMessageEditData. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getMessageEditData. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `id` (int, Required) (default: `$message`)
-
-### 140. `ctx.peer_dialogs`
-- **MTProto RPC**: `messages.getPeerDialogs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.peer_dialogs(peers: Vector<InputDialogPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getPeerDialogs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getPeerDialogs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peers` (Vector<InputDialogPeer>, Required)
-
-### 141. `ctx.all_drafts`
-- **MTProto RPC**: `messages.getAllDrafts`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.all_drafts()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getAllDrafts. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getAllDrafts. Передает параметры и возвращает типизированный ответ.
-
-### 142. `ctx.mutual_groups`
-- **MTProto RPC**: `messages.getCommonChats`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mutual_groups(user_id: InputUser, max_id: long, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getCommonChats. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getCommonChats. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `user_id` (InputUser, Required)
-  • `max_id` (long, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 143. `ctx.set_dialog_pinned`
-- **MTProto RPC**: `messages.toggleDialogPin`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_dialog_pinned(pinned: flags.0?true = None, peer: InputDialogPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.toggleDialogPin. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.toggleDialogPin. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `pinned` (flags.0?true, Optional)
-  • `peer` (InputDialogPeer, Required)
-
-### 144. `ctx.reorder_dialog_pins`
-- **MTProto RPC**: `messages.reorderPinnedDialogs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.reorder_dialog_pins(force: flags.0?true = None, folder_id: int, order: Vector<InputDialogPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.reorderPinnedDialogs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.reorderPinnedDialogs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `force` (flags.0?true, Optional)
-  • `folder_id` (int, Required)
-  • `order` (Vector<InputDialogPeer>, Required)
-
-### 145. `ctx.pinned_dialogs`
-- **MTProto RPC**: `messages.getPinnedDialogs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.pinned_dialogs(folder_id: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getPinnedDialogs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getPinnedDialogs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `folder_id` (int, Required)
-
-### 146. `ctx.unread_mentions`
-- **MTProto RPC**: `messages.getUnreadMentions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.unread_mentions(peer: InputPeer, top_msg_id: flags.0?int = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.getUnreadMentions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getUnreadMentions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (flags.0?int, Optional)
-  • `offset_id` (int, Required) (default: `0`)
-  • `add_offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `max_id` (int, Required) (default: `0`)
-  • `min_id` (int, Required) (default: `0`)
-
-### 147. `ctx.mark_mentions_read`
-- **MTProto RPC**: `messages.readMentions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mark_mentions_read(peer: InputPeer, top_msg_id: flags.0?int = None)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.readMentions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.readMentions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (flags.0?int, Optional)
-
-### 148. `ctx.recent_live_locations`
-- **MTProto RPC**: `messages.getRecentLocations`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.recent_live_locations(peer: InputPeer, limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getRecentLocations. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getRecentLocations. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 149. `ctx.set_dialog_unread`
-- **MTProto RPC**: `messages.markDialogUnread`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_dialog_unread(unread: flags.0?true = None, parent_peer: flags.1?InputPeer = None, peer: InputDialogPeer)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.markDialogUnread. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.markDialogUnread. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `unread` (flags.0?true, Optional)
-  • `parent_peer` (flags.1?InputPeer, Optional)
-  • `peer` (InputDialogPeer, Required)
-
-### 150. `ctx.unread_dialog_marks`
-- **MTProto RPC**: `messages.getDialogUnreadMarks`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.unread_dialog_marks(parent_peer: flags.0?InputPeer = None)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.getDialogUnreadMarks. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getDialogUnreadMarks. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `parent_peer` (flags.0?InputPeer, Optional)
-
-### 151. `ctx.clear_all_drafts`
-- **MTProto RPC**: `messages.clearAllDrafts`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.clear_all_drafts()`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.clearAllDrafts. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.clearAllDrafts. Передает параметры и возвращает типизированный ответ.
-
-### 152. `ctx.chat_online_count`
-- **MTProto RPC**: `messages.getOnlines`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.chat_online_count(peer: InputPeer)`
-- **Returns**: `int`
-- **Description**: Calls Telegram messages.getOnlines. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getOnlines. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-
-### 153. `ctx.message_type_counts`
-- **MTProto RPC**: `messages.getSearchCounters`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.message_type_counts(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, top_msg_id: flags.0?int = None, filters: Vector<MessagesFilter>)`
-- **Returns**: `int`
-- **Description**: Calls Telegram messages.getSearchCounters. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSearchCounters. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `saved_peer_id` (flags.2?InputPeer, Optional)
-  • `top_msg_id` (flags.0?int, Optional)
-  • `filters` (Vector<MessagesFilter>, Required)
-
-### 154. `ctx.dismiss_peer_settings_bar`
-- **MTProto RPC**: `messages.hidePeerSettingsBar`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.dismiss_peer_settings_bar(peer: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.hidePeerSettingsBar. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.hidePeerSettingsBar. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-
-### 155. `ctx.mark_discussion_read`
-- **MTProto RPC**: `messages.readDiscussion`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.mark_discussion_read(peer: InputPeer, msg_id: int, read_max_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.readDiscussion. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.readDiscussion. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-  • `read_max_id` (int, Required)
-
-### 156. `ctx.unpin_all_chat_messages`
-- **MTProto RPC**: `messages.unpinAllMessages`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.unpin_all_chat_messages(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram messages.unpinAllMessages. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.unpinAllMessages. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `top_msg_id` (flags.0?int, Optional)
-  • `saved_peer_id` (flags.1?InputPeer, Optional)
-
-### 157. `ctx.message_readers`
-- **MTProto RPC**: `messages.getMessageReadParticipants`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.message_readers(peer: InputPeer, msg_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.getMessageReadParticipants. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getMessageReadParticipants. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-
-### 158. `ctx.message_search_calendar`
-- **MTProto RPC**: `messages.getSearchResultsCalendar`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.message_search_calendar(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, filter: MessagesFilter, offset_id: int, offset_date: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSearchResultsCalendar. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSearchResultsCalendar. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `saved_peer_id` (flags.2?InputPeer, Optional)
-  • `filter` (MessagesFilter, Required) (default: `{'_': 'inputMessagesFilterEmpty'}`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `offset_date` (int, Required) (default: `0`)
-
-### 159. `ctx.message_search_positions`
-- **MTProto RPC**: `messages.getSearchResultsPositions`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.message_search_positions(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, filter: MessagesFilter, offset_id: int, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSearchResultsPositions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSearchResultsPositions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `saved_peer_id` (flags.2?InputPeer, Optional)
-  • `filter` (MessagesFilter, Required) (default: `{'_': 'inputMessagesFilterEmpty'}`)
-  • `offset_id` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 160. `ctx.set_default_send_as`
-- **MTProto RPC**: `messages.saveDefaultSendAs`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_default_send_as(peer: InputPeer, send_as: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.saveDefaultSendAs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.saveDefaultSendAs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `send_as` (InputPeer, Required)
-
-### 161. `ctx.sent_media_search`
-- **MTProto RPC**: `messages.searchSentMedia`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.sent_media_search(q: string, filter: MessagesFilter, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.searchSentMedia. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.searchSentMedia. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `q` (string, Required)
-  • `filter` (MessagesFilter, Required) (default: `{'_': 'inputMessagesFilterEmpty'}`)
-  • `limit` (int, Required) (default: `50`)
-
-### 162. `ctx.outgoing_read_date`
-- **MTProto RPC**: `messages.getOutboxReadDate`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.outgoing_read_date(peer: InputPeer, msg_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.getOutboxReadDate. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getOutboxReadDate. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `msg_id` (int, Required) (default: `$message`)
-
-### 163. `ctx.channel_message_author`
-- **MTProto RPC**: `channels.getMessageAuthor`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.channel_message_author(channel: InputChannel, id: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getMessageAuthor. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getMessageAuthor. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `id` (int, Required)
-
-### 164. `ctx.move_dialogs_to_archive`
-- **MTProto RPC**: `folders.editPeerFolders`
-- **Namespace**: `folders`
-- **Signature**: `await ctx.move_dialogs_to_archive(folder_peers: Vector<InputFolderPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram folders.editPeerFolders. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram folders.editPeerFolders. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `folder_peers` (Vector<InputFolderPeer>, Required)
-
-### 165. `ctx.chat_folders`
-- **MTProto RPC**: `messages.getDialogFilters`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.chat_folders()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getDialogFilters. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getDialogFilters. Передает параметры и возвращает типизированный ответ.
-
-### 166. `ctx.suggested_chat_folders`
-- **MTProto RPC**: `messages.getSuggestedDialogFilters`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.suggested_chat_folders()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getSuggestedDialogFilters. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getSuggestedDialogFilters. Передает параметры и возвращает типизированный ответ.
-
-### 167. `ctx.save_chat_folder`
-- **MTProto RPC**: `messages.updateDialogFilter`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.save_chat_folder(id: int, filter: flags.0?DialogFilter = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.updateDialogFilter. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.updateDialogFilter. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (int, Required)
-  • `filter` (flags.0?DialogFilter, Optional)
-
-### 168. `ctx.reorder_chat_folders`
-- **MTProto RPC**: `messages.updateDialogFiltersOrder`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.reorder_chat_folders(order: Vector<int>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.updateDialogFiltersOrder. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.updateDialogFiltersOrder. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `order` (Vector<int>, Required)
-
-### 169. `ctx.set_folder_tags_visible`
-- **MTProto RPC**: `messages.toggleDialogFilterTags`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_folder_tags_visible(enabled: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.toggleDialogFilterTags. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.toggleDialogFilterTags. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `enabled` (Bool, Required)
-
-### 170. `ctx.share_chat_folder`
-- **MTProto RPC**: `chatlists.exportChatlistInvite`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.share_chat_folder(chatlist: InputChatlist, title: string, peers: Vector<InputPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.exportChatlistInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.exportChatlistInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-  • `title` (string, Required)
-  • `peers` (Vector<InputPeer>, Required)
-
-### 171. `ctx.remove_folder_invite`
-- **MTProto RPC**: `chatlists.deleteExportedInvite`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.remove_folder_invite(chatlist: InputChatlist, slug: string)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram chatlists.deleteExportedInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.deleteExportedInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-  • `slug` (string, Required)
-
-### 172. `ctx.edit_folder_invite`
-- **MTProto RPC**: `chatlists.editExportedInvite`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.edit_folder_invite(chatlist: InputChatlist, slug: string, title: flags.1?string = None, peers: flags.2?Vector<InputPeer> = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.editExportedInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.editExportedInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-  • `slug` (string, Required)
-  • `title` (flags.1?string, Optional)
-  • `peers` (flags.2?Vector<InputPeer>, Optional)
-
-### 173. `ctx.folder_invites`
-- **MTProto RPC**: `chatlists.getExportedInvites`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.folder_invites(chatlist: InputChatlist)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.getExportedInvites. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.getExportedInvites. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-
-### 174. `ctx.inspect_folder_invite`
-- **MTProto RPC**: `chatlists.checkChatlistInvite`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.inspect_folder_invite(slug: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.checkChatlistInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.checkChatlistInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `slug` (string, Required)
-
-### 175. `ctx.join_folder_invite`
-- **MTProto RPC**: `chatlists.joinChatlistInvite`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.join_folder_invite(slug: string, peers: Vector<InputPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.joinChatlistInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.joinChatlistInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `slug` (string, Required)
-  • `peers` (Vector<InputPeer>, Required)
-
-### 176. `ctx.folder_updates`
-- **MTProto RPC**: `chatlists.getChatlistUpdates`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.folder_updates(chatlist: InputChatlist)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.getChatlistUpdates. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.getChatlistUpdates. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-
-### 177. `ctx.accept_folder_updates`
-- **MTProto RPC**: `chatlists.joinChatlistUpdates`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.accept_folder_updates(chatlist: InputChatlist, peers: Vector<InputPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.joinChatlistUpdates. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.joinChatlistUpdates. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-  • `peers` (Vector<InputPeer>, Required)
-
-### 178. `ctx.dismiss_folder_updates`
-- **MTProto RPC**: `chatlists.hideChatlistUpdates`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.dismiss_folder_updates(chatlist: InputChatlist)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.hideChatlistUpdates. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.hideChatlistUpdates. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-
-### 179. `ctx.folder_leave_suggestions`
-- **MTProto RPC**: `chatlists.getLeaveChatlistSuggestions`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.folder_leave_suggestions(chatlist: InputChatlist)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.getLeaveChatlistSuggestions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.getLeaveChatlistSuggestions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-
-### 180. `ctx.leave_shared_folder`
-- **MTProto RPC**: `chatlists.leaveChatlist`
-- **Namespace**: `chatlists`
-- **Signature**: `await ctx.leave_shared_folder(chatlist: InputChatlist, peers: Vector<InputPeer>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram chatlists.leaveChatlist. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram chatlists.leaveChatlist. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chatlist` (InputChatlist, Required)
-  • `peers` (Vector<InputPeer>, Required)
-
-### 181. `ctx.edit_profile`
-- **MTProto RPC**: `account.updateProfile`
-- **Namespace**: `account`
-- **Signature**: `await ctx.edit_profile(first_name: flags.0?string = None, last_name: flags.1?string = None, about: flags.2?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updateProfile. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updateProfile. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `first_name` (flags.0?string, Optional)
-  • `last_name` (flags.1?string, Optional)
-  • `about` (flags.2?string, Optional)
-
-### 182. `ctx.set_online_status`
-- **MTProto RPC**: `account.updateStatus`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_online_status(offline: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updateStatus. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updateStatus. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `offline` (Bool, Required)
-
-### 183. `ctx.check_profile_username`
-- **MTProto RPC**: `account.checkUsername`
-- **Namespace**: `account`
-- **Signature**: `await ctx.check_profile_username(username: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.checkUsername. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.checkUsername. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `username` (string, Required)
-
-### 184. `ctx.set_profile_username`
-- **MTProto RPC**: `account.updateUsername`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_profile_username(username: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updateUsername. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updateUsername. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `username` (string, Required)
-
-### 185. `ctx.privacy_rules`
-- **MTProto RPC**: `account.getPrivacy`
-- **Namespace**: `account`
-- **Signature**: `await ctx.privacy_rules(key: InputPrivacyKey)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getPrivacy. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getPrivacy. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `key` (InputPrivacyKey, Required)
-
-### 186. `ctx.account_inactivity_ttl`
-- **MTProto RPC**: `account.getAccountTTL`
-- **Namespace**: `account`
-- **Signature**: `await ctx.account_inactivity_ttl()`
-- **Returns**: `int`
-- **Description**: Calls Telegram account.getAccountTTL. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getAccountTTL. Передает параметры и возвращает типизированный ответ.
-
-### 187. `ctx.set_emoji_status`
-- **MTProto RPC**: `account.updateEmojiStatus`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_emoji_status(emoji_status: EmojiStatus)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updateEmojiStatus. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updateEmojiStatus. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `emoji_status` (EmojiStatus, Required)
-
-### 188. `ctx.suggested_emoji_statuses`
-- **MTProto RPC**: `account.getDefaultEmojiStatuses`
-- **Namespace**: `account`
-- **Signature**: `await ctx.suggested_emoji_statuses(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getDefaultEmojiStatuses. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getDefaultEmojiStatuses. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 189. `ctx.recent_emoji_statuses`
-- **MTProto RPC**: `account.getRecentEmojiStatuses`
-- **Namespace**: `account`
-- **Signature**: `await ctx.recent_emoji_statuses(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getRecentEmojiStatuses. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getRecentEmojiStatuses. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 190. `ctx.clear_recent_emoji_statuses`
-- **MTProto RPC**: `account.clearRecentEmojiStatuses`
-- **Namespace**: `account`
-- **Signature**: `await ctx.clear_recent_emoji_statuses()`
-- **Returns**: `bool`
-- **Description**: Calls Telegram account.clearRecentEmojiStatuses. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.clearRecentEmojiStatuses. Передает параметры и возвращает типизированный ответ.
-
-### 191. `ctx.reorder_profile_usernames`
-- **MTProto RPC**: `account.reorderUsernames`
-- **Namespace**: `account`
-- **Signature**: `await ctx.reorder_profile_usernames(order: Vector<string>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.reorderUsernames. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.reorderUsernames. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `order` (Vector<string>, Required)
-
-### 192. `ctx.set_profile_username_active`
-- **MTProto RPC**: `account.toggleUsername`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_profile_username_active(username: string, active: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.toggleUsername. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.toggleUsername. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `username` (string, Required)
-  • `active` (Bool, Required)
-
-### 193. `ctx.profile_photo_emojis`
-- **MTProto RPC**: `account.getDefaultProfilePhotoEmojis`
-- **Namespace**: `account`
-- **Signature**: `await ctx.profile_photo_emojis(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getDefaultProfilePhotoEmojis. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getDefaultProfilePhotoEmojis. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 194. `ctx.set_profile_color`
-- **MTProto RPC**: `account.updateColor`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_profile_color(for_profile: flags.1?true = None, color: flags.2?PeerColor = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updateColor. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updateColor. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `for_profile` (flags.1?true, Optional)
-  • `color` (flags.2?PeerColor, Optional)
-
-### 195. `ctx.set_birthday`
-- **MTProto RPC**: `account.updateBirthday`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_birthday(birthday: flags.0?Birthday = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updateBirthday. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updateBirthday. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `birthday` (flags.0?Birthday, Optional)
-
-### 196. `ctx.set_personal_channel`
-- **MTProto RPC**: `account.updatePersonalChannel`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_personal_channel(channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updatePersonalChannel. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updatePersonalChannel. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required)
-
-### 197. `ctx.set_profile_tab`
-- **MTProto RPC**: `account.setMainProfileTab`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_profile_tab(tab: ProfileTab)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.setMainProfileTab. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.setMainProfileTab. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `tab` (ProfileTab, Required)
-
-### 198. `ctx.set_music_saved`
-- **MTProto RPC**: `account.saveMusic`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_music_saved(unsave: flags.0?true = None, id: InputDocument, after_id: flags.1?InputDocument = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.saveMusic. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.saveMusic. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `unsave` (flags.0?true, Optional)
-  • `id` (InputDocument, Required)
-  • `after_id` (flags.1?InputDocument, Optional)
-
-### 199. `ctx.saved_music_ids`
-- **MTProto RPC**: `account.getSavedMusicIds`
-- **Namespace**: `account`
-- **Signature**: `await ctx.saved_music_ids(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getSavedMusicIds. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getSavedMusicIds. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 200. `ctx.user_details`
-- **MTProto RPC**: `users.getFullUser`
-- **Namespace**: `users`
-- **Signature**: `await ctx.user_details(id: InputUser)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram users.getFullUser. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram users.getFullUser. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputUser, Required)
-
-### 201. `ctx.contact_requirements`
-- **MTProto RPC**: `users.getRequirementsToContact`
-- **Namespace**: `users`
-- **Signature**: `await ctx.contact_requirements(id: Vector<InputUser>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram users.getRequirementsToContact. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram users.getRequirementsToContact. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (Vector<InputUser>, Required)
-
-### 202. `ctx.user_music`
-- **MTProto RPC**: `users.getSavedMusic`
-- **Namespace**: `users`
-- **Signature**: `await ctx.user_music(id: InputUser, offset: int, limit: int, hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram users.getSavedMusic. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram users.getSavedMusic. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputUser, Required)
-  • `offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required) (default: `0`)
-
-### 203. `ctx.user_music_by_documents`
-- **MTProto RPC**: `users.getSavedMusicByID`
-- **Namespace**: `users`
-- **Signature**: `await ctx.user_music_by_documents(id: InputUser, documents: Vector<InputDocument>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram users.getSavedMusicByID. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram users.getSavedMusicByID. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputUser, Required)
-  • `documents` (Vector<InputDocument>, Required)
-
-### 204. `ctx.suggest_contact_birthday`
-- **MTProto RPC**: `users.suggestBirthday`
-- **Namespace**: `users`
-- **Signature**: `await ctx.suggest_contact_birthday(id: InputUser, birthday: Birthday)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram users.suggestBirthday. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram users.suggestBirthday. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputUser, Required)
-  • `birthday` (Birthday, Required)
-
-### 205. `ctx.select_profile_photo`
-- **MTProto RPC**: `photos.updateProfilePhoto`
-- **Namespace**: `photos`
-- **Signature**: `await ctx.select_profile_photo(fallback: flags.0?true = None, bot: flags.1?InputUser = None, id: InputPhoto)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram photos.updateProfilePhoto. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram photos.updateProfilePhoto. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `fallback` (flags.0?true, Optional)
-  • `bot` (flags.1?InputUser, Optional)
-  • `id` (InputPhoto, Required)
-
-### 206. `ctx.upload_profile_photo`
-- **MTProto RPC**: `photos.uploadProfilePhoto`
-- **Namespace**: `photos`
-- **Signature**: `await ctx.upload_profile_photo(fallback: flags.3?true = None, bot: flags.5?InputUser = None, file: flags.0?InputFile = None, video: flags.1?InputFile = None, video_start_ts: flags.2?double = None, video_emoji_markup: flags.4?VideoSize = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram photos.uploadProfilePhoto. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram photos.uploadProfilePhoto. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `fallback` (flags.3?true, Optional)
-  • `bot` (flags.5?InputUser, Optional)
-  • `file` (flags.0?InputFile, Optional)
-  • `video` (flags.1?InputFile, Optional)
-  • `video_start_ts` (flags.2?double, Optional)
-  • `video_emoji_markup` (flags.4?VideoSize, Optional)
-
-### 207. `ctx.remove_profile_photos`
-- **MTProto RPC**: `photos.deletePhotos`
-- **Namespace**: `photos`
-- **Signature**: `await ctx.remove_profile_photos(id: Vector<InputPhoto>)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram photos.deletePhotos. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram photos.deletePhotos. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (Vector<InputPhoto>, Required)
-
-### 208. `ctx.profile_photos`
-- **MTProto RPC**: `photos.getUserPhotos`
-- **Namespace**: `photos`
-- **Signature**: `await ctx.profile_photos(user_id: InputUser, offset: int, max_id: long, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram photos.getUserPhotos. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram photos.getUserPhotos. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `user_id` (InputUser, Required)
-  • `offset` (int, Required) (default: `0`)
-  • `max_id` (long, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-
-### 209. `ctx.set_contact_photo`
-- **MTProto RPC**: `photos.uploadContactProfilePhoto`
-- **Namespace**: `photos`
-- **Signature**: `await ctx.set_contact_photo(suggest: flags.3?true = None, save: flags.4?true = None, user_id: InputUser, file: flags.0?InputFile = None, video: flags.1?InputFile = None, video_start_ts: flags.2?double = None, video_emoji_markup: flags.5?VideoSize = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram photos.uploadContactProfilePhoto. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram photos.uploadContactProfilePhoto. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `suggest` (flags.3?true, Optional)
-  • `save` (flags.4?true, Optional)
-  • `user_id` (InputUser, Required)
-  • `file` (flags.0?InputFile, Optional)
-  • `video` (flags.1?InputFile, Optional)
-  • `video_start_ts` (flags.2?double, Optional)
-  • `video_emoji_markup` (flags.5?VideoSize, Optional)
-
-### 210. `ctx.notification_settings`
-- **MTProto RPC**: `account.getNotifySettings`
-- **Namespace**: `account`
-- **Signature**: `await ctx.notification_settings(peer: InputNotifyPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getNotifySettings. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getNotifySettings. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputNotifyPeer, Required)
-
-### 211. `ctx.set_notification_settings`
-- **MTProto RPC**: `account.updateNotifySettings`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_notification_settings(peer: InputNotifyPeer, settings: InputPeerNotifySettings)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.updateNotifySettings. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.updateNotifySettings. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputNotifyPeer, Required)
-  • `settings` (InputPeerNotifySettings, Required)
-
-### 212. `ctx.reset_notification_settings`
-- **MTProto RPC**: `account.resetNotifySettings`
-- **Namespace**: `account`
-- **Signature**: `await ctx.reset_notification_settings()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.resetNotifySettings. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.resetNotifySettings. Передает параметры и возвращает типизированный ответ.
-
-### 213. `ctx.contact_signup_notifications`
-- **MTProto RPC**: `account.getContactSignUpNotification`
-- **Namespace**: `account`
-- **Signature**: `await ctx.contact_signup_notifications()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getContactSignUpNotification. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getContactSignUpNotification. Передает параметры и возвращает типизированный ответ.
-
-### 214. `ctx.set_contact_signup_notifications`
-- **MTProto RPC**: `account.setContactSignUpNotification`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_contact_signup_notifications(silent: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.setContactSignUpNotification. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.setContactSignUpNotification. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `silent` (Bool, Required)
-
-### 215. `ctx.notification_exceptions`
-- **MTProto RPC**: `account.getNotifyExceptions`
-- **Namespace**: `account`
-- **Signature**: `await ctx.notification_exceptions(compare_sound: flags.1?true = None, compare_stories: flags.2?true = None, peer: flags.0?InputNotifyPeer = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getNotifyExceptions. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getNotifyExceptions. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `compare_sound` (flags.1?true, Optional)
-  • `compare_stories` (flags.2?true, Optional)
-  • `peer` (flags.0?InputNotifyPeer, Optional)
-
-### 216. `ctx.reaction_notification_settings`
-- **MTProto RPC**: `account.getReactionsNotifySettings`
-- **Namespace**: `account`
-- **Signature**: `await ctx.reaction_notification_settings()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getReactionsNotifySettings. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getReactionsNotifySettings. Передает параметры и возвращает типизированный ответ.
-
-### 217. `ctx.set_reaction_notification_settings`
-- **MTProto RPC**: `account.setReactionsNotifySettings`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_reaction_notification_settings(settings: ReactionsNotifySettings)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.setReactionsNotifySettings. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.setReactionsNotifySettings. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `settings` (ReactionsNotifySettings, Required)
-
-### 218. `ctx.saved_notification_sounds`
-- **MTProto RPC**: `account.getSavedRingtones`
-- **Namespace**: `account`
-- **Signature**: `await ctx.saved_notification_sounds(hash: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.getSavedRingtones. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.getSavedRingtones. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `hash` (long, Required) (default: `0`)
-
-### 219. `ctx.set_notification_sound_saved`
-- **MTProto RPC**: `account.saveRingtone`
-- **Namespace**: `account`
-- **Signature**: `await ctx.set_notification_sound_saved(id: InputDocument, unsave: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.saveRingtone. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.saveRingtone. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `id` (InputDocument, Required)
-  • `unsave` (Bool, Required)
-
-### 220. `ctx.upload_notification_sound`
-- **MTProto RPC**: `account.uploadRingtone`
-- **Namespace**: `account`
-- **Signature**: `await ctx.upload_notification_sound(file: InputFile, file_name: string, mime_type: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram account.uploadRingtone. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram account.uploadRingtone. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `file` (InputFile, Required)
-  • `file_name` (string, Required)
-  • `mime_type` (string, Required)
-
-### 221. `ctx.rename_basic_group`
-- **MTProto RPC**: `messages.editChatTitle`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.rename_basic_group(chat_id: long, title: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editChatTitle. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editChatTitle. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chat_id` (long, Required)
-  • `title` (string, Required)
-
-### 222. `ctx.set_basic_group_photo`
-- **MTProto RPC**: `messages.editChatPhoto`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_basic_group_photo(chat_id: long, photo: InputChatPhoto)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editChatPhoto. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editChatPhoto. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chat_id` (long, Required)
-  • `photo` (InputChatPhoto, Required)
-
-### 223. `ctx.add_basic_group_member`
-- **MTProto RPC**: `messages.addChatUser`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.add_basic_group_member(chat_id: long, user_id: InputUser, fwd_limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.addChatUser. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.addChatUser. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chat_id` (long, Required)
-  • `user_id` (InputUser, Required)
-  • `fwd_limit` (int, Required) (default: `0`)
-
-### 224. `ctx.remove_basic_group_member`
-- **MTProto RPC**: `messages.deleteChatUser`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.remove_basic_group_member(revoke_history: flags.0?true = None, chat_id: long, user_id: InputUser)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteChatUser. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteChatUser. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `revoke_history` (flags.0?true, Optional)
-  • `chat_id` (long, Required)
-  • `user_id` (InputUser, Required)
-
-### 225. `ctx.create_basic_group`
-- **MTProto RPC**: `messages.createChat`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.create_basic_group(users: Vector<InputUser>, title: string, ttl_period: flags.0?int = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.createChat. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.createChat. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `users` (Vector<InputUser>, Required)
-  • `title` (string, Required)
-  • `ttl_period` (flags.0?int, Optional)
-
-### 226. `ctx.set_basic_group_admin`
-- **MTProto RPC**: `messages.editChatAdmin`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_basic_group_admin(chat_id: long, user_id: InputUser, is_admin: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editChatAdmin. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editChatAdmin. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chat_id` (long, Required)
-  • `user_id` (InputUser, Required)
-  • `is_admin` (Bool, Required)
-
-### 227. `ctx.upgrade_basic_group`
-- **MTProto RPC**: `messages.migrateChat`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.upgrade_basic_group(chat_id: long)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.migrateChat. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.migrateChat. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chat_id` (long, Required)
-
-### 228. `ctx.edit_chat_description`
-- **MTProto RPC**: `messages.editChatAbout`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.edit_chat_description(peer: InputPeer, about: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editChatAbout. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editChatAbout. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `about` (string, Required)
-
-### 229. `ctx.set_default_member_restrictions`
-- **MTProto RPC**: `messages.editChatDefaultBannedRights`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_default_member_restrictions(peer: InputPeer, banned_rights: ChatBannedRights)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editChatDefaultBannedRights. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editChatDefaultBannedRights. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `banned_rights` (ChatBannedRights, Required)
-
-### 230. `ctx.remove_basic_group`
-- **MTProto RPC**: `messages.deleteChat`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.remove_basic_group(chat_id: long)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteChat. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteChat. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `chat_id` (long, Required)
-
-### 231. `ctx.set_chat_auto_delete`
-- **MTProto RPC**: `messages.setHistoryTTL`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_chat_auto_delete(peer: InputPeer, period: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.setHistoryTTL. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.setHistoryTTL. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `period` (int, Required)
-
-### 232. `ctx.set_content_protection`
-- **MTProto RPC**: `messages.toggleNoForwards`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.set_content_protection(peer: InputPeer, enabled: Bool, request_msg_id: flags.0?int = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.toggleNoForwards. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.toggleNoForwards. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-  • `request_msg_id` (flags.0?int, Optional)
-
-### 233. `ctx.mark_channel_read`
-- **MTProto RPC**: `channels.readHistory`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.mark_channel_read(channel: InputChannel, max_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram channels.readHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.readHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `max_id` (int, Required)
-
-### 234. `ctx.channel_members`
-- **MTProto RPC**: `channels.getParticipants`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.channel_members(channel: InputChannel, filter: ChannelParticipantsFilter, offset: int, limit: int, hash: long)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram channels.getParticipants. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getParticipants. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `filter` (ChannelParticipantsFilter, Required) (default: `{'_': 'channelParticipantsRecent'}`)
-  • `offset` (int, Required) (default: `0`)
-  • `limit` (int, Required) (default: `50`)
-  • `hash` (long, Required)
-
-### 235. `ctx.channel_member`
-- **MTProto RPC**: `channels.getParticipant`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.channel_member(channel: InputChannel, participant: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getParticipant. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getParticipant. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `participant` (InputPeer, Required)
-
-### 236. `ctx.channel_details`
-- **MTProto RPC**: `channels.getFullChannel`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.channel_details(channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getFullChannel. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getFullChannel. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 237. `ctx.create_channel`
-- **MTProto RPC**: `channels.createChannel`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.create_channel(broadcast: flags.0?true = None, megagroup: flags.1?true = None, for_import: flags.3?true = None, forum: flags.5?true = None, title: string, about: string, geo_point: flags.2?InputGeoPoint = None, address: flags.2?string = None, ttl_period: flags.4?int = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.createChannel. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.createChannel. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `broadcast` (flags.0?true, Optional)
-  • `megagroup` (flags.1?true, Optional)
-  • `for_import` (flags.3?true, Optional)
-  • `forum` (flags.5?true, Optional)
-  • `title` (string, Required)
-  • `about` (string, Required)
-  • `geo_point` (flags.2?InputGeoPoint, Optional)
-  • `address` (flags.2?string, Optional)
-  • `ttl_period` (flags.4?int, Optional)
-
-### 238. `ctx.set_channel_admin`
-- **MTProto RPC**: `channels.editAdmin`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_admin(channel: InputChannel, user_id: InputUser, admin_rights: ChatAdminRights, rank: flags.0?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.editAdmin. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.editAdmin. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `user_id` (InputUser, Required)
-  • `admin_rights` (ChatAdminRights, Required)
-  • `rank` (flags.0?string, Optional)
-
-### 239. `ctx.rename_channel`
-- **MTProto RPC**: `channels.editTitle`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.rename_channel(channel: InputChannel, title: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.editTitle. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.editTitle. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `title` (string, Required)
-
-### 240. `ctx.set_channel_photo`
-- **MTProto RPC**: `channels.editPhoto`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_photo(channel: InputChannel, photo: InputChatPhoto)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.editPhoto. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.editPhoto. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `photo` (InputChatPhoto, Required)
-
-### 241. `ctx.check_channel_username`
-- **MTProto RPC**: `channels.checkUsername`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.check_channel_username(channel: InputChannel, username: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.checkUsername. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.checkUsername. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `username` (string, Required)
-
-### 242. `ctx.set_channel_username`
-- **MTProto RPC**: `channels.updateUsername`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_username(channel: InputChannel, username: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.updateUsername. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.updateUsername. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `username` (string, Required)
-
-### 243. `ctx.join_channel`
-- **MTProto RPC**: `channels.joinChannel`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.join_channel(channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.joinChannel. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.joinChannel. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 244. `ctx.leave_channel`
-- **MTProto RPC**: `channels.leaveChannel`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.leave_channel(channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.leaveChannel. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.leaveChannel. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 245. `ctx.invite_channel_members`
-- **MTProto RPC**: `channels.inviteToChannel`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.invite_channel_members(channel: InputChannel, users: Vector<InputUser>)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram channels.inviteToChannel. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.inviteToChannel. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `users` (Vector<InputUser>, Required)
-
-### 246. `ctx.remove_channel`
-- **MTProto RPC**: `channels.deleteChannel`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.remove_channel(channel: InputChannel)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram channels.deleteChannel. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.deleteChannel. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 247. `ctx.set_channel_signatures`
-- **MTProto RPC**: `channels.toggleSignatures`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_signatures(signatures_enabled: flags.0?true = None, profiles_enabled: flags.1?true = None, channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleSignatures. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleSignatures. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `signatures_enabled` (flags.0?true, Optional)
-  • `profiles_enabled` (flags.1?true, Optional)
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 248. `ctx.owned_public_channels`
-- **MTProto RPC**: `channels.getAdminedPublicChannels`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.owned_public_channels(by_location: flags.0?true = None, check_limit: flags.1?true = None, for_personal: flags.2?true = None, for_community_peer: flags.3?true = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getAdminedPublicChannels. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getAdminedPublicChannels. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `by_location` (flags.0?true, Optional)
-  • `check_limit` (flags.1?true, Optional)
-  • `for_personal` (flags.2?true, Optional)
-  • `for_community_peer` (flags.3?true, Optional)
-
-### 249. `ctx.restrict_channel_member`
-- **MTProto RPC**: `channels.editBanned`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.restrict_channel_member(channel: InputChannel, participant: InputPeer, banned_rights: ChatBannedRights)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.editBanned. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.editBanned. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `participant` (InputPeer, Required)
-  • `banned_rights` (ChatBannedRights, Required)
-
-### 250. `ctx.channel_admin_log`
-- **MTProto RPC**: `channels.getAdminLog`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.channel_admin_log(channel: InputChannel, q: string, events_filter: flags.0?ChannelAdminLogEventsFilter = None, admins: flags.1?Vector<InputUser> = None, max_id: long, min_id: long, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getAdminLog. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getAdminLog. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `q` (string, Required) (default: ``)
-  • `events_filter` (flags.0?ChannelAdminLogEventsFilter, Optional)
-  • `admins` (flags.1?Vector<InputUser>, Optional)
-  • `max_id` (long, Required)
-  • `min_id` (long, Required)
-  • `limit` (int, Required) (default: `50`)
-
-### 251. `ctx.set_group_sticker_set`
-- **MTProto RPC**: `channels.setStickers`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_group_sticker_set(channel: InputChannel, stickerset: InputStickerSet)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.setStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.setStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `stickerset` (InputStickerSet, Required)
-
-### 252. `ctx.mark_channel_media_read`
-- **MTProto RPC**: `channels.readMessageContents`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.mark_channel_media_read(channel: InputChannel, id: Vector<int>)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram channels.readMessageContents. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.readMessageContents. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `id` (Vector<int>, Required)
-
-### 253. `ctx.clear_channel_history`
-- **MTProto RPC**: `channels.deleteHistory`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.clear_channel_history(for_everyone: flags.0?true = None, channel: InputChannel, max_id: int)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram channels.deleteHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.deleteHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `for_everyone` (flags.0?true, Optional)
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `max_id` (int, Required)
-
-### 254. `ctx.set_prehistory_hidden`
-- **MTProto RPC**: `channels.togglePreHistoryHidden`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_prehistory_hidden(channel: InputChannel, enabled: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.togglePreHistoryHidden. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.togglePreHistoryHidden. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-
-### 255. `ctx.left_channels`
-- **MTProto RPC**: `channels.getLeftChannels`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.left_channels(offset: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getLeftChannels. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getLeftChannels. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `offset` (int, Required) (default: `0`)
-
-### 256. `ctx.eligible_discussion_groups`
-- **MTProto RPC**: `channels.getGroupsForDiscussion`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.eligible_discussion_groups()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getGroupsForDiscussion. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getGroupsForDiscussion. Передает параметры и возвращает типизированный ответ.
-
-### 257. `ctx.set_discussion_group`
-- **MTProto RPC**: `channels.setDiscussionGroup`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_discussion_group(broadcast: InputChannel, group: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.setDiscussionGroup. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.setDiscussionGroup. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `broadcast` (InputChannel, Required)
-  • `group` (InputChannel, Required)
-
-### 258. `ctx.set_group_location`
-- **MTProto RPC**: `channels.editLocation`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_group_location(channel: InputChannel, geo_point: InputGeoPoint, address: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.editLocation. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.editLocation. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `geo_point` (InputGeoPoint, Required)
-  • `address` (string, Required)
-
-### 259. `ctx.set_slow_mode`
-- **MTProto RPC**: `channels.toggleSlowMode`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_slow_mode(channel: InputChannel, seconds: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleSlowMode. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleSlowMode. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `seconds` (int, Required)
-
-### 260. `ctx.inactive_channels`
-- **MTProto RPC**: `channels.getInactiveChannels`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.inactive_channels()`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getInactiveChannels. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getInactiveChannels. Передает параметры и возвращает типизированный ответ.
-
-### 261. `ctx.send_as_identities`
-- **MTProto RPC**: `channels.getSendAs`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.send_as_identities(for_paid_reactions: flags.0?true = None, for_live_stories: flags.1?true = None, peer: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getSendAs. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getSendAs. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `for_paid_reactions` (flags.0?true, Optional)
-  • `for_live_stories` (flags.1?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-
-### 262. `ctx.remove_member_history`
-- **MTProto RPC**: `channels.deleteParticipantHistory`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.remove_member_history(channel: InputChannel, participant: InputPeer)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram channels.deleteParticipantHistory. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.deleteParticipantHistory. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `participant` (InputPeer, Required)
-
-### 263. `ctx.set_join_to_send`
-- **MTProto RPC**: `channels.toggleJoinToSend`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_join_to_send(channel: InputChannel, enabled: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleJoinToSend. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleJoinToSend. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-
-### 264. `ctx.set_join_requests`
-- **MTProto RPC**: `channels.toggleJoinRequest`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_join_requests(apply_to_invites: flags.1?true = None, channel: InputChannel, enabled: Bool, guard_bot: flags.0?InputUser = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleJoinRequest. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleJoinRequest. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `apply_to_invites` (flags.1?true, Optional)
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-  • `guard_bot` (flags.0?InputUser, Optional)
-
-### 265. `ctx.reorder_channel_usernames`
-- **MTProto RPC**: `channels.reorderUsernames`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.reorder_channel_usernames(channel: InputChannel, order: Vector<string>)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.reorderUsernames. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.reorderUsernames. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `order` (Vector<string>, Required)
-
-### 266. `ctx.set_channel_username_active`
-- **MTProto RPC**: `channels.toggleUsername`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_username_active(channel: InputChannel, username: string, active: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleUsername. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleUsername. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `username` (string, Required)
-  • `active` (Bool, Required)
-
-### 267. `ctx.deactivate_channel_usernames`
-- **MTProto RPC**: `channels.deactivateAllUsernames`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.deactivate_channel_usernames(channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.deactivateAllUsernames. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.deactivateAllUsernames. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 268. `ctx.set_antispam`
-- **MTProto RPC**: `channels.toggleAntiSpam`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_antispam(channel: InputChannel, enabled: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleAntiSpam. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleAntiSpam. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-
-### 269. `ctx.set_members_hidden`
-- **MTProto RPC**: `channels.toggleParticipantsHidden`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_members_hidden(channel: InputChannel, enabled: Bool)`
-- **Returns**: `list[dict[str, Any]]`
-- **Description**: Calls Telegram channels.toggleParticipantsHidden. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleParticipantsHidden. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-
-### 270. `ctx.set_channel_color`
-- **MTProto RPC**: `channels.updateColor`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_color(for_profile: flags.1?true = None, channel: InputChannel, color: flags.2?int = None, background_emoji_id: flags.0?long = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.updateColor. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.updateColor. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `for_profile` (flags.1?true, Optional)
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `color` (flags.2?int, Optional)
-  • `background_emoji_id` (flags.0?long, Optional)
-
-### 271. `ctx.related_channels`
-- **MTProto RPC**: `channels.getChannelRecommendations`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.related_channels(channel: flags.0?InputChannel = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.getChannelRecommendations. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.getChannelRecommendations. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (flags.0?InputChannel, Optional)
-
-### 272. `ctx.set_channel_emoji_status`
-- **MTProto RPC**: `channels.updateEmojiStatus`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_emoji_status(channel: InputChannel, emoji_status: EmojiStatus)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.updateEmojiStatus. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.updateEmojiStatus. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `emoji_status` (EmojiStatus, Required)
-
-### 273. `ctx.set_group_emoji_set`
-- **MTProto RPC**: `channels.setEmojiStickers`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_group_emoji_set(channel: InputChannel, stickerset: InputStickerSet)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.setEmojiStickers. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.setEmojiStickers. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `stickerset` (InputStickerSet, Required)
-
-### 274. `ctx.set_channel_auto_translation`
-- **MTProto RPC**: `channels.toggleAutotranslation`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_auto_translation(channel: InputChannel, enabled: Bool)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.toggleAutotranslation. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.toggleAutotranslation. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `enabled` (Bool, Required)
-
-### 275. `ctx.set_channel_profile_tab`
-- **MTProto RPC**: `channels.setMainProfileTab`
-- **Namespace**: `channels`
-- **Signature**: `await ctx.set_channel_profile_tab(channel: InputChannel, tab: ProfileTab)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram channels.setMainProfileTab. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram channels.setMainProfileTab. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `tab` (ProfileTab, Required)
-
-### 276. `ctx.edit_member_rank`
-- **MTProto RPC**: `messages.editChatParticipantRank`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.edit_member_rank(peer: InputPeer, participant: InputPeer, rank: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editChatParticipantRank. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editChatParticipantRank. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `participant` (InputPeer, Required)
-  • `rank` (string, Required)
-
-### 277. `ctx.create_chat_invite`
-- **MTProto RPC**: `messages.exportChatInvite`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.create_chat_invite(legacy_revoke_permanent: flags.2?true = None, request_needed: flags.3?true = None, peer: InputPeer, expire_date: flags.0?int = None, usage_limit: flags.1?int = None, title: flags.4?string = None, subscription_pricing: flags.5?StarsSubscriptionPricing = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.exportChatInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.exportChatInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `legacy_revoke_permanent` (flags.2?true, Optional)
-  • `request_needed` (flags.3?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `expire_date` (flags.0?int, Optional)
-  • `usage_limit` (flags.1?int, Optional)
-  • `title` (flags.4?string, Optional)
-  • `subscription_pricing` (flags.5?StarsSubscriptionPricing, Optional)
-
-### 278. `ctx.chat_invites`
-- **MTProto RPC**: `messages.getExportedChatInvites`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.chat_invites(revoked: flags.3?true = None, peer: InputPeer, admin_id: InputUser, offset_date: flags.2?int = None, offset_link: flags.2?string = None, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getExportedChatInvites. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getExportedChatInvites. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `revoked` (flags.3?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `admin_id` (InputUser, Required)
-  • `offset_date` (flags.2?int, Optional)
-  • `offset_link` (flags.2?string, Optional)
-  • `limit` (int, Required) (default: `50`)
-
-### 279. `ctx.chat_invite_details`
-- **MTProto RPC**: `messages.getExportedChatInvite`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.chat_invite_details(peer: InputPeer, link: string)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getExportedChatInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getExportedChatInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `link` (string, Required)
-
-### 280. `ctx.edit_chat_invite`
-- **MTProto RPC**: `messages.editExportedChatInvite`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.edit_chat_invite(revoked: flags.2?true = None, peer: InputPeer, link: string, expire_date: flags.0?int = None, usage_limit: flags.1?int = None, request_needed: flags.3?Bool = None, title: flags.4?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.editExportedChatInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.editExportedChatInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `revoked` (flags.2?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `link` (string, Required)
-  • `expire_date` (flags.0?int, Optional)
-  • `usage_limit` (flags.1?int, Optional)
-  • `request_needed` (flags.3?Bool, Optional)
-  • `title` (flags.4?string, Optional)
-
-### 281. `ctx.purge_revoked_chat_invites`
-- **MTProto RPC**: `messages.deleteRevokedExportedChatInvites`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.purge_revoked_chat_invites(peer: InputPeer, admin_id: InputUser)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.deleteRevokedExportedChatInvites. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteRevokedExportedChatInvites. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `admin_id` (InputUser, Required)
-
-### 282. `ctx.remove_chat_invite`
-- **MTProto RPC**: `messages.deleteExportedChatInvite`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.remove_chat_invite(peer: InputPeer, link: string)`
-- **Returns**: `bool`
-- **Description**: Calls Telegram messages.deleteExportedChatInvite. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.deleteExportedChatInvite. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `link` (string, Required)
-
-### 283. `ctx.invite_admins`
-- **MTProto RPC**: `messages.getAdminsWithInvites`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.invite_admins(peer: InputPeer)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getAdminsWithInvites. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getAdminsWithInvites. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-
-### 284. `ctx.invite_joiners`
-- **MTProto RPC**: `messages.getChatInviteImporters`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.invite_joiners(requested: flags.0?true = None, subscription_expired: flags.3?true = None, peer: InputPeer, link: flags.1?string = None, q: flags.2?string = None, offset_date: int, offset_user: InputUser, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.getChatInviteImporters. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.getChatInviteImporters. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `requested` (flags.0?true, Optional)
-  • `subscription_expired` (flags.3?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `link` (flags.1?string, Optional)
-  • `q` (flags.2?string, Optional)
-  • `offset_date` (int, Required) (default: `0`)
-  • `offset_user` (InputUser, Required) (default: `{'_': 'inputUserEmpty'}`)
-  • `limit` (int, Required) (default: `50`)
-
-### 285. `ctx.resolve_join_request`
-- **MTProto RPC**: `messages.hideChatJoinRequest`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.resolve_join_request(approved: flags.0?true = None, peer: InputPeer, user_id: InputUser)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.hideChatJoinRequest. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.hideChatJoinRequest. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `approved` (flags.0?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `user_id` (InputUser, Required)
-
-### 286. `ctx.resolve_all_join_requests`
-- **MTProto RPC**: `messages.hideAllChatJoinRequests`
-- **Namespace**: `messages`
-- **Signature**: `await ctx.resolve_all_join_requests(approved: flags.0?true = None, peer: InputPeer, link: flags.1?string = None)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram messages.hideAllChatJoinRequests. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram messages.hideAllChatJoinRequests. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `approved` (flags.0?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `link` (flags.1?string, Optional)
-
-### 287. `ctx.channel_statistics`
-- **MTProto RPC**: `stats.getBroadcastStats`
-- **Namespace**: `stats`
-- **Signature**: `await ctx.channel_statistics(dark: flags.0?true = None, channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stats.getBroadcastStats. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stats.getBroadcastStats. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `dark` (flags.0?true, Optional)
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 288. `ctx.supergroup_statistics`
-- **MTProto RPC**: `stats.getMegagroupStats`
-- **Namespace**: `stats`
-- **Signature**: `await ctx.supergroup_statistics(dark: flags.0?true = None, channel: InputChannel)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stats.getMegagroupStats. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stats.getMegagroupStats. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `dark` (flags.0?true, Optional)
-  • `channel` (InputChannel, Required) (default: `$peer`)
-
-### 289. `ctx.message_statistics`
-- **MTProto RPC**: `stats.getMessageStats`
-- **Namespace**: `stats`
-- **Signature**: `await ctx.message_statistics(dark: flags.0?true = None, channel: InputChannel, msg_id: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stats.getMessageStats. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stats.getMessageStats. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `dark` (flags.0?true, Optional)
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `msg_id` (int, Required)
-
-### 290. `ctx.message_public_forwards`
-- **MTProto RPC**: `stats.getMessagePublicForwards`
-- **Namespace**: `stats`
-- **Signature**: `await ctx.message_public_forwards(channel: InputChannel, msg_id: int, offset: string, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stats.getMessagePublicForwards. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stats.getMessagePublicForwards. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `channel` (InputChannel, Required) (default: `$peer`)
-  • `msg_id` (int, Required)
-  • `offset` (string, Required) (default: ``)
-  • `limit` (int, Required) (default: `50`)
-
-### 291. `ctx.story_statistics`
-- **MTProto RPC**: `stats.getStoryStats`
-- **Namespace**: `stats`
-- **Signature**: `await ctx.story_statistics(dark: flags.0?true = None, peer: InputPeer, id: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stats.getStoryStats. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stats.getStoryStats. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `dark` (flags.0?true, Optional)
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `id` (int, Required) (default: `$message`)
-
-### 292. `ctx.story_public_forwards`
-- **MTProto RPC**: `stats.getStoryPublicForwards`
-- **Namespace**: `stats`
-- **Signature**: `await ctx.story_public_forwards(peer: InputPeer, id: int, offset: string, limit: int)`
-- **Returns**: `dict[str, Any]`
-- **Description**: Calls Telegram stats.getStoryPublicForwards. Dispatches typed parameters and returns structured result.
-- **Описание (RU)**: Вызывает метод Telegram stats.getStoryPublicForwards. Передает параметры и возвращает типизированный ответ.
-- **Parameters**:
-  • `peer` (InputPeer, Required) (default: `$peer`)
-  • `id` (int, Required) (default: `$message`)
-  • `offset` (string, Required) (default: ``)
-  • `limit` (int, Required) (default: `50`)
-
-## 8. Complete Production Module Blueprints
-
-The following 12 blueprints represent fully functional, tested `.hmod` modules covering a wide spectrum of userbot applications:
-
-### Blueprint 1: Multi-Currency & Crypto Price Watcher (`crypto_watch.hmod`)
-Demonstrates `net` and `state` capabilities with automatic live screen refreshes (no `mt` capability needed):
-```python
-HOTARU = {
-    "id": "crypto_watch",
-    "version": "1.0.0",
-    "commands": {
-        "crypto": "crypto_cmd",
-        "btc": "btc_cmd",
-    },
-    "capabilities": ["net", "state"],
-    "lexicon": {
-        "en": {
-            "fetching": "Querying cryptocurrency rates...",
-            "title": "Crypto Market Rates",
-        },
-        "ru": {
-            "fetching": "Запрос курсов криптовалют...",
-            "title": "Курсы криптовалют",
+            "description": "Минимальный пример",
+            "commands": {"example": {"description": "Показать приветствие"}},
         },
     },
 }
 
-import json
+import html
 
-async def fetch_crypto_rates(ctx):
-    url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,toncoin,solana&vs_currencies=usd,eur,rub"
-    res = await ctx.net(url, timeout=10)
-    if res.status_code == 200:
-        return json.loads(res.text)
-    return None
-
-async def crypto_cmd(ctx):
-    await ctx.respond(ctx.t("fetching"))
-    data = await fetch_crypto_rates(ctx)
-    if not data:
-        await ctx.respond("Failed to fetch market rates from CoinGecko.")
-        return
-
-    async def on_refresh(handle):
-        await render()
-
-    async def render():
-        rates = await fetch_crypto_rates(ctx) or data
-        lines = [
-            "<b>" + ctx.t("title") + "</b>\n",
-            f"• <b>BTC</b>: ${rates.get('bitcoin', {}).get('usd', 0):,} USD",
-            f"• <b>ETH</b>: ${rates.get('ethereum', {}).get('usd', 0):,} USD",
-            f"• <b>TON</b>: ${rates.get('toncoin', {}).get('usd', 0):,} USD",
-            f"• <b>SOL</b>: ${rates.get('solana', {}).get('usd', 0):,} USD",
-        ]
-        buttons = [
-            [ctx.screens.primary("Refresh Rates", on_refresh)],
-            [ctx.screens.close()],
-        ]
-        await ctx.screens.show("Market", "\n".join(lines), buttons=buttons)
-
-    await render()
-
-async def btc_cmd(ctx):
-    rates = await fetch_crypto_rates(ctx)
-    if rates and 'bitcoin' in rates:
-        usd = rates['bitcoin']['usd']
-        await ctx.respond(f"Bitcoin: <b>${usd:,} USD</b>")
-    else:
-        await ctx.respond("Unable to retrieve Bitcoin rate.")
-```
-
-### Blueprint 2: Ephemeral Self-Destructing Notes (`destruct_note.hmod`)
-Demonstrates message scheduling, timers, and automatic deletion using standard context operations (zero capabilities needed):
-```python
-HOTARU = {
-    "id": "destruct_note",
-    "version": "1.0.0",
-    "commands": {
-        "sd": "self_destruct_cmd",
-    },
-    "capabilities": [],
+STRINGS = {
+    "en": {"greeting": "Hello, {name}!", "default_name": "world"},
+    "ru": {"greeting": "Привет, {name}!", "default_name": "мир"},
 }
 
-import asyncio
 
-async def self_destruct_cmd(ctx):
-    args = ctx.args
-    if len(args) < 2:
-        await ctx.respond("Usage: .sd <seconds> <text>")
-        return
+def localized(ctx, key):
+    language = str(ctx.i18n.language).replace("_", "-").split("-", 1)[0].lower()
+    return STRINGS.get(language, STRINGS["en"]).get(key, STRINGS["en"][key])
+
+
+async def command_example(ctx, invocation):
+    name = invocation.raw_args.strip() or localized(ctx, "default_name")
+    text = localized(ctx, "greeting").format(name=html.escape(name, quote=False))
+    await ctx.respond(text, parse_mode="HTML", rich=False)
+```
+
+Не сохраняй имя/команды шаблона в пользовательском модуле. Добавляй только функции,
+нужные задаче, и повторно проверяй их по целевому коду.
+
+## 14. Финальная приёмка и ответ
+
+Перед завершением проверь:
+
+- Нет заглушек, fake-success, выдуманных API, лишних прав и зависимостей.
+- Изменены только согласованные файлы и поведение; данные пользователя сохраняются.
+- Новый манифест и handlers согласованы; imports и top-level код безопасны.
+- User input экранирован, данные ограничены по размеру, адресаты и права проверены.
+- Сеть и внешние действия имеют осмысленные ошибки и управляемый lifecycle.
+- Нет секретов, абсолютных dev-путей, обязательных sidecar и изменений ядра.
+- Проверки выполнены с указанной глубиной; ограничения не скрыты.
+
+В ответе укажи готовый путь к `.hmod`, кратко опиши изменения, требуемые capabilities
+и зависимости, целевой коммит/версию, результаты проверок и что не запускалось.
+Для исправления объясни причину ошибки. Не заявляй полноценную интеграционную
+проверку без запуска в целевой среде и не проси рабочие ключи/сессию для тестов.
+
+<a id="context-contract"></a>
+## Приложение A. Контекстный API и компактный каталог
+
+## Контекстные операции Hotaru без raw capability `mt`
+
+Источник: `relay/context.py`, `relay/sandbox.py`, `relay/caps.py` на коммите
+`8cab560e2b9dbc009aab4670c8a78a9a790e2d1a`, проверено 2026-11-09.
+
+### 1. Что означает «без capabilities»
+
+В обсуждении упоминалось 229 методов; в проверенном исходнике **292 записи
+`CTX_CATALOG`**, плюс отдельно определённые message helpers. Не урезай список
+до произвольного числа и не утверждай, что все записи всегда исполнимы.
+
+Внешний `ctx.<operation>()` идёт через `_ctx_call` → `_op_call` → `_serve_op` →
+`CapabilityHost._mt_call`. Этот маршрут не требует декларировать raw `mt`.
+Напротив, `ctx.tg.call()`/`ctx.cap("mt", ...)` идут через проверку capability.
+Не используй приватный `_ctx_call` напрямую как публичный raw RPC API.
+
+**Без raw `mt` не значит без ограничений:**
+
+- Telegram-права администратора, доступность RPC в слое, Premium, FloodWait,
+  denylist, read-only peers и запрет оплачиваемых операций продолжают действовать.
+- `set_profile_username` → `account.updateUsername` и `search_all_messages` →
+  `messages.searchGlobal` присутствуют в каталоге, но запрещены `MT_BLOCKED`.
+  Добавление `mt` их не разблокирует. Это отмеченные исключения, не рабочие примеры.
+- Загрузка медиа с локального диска в проверенном worker использует `assets`.
+  Наличие `send_photo` без raw `mt` не делает локальный upload permissionless.
+- Внешний перевод требует `net`; персистентность — `state`; доступ к файлам и
+  inline gateway также проверяется отдельно. Выбирай capabilities по всей цепочке.
+
+### 2. Как читать каталог
+
+Ниже **контрактные обозначения**, не объявления Python-функций:
+
+- Все перечисленные операции вызываются как `await ctx.<name>(...)`.
+- `$peer` — текущий чат; `$message` — текущее сообщение только при совместимом
+  адресате; `$random` — генерируемый `random_id`. В task/source-less ctx их может
+  не быть: тогда передавай адресата и ID явно.
+- `=?` — необязательное TL-поле; обычно лучше не передавать, чем передавать `None`.
+- До `*` указан порядок positional аргументов из каталога. Defaults подставляются
+  отдельно, поэтому **используй keywords**, если пропускаешь peer/message/defaults.
+  Например `await ctx.chat_history(limit=10)`, не `ctx.chat_history(10)`.
+- После `*` — дополнительные keyword-поля. Неизвестные, повторные аргументы и
+  запрещённые поля отвергаются до RPC. `timeout` не является общим keyword каталога.
+- `chat_id` может быть alias для `peer`/`channel`, но если RPC имеет настоящий
+  `chat_id: long`, это raw ID basic group, не произвольный InputPeer.
+- `message_id` заменяет `msg_id` либо скалярный `id: int`; `topic_id` заменяет
+  `top_msg_id` только у соответствующей операции. Это не универсальные kwargs.
+- Типы InputPeer/InputUser/InputChannel преобразуются из подходящих entity/TL
+  значений, username или ID с разрешением через ctx. `Vector<T>` требует список/
+  tuple. Строка не заменяет вектор, а ID сообщения не равен ID пользователя.
+- Для TL-типа, required/default/forbidden/RPC используй read-only скрипт
+  встроенный скрипт из [приложения D](#api-inspector) с `--section catalog`
+  либо сам `CTX_CATALOG`.
+  Нельзя выдумывать return type: host возвращает обработанное тело RPC, не всегда
+  dict и не полноценный объект сообщения.
+
+Общие guards отвергают paid/business fields, в частности ненулевые `allow_paid_stars`,
+`allow_paid_floodskip`, `stars`, `subscription_pricing`, а также `reactionPaid`.
+У `create_chat_invite` `subscription_pricing` явно запрещён и не указан ниже.
+
+### 3. Каталог: все 292 записи
+
+Развёрнутые карточки с RPC, TL-типами и таблицами параметров:
+[приложение C](#method-cards). Здесь сохранён компактный индекс,
+чтобы выбор метода не требовал загрузки большого справочника целиком.
+
+#### Checklist, polls, scheduled, reactions — 1–20
+
+1. `set_checklist_completed(peer=$peer, msg_id=$message, completed, incompleted)`
+2. `add_poll_answer(peer=$peer, msg_id=$message, answer)`
+3. `remove_poll_answer(peer=$peer, msg_id=$message, option)`
+4. `unread_poll_votes(peer=$peer, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0, *, top_msg_id=?)`
+5. `mark_poll_votes_read(peer=$peer, *, top_msg_id=?)`
+6. `poll_statistics(peer=$peer, msg_id=$message, *, dark=?)`
+7. `scheduled_messages(peer=$peer, hash=0)`
+8. `scheduled_by_ids(peer=$peer, id)`
+9. `publish_scheduled(peer=$peer, id)`
+10. `cancel_scheduled(peer=$peer, id)`
+11. `configure_chat_reactions(peer=$peer, available_reactions, *, reactions_limit=?, paid_enabled=?)`
+12. `available_reactions(hash=0)`
+13. `set_default_reaction(reaction)`
+14. `unread_reactions(peer=$peer, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0, *, top_msg_id=?, saved_peer_id=?)`
+15. `mark_reactions_read(peer=$peer, *, top_msg_id=?, saved_peer_id=?)`
+16. `popular_reactions(limit=50, hash=0)`
+17. `recent_reactions(limit=50, hash=0)`
+18. `clear_recent_reactions()`
+19. `remove_member_reactions(peer=$peer, participant)`
+20. `remove_member_message_reaction(peer=$peer, msg_id=$message, participant)`
+
+#### Saved Messages и forums — 21–40
+
+21. `saved_dialogs(offset_date=0, offset_id=0, offset_peer={'_': 'inputPeerEmpty'}, limit=50, hash=0, *, exclude_pinned=?, parent_peer=?)`
+22. `saved_history(peer, offset_id=0, offset_date=0, add_offset=0, limit=50, max_id=0, min_id=0, hash=0, *, parent_peer=?)`
+23. `clear_saved_history(peer, max_id, *, parent_peer=?, min_date=?, max_date=?)`
+24. `pinned_saved_dialogs()`
+25. `set_saved_dialog_pinned(peer, *, pinned=?)`
+26. `reorder_saved_pins(order, *, force=?)`
+27. `saved_reaction_tags(hash=0, *, peer=?)`
+28. `rename_saved_tag(reaction, *, title=?)`
+29. `suggested_saved_tags(hash=0)`
+30. `saved_dialogs_by_peers(ids, *, parent_peer=?)`
+31. `mark_saved_history_read(parent_peer, peer, max_id)`
+32. `forum_topics(peer=$peer, offset_date=0, offset_id=0, offset_topic=0, limit=50, *, q=?)`
+33. `forum_topics_by_ids(peer=$peer, topics)`
+34. `edit_forum_topic(peer=$peer, topic_id, *, title=?, icon_emoji_id=?, closed=?, hidden=?)`
+35. `set_forum_topic_pinned(peer=$peer, topic_id, pinned)`
+36. `reorder_forum_pins(peer=$peer, order, *, force=?)`
+37. `create_forum_topic(peer=$peer, title, random_id=$random, *, title_missing=?, icon_color=?, icon_emoji_id=?, send_as=?)`
+38. `remove_forum_topic(peer=$peer, top_msg_id)`
+39. `set_forum_enabled(channel=$peer, enabled, tabs)`
+40. `set_forum_message_view(channel=$peer, enabled)`
+
+#### Stories — 41–69
+
+41. `story_posting_quota(peer)`
+42. `post_story(peer, media, privacy_rules, random_id=$random, *, pinned=?, noforwards=?, fwd_modified=?, media_areas=?, caption=?, entities=?, period=?, fwd_from_id=?, fwd_from_story=?, albums=?, music=?)`
+43. `edit_story(peer, id, *, media=?, media_areas=?, caption=?, entities=?, privacy_rules=?, music=?)`
+44. `delete_stories(peer, id)`
+45. `set_stories_on_profile(peer, id, pinned)`
+46. `story_feed(*, next=?, hidden=?, state=?)`
+47. `profile_stories(peer, offset_id=0, limit=50)`
+48. `archived_stories(peer, offset_id=0, limit=50)`
+49. `stories_by_ids(peer, id)`
+50. `mark_stories_read(peer, max_id=0)`
+51. `story_viewers(peer, id, offset='', limit=50, *, just_contacts=?, reactions_first=?, forwards_first=?, q=?)`
+52. `story_view_counts(peer, id)`
+53. `story_link(peer, id)`
+54. `activate_story_stealth(*, past=?, future=?)`
+55. `react_to_story(peer, story_id, reaction, *, add_to_recent=?)`
+56. `peer_stories(peer)`
+57. `story_read_markers()`
+58. `peer_latest_story_ids(id)`
+59. `story_posting_chats()`
+60. `set_peer_stories_hidden(peer, hidden)`
+61. `story_reaction_senders(peer, id, limit=50, *, forwards_first=?, reaction=?, offset=?)`
+62. `reorder_profile_story_pins(peer, id)`
+63. `search_stories(offset='', limit=50, *, hashtag=?, area=?, peer=?)`
+64. `create_story_album(peer, title, stories)`
+65. `edit_story_album(peer, album_id, *, title=?, delete_stories=?, add_stories=?, order=?)`
+66. `reorder_story_albums(peer, order)`
+67. `remove_story_album(peer, album_id)`
+68. `story_albums(peer, hash=0)`
+69. `story_album_items(peer, album_id, offset=0, limit=50)`
+
+#### Stickers, emoji, GIF — 70–108
+
+70. `stickers_for_emoji(emoticon, hash=0)`
+71. `installed_sticker_sets(hash=0)`
+72. `sticker_set(stickerset, hash=0)`
+73. `install_sticker_set(stickerset, archived=False)`
+74. `uninstall_sticker_set(stickerset)`
+75. `reorder_sticker_sets(order, *, masks=?, emojis=?)`
+76. `saved_gifs(hash=0)`
+77. `set_gif_saved(id, unsave)`
+78. `featured_sticker_sets(hash=0)`
+79. `mark_featured_stickers_seen(id)`
+80. `recent_stickers(hash=0, *, attached=?)`
+81. `set_sticker_recent(id, unsave, *, attached=?)`
+82. `clear_recent_stickers(*, attached=?)`
+83. `archived_sticker_sets(offset_id=0, limit=50, *, masks=?, emojis=?)`
+84. `installed_masks(hash=0)`
+85. `media_sticker_sets(media)`
+86. `favorite_stickers(hash=0)`
+87. `set_sticker_favorite(id, unfave)`
+88. `search_sticker_sets(q, hash=0, *, exclude_featured=?)`
+89. `bulk_sticker_set_action(stickersets, *, uninstall=?, archive=?, unarchive=?)`
+90. `older_featured_sticker_sets(offset=0, limit=50, hash=0)`
+91. `custom_emoji_documents(document_id)`
+92. `installed_emoji_sets(hash=0)`
+93. `featured_emoji_sets(hash=0)`
+94. `search_custom_emoji(emoticon, hash=0)`
+95. `search_emoji_sets(q, hash=0, *, exclude_featured=?)`
+96. `owned_sticker_sets(offset_id=0, limit=50)`
+97. `search_stickers(q, emoticon, lang_code, offset=0, limit=50, hash=0, *, emojis=?)`
+98. `create_sticker_set(user_id, title, short_name, stickers, *, masks=?, emojis=?, text_color=?, thumb=?, software=?)`
+99. `remove_sticker(sticker)`
+100. `move_sticker(sticker, position)`
+101. `add_sticker(stickerset, sticker)`
+102. `set_sticker_set_thumbnail(stickerset, *, thumb=?, thumb_document_id=?)`
+103. `check_sticker_set_name(short_name)`
+104. `suggest_sticker_set_name(title)`
+105. `edit_sticker_metadata(sticker, *, emoji=?, mask_coords=?, keywords=?)`
+106. `rename_sticker_set(stickerset, title)`
+107. `remove_sticker_set(stickerset)`
+108. `replace_sticker(sticker, new_sticker)`
+
+#### Contacts — 109–129
+
+109. `contact_ids(hash=0)`
+110. `contact_statuses()`
+111. `contacts_list(hash=0)`
+112. `import_contacts(contacts)`
+113. `remove_contacts(id)`
+114. `remove_contacts_by_phone(phones)`
+115. `block_peer(id, *, my_stories_from=?)`
+116. `unblock_peer(id, *, my_stories_from=?)`
+117. `blocked_peers(offset=0, limit=50, *, my_stories_from=?)`
+118. `search_public_peers(q, limit=50, *, broadcasts=?, bots=?)`
+119. `frequent_peers(offset=0, limit=50, hash=0, *, correspondents=?, bots_pm=?, bots_inline=?, phone_calls=?, forward_users=?, forward_chats=?, groups=?, channels=?, bots_app=?, bots_guestchat=?)`
+120. `reset_peer_rating(category, peer)`
+121. `clear_imported_contacts()`
+122. `imported_contacts()`
+123. `set_frequent_peers_enabled(enabled)`
+124. `add_contact(id, first_name, last_name, phone, *, add_phone_privacy_exception=?, note=?)`
+125. `accept_contact(id)`
+126. `set_close_friends(id)`
+127. `replace_blocklist(id, limit=50, *, my_stories_from=?)`
+128. `contact_birthdays()`
+129. `edit_contact_note(id, note)`
+
+#### Dialogs, messages, folders — 130–180
+
+130. `dialogs(offset_date=0, offset_id=0, offset_peer={'_': 'inputPeerEmpty'}, limit=50, hash=0, *, exclude_pinned=?, folder_id=?)`
+131. `chat_history(peer=$peer, offset_id=0, offset_date=0, add_offset=0, limit=50, max_id=0, min_id=0, hash=0)`
+132. `search_chat_messages(peer=$peer, q, filter={'_': 'inputMessagesFilterEmpty'}, min_date=0, max_date=0, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0, hash=0, *, from_id=?, saved_peer_id=?, saved_reaction=?, top_msg_id=?)`
+133. `mark_chat_read(peer=$peer, max_id)`
+134. `clear_chat_history(peer=$peer, max_id, *, just_clear=?, revoke=?, min_date=?, max_date=?)`
+135. `peer_settings(peer=$peer)`
+136. `basic_groups(id)`
+137. `basic_group_details(chat_id)`
+138. `search_all_messages(q, filter={'_': 'inputMessagesFilterEmpty'}, min_date=0, max_date=0, offset_rate=0, offset_peer={'_': 'inputPeerEmpty'}, offset_id=0, limit=50, *, broadcasts_only=?, groups_only=?, users_only=?, folder_id=?, community=?)` **BLOCKED**
+139. `message_editability(peer=$peer, id=$message)`
+140. `peer_dialogs(peers)`
+141. `all_drafts()`
+142. `mutual_groups(user_id, max_id=0, limit=50)`
+143. `set_dialog_pinned(peer, *, pinned=?)`
+144. `reorder_dialog_pins(folder_id, order, *, force=?)`
+145. `pinned_dialogs(folder_id)`
+146. `unread_mentions(peer=$peer, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0, *, top_msg_id=?)`
+147. `mark_mentions_read(peer=$peer, *, top_msg_id=?)`
+148. `recent_live_locations(peer=$peer, limit=50, hash=0)`
+149. `set_dialog_unread(peer, *, unread=?, parent_peer=?)`
+150. `unread_dialog_marks(*, parent_peer=?)`
+151. `clear_all_drafts()`
+152. `chat_online_count(peer=$peer)`
+153. `message_type_counts(peer=$peer, filters, *, saved_peer_id=?, top_msg_id=?)`
+154. `dismiss_peer_settings_bar(peer=$peer)`
+155. `mark_discussion_read(peer=$peer, msg_id=$message, read_max_id)`
+156. `unpin_all_chat_messages(peer=$peer, *, top_msg_id=?, saved_peer_id=?)`
+157. `message_readers(peer=$peer, msg_id=$message)`
+158. `message_search_calendar(peer=$peer, filter={'_': 'inputMessagesFilterEmpty'}, offset_id=0, offset_date=0, *, saved_peer_id=?)`
+159. `message_search_positions(peer=$peer, filter={'_': 'inputMessagesFilterEmpty'}, offset_id=0, limit=50, *, saved_peer_id=?)`
+160. `set_default_send_as(peer=$peer, send_as)`
+161. `sent_media_search(q, filter={'_': 'inputMessagesFilterEmpty'}, limit=50)`
+162. `outgoing_read_date(peer=$peer, msg_id=$message)`
+163. `channel_message_author(channel=$peer, id)`
+164. `move_dialogs_to_archive(folder_peers)`
+165. `chat_folders()`
+166. `suggested_chat_folders()`
+167. `save_chat_folder(id, *, filter=?)`
+168. `reorder_chat_folders(order)`
+169. `set_folder_tags_visible(enabled)`
+170. `share_chat_folder(chatlist, title, peers)`
+171. `remove_folder_invite(chatlist, slug)`
+172. `edit_folder_invite(chatlist, slug, *, title=?, peers=?)`
+173. `folder_invites(chatlist)`
+174. `inspect_folder_invite(slug)`
+175. `join_folder_invite(slug, peers)`
+176. `folder_updates(chatlist)`
+177. `accept_folder_updates(chatlist, peers)`
+178. `dismiss_folder_updates(chatlist)`
+179. `folder_leave_suggestions(chatlist)`
+180. `leave_shared_folder(chatlist, peers)`
+
+#### Profile, users, photos, notifications — 181–220
+
+181. `edit_profile(*, first_name=?, last_name=?, about=?)`
+182. `set_online_status(offline)`
+183. `check_profile_username(username)`
+184. `set_profile_username(username)` **BLOCKED**
+185. `privacy_rules(key)`
+186. `account_inactivity_ttl()`
+187. `set_emoji_status(emoji_status)`
+188. `suggested_emoji_statuses(hash=0)`
+189. `recent_emoji_statuses(hash=0)`
+190. `clear_recent_emoji_statuses()`
+191. `reorder_profile_usernames(order)`
+192. `set_profile_username_active(username, active)`
+193. `profile_photo_emojis(hash=0)`
+194. `set_profile_color(*, for_profile=?, color=?)`
+195. `set_birthday(*, birthday=?)`
+196. `set_personal_channel(channel)`
+197. `set_profile_tab(tab)`
+198. `set_music_saved(id, *, unsave=?, after_id=?)`
+199. `saved_music_ids(hash=0)`
+200. `user_details(id)`
+201. `contact_requirements(id)`
+202. `user_music(id, offset=0, limit=50, hash=0)`
+203. `user_music_by_documents(id, documents)`
+204. `suggest_contact_birthday(id, birthday)`
+205. `select_profile_photo(id, *, fallback=?, bot=?)`
+206. `upload_profile_photo(*, fallback=?, bot=?, file=?, video=?, video_start_ts=?, video_emoji_markup=?)`
+207. `remove_profile_photos(id)`
+208. `profile_photos(user_id, offset=0, max_id=0, limit=50)`
+209. `set_contact_photo(user_id, *, suggest=?, save=?, file=?, video=?, video_start_ts=?, video_emoji_markup=?)`
+210. `notification_settings(peer)`
+211. `set_notification_settings(peer, settings)`
+212. `reset_notification_settings()`
+213. `contact_signup_notifications()`
+214. `set_contact_signup_notifications(silent)`
+215. `notification_exceptions(*, compare_sound=?, compare_stories=?, peer=?)`
+216. `reaction_notification_settings()`
+217. `set_reaction_notification_settings(settings)`
+218. `saved_notification_sounds(hash=0)`
+219. `set_notification_sound_saved(id, unsave)`
+220. `upload_notification_sound(file, file_name, mime_type)`
+
+#### Basic groups, channels, moderation — 221–276
+
+221. `rename_basic_group(chat_id, title)`
+222. `set_basic_group_photo(chat_id, photo)`
+223. `add_basic_group_member(chat_id, user_id, fwd_limit=0)`
+224. `remove_basic_group_member(chat_id, user_id, *, revoke_history=?)`
+225. `create_basic_group(users, title, *, ttl_period=?)`
+226. `set_basic_group_admin(chat_id, user_id, is_admin)`
+227. `upgrade_basic_group(chat_id)`
+228. `edit_chat_description(peer=$peer, about)`
+229. `set_default_member_restrictions(peer=$peer, banned_rights)`
+230. `remove_basic_group(chat_id)`
+231. `set_chat_auto_delete(peer=$peer, period)`
+232. `set_content_protection(peer=$peer, enabled, *, request_msg_id=?)`
+233. `mark_channel_read(channel=$peer, max_id)`
+234. `channel_members(channel=$peer, filter={'_': 'channelParticipantsRecent'}, offset=0, limit=50, hash)`
+235. `channel_member(channel=$peer, participant)`
+236. `channel_details(channel=$peer)`
+237. `create_channel(title, about, *, broadcast=?, megagroup=?, for_import=?, forum=?, geo_point=?, address=?, ttl_period=?)`
+238. `set_channel_admin(channel=$peer, user_id, admin_rights, *, rank=?)`
+239. `rename_channel(channel=$peer, title)`
+240. `set_channel_photo(channel=$peer, photo)`
+241. `check_channel_username(channel=$peer, username)`
+242. `set_channel_username(channel=$peer, username)`
+243. `join_channel(channel=$peer)`
+244. `leave_channel(channel=$peer)`
+245. `invite_channel_members(channel=$peer, users)`
+246. `remove_channel(channel=$peer)`
+247. `set_channel_signatures(channel=$peer, *, signatures_enabled=?, profiles_enabled=?)`
+248. `owned_public_channels(*, by_location=?, check_limit=?, for_personal=?, for_community_peer=?)`
+249. `restrict_channel_member(channel=$peer, participant, banned_rights)`
+250. `channel_admin_log(channel=$peer, q='', max_id, min_id, limit=50, *, events_filter=?, admins=?)`
+251. `set_group_sticker_set(channel=$peer, stickerset)`
+252. `mark_channel_media_read(channel=$peer, id)`
+253. `clear_channel_history(channel=$peer, max_id, *, for_everyone=?)`
+254. `set_prehistory_hidden(channel=$peer, enabled)`
+255. `left_channels(offset=0)`
+256. `eligible_discussion_groups()`
+257. `set_discussion_group(broadcast, group)`
+258. `set_group_location(channel=$peer, geo_point, address)`
+259. `set_slow_mode(channel=$peer, seconds)`
+260. `inactive_channels()`
+261. `send_as_identities(peer=$peer, *, for_paid_reactions=?, for_live_stories=?)`
+262. `remove_member_history(channel=$peer, participant)`
+263. `set_join_to_send(channel=$peer, enabled)`
+264. `set_join_requests(channel=$peer, enabled, *, apply_to_invites=?, guard_bot=?)`
+265. `reorder_channel_usernames(channel=$peer, order)`
+266. `set_channel_username_active(channel=$peer, username, active)`
+267. `deactivate_channel_usernames(channel=$peer)`
+268. `set_antispam(channel=$peer, enabled)`
+269. `set_members_hidden(channel=$peer, enabled)`
+270. `set_channel_color(channel=$peer, *, for_profile=?, color=?, background_emoji_id=?)`
+271. `related_channels(*, channel=?)`
+272. `set_channel_emoji_status(channel=$peer, emoji_status)`
+273. `set_group_emoji_set(channel=$peer, stickerset)`
+274. `set_channel_auto_translation(channel=$peer, enabled)`
+275. `set_channel_profile_tab(channel=$peer, tab)`
+276. `edit_member_rank(peer=$peer, participant, rank)`
+
+#### Invites, join requests, statistics — 277–292
+
+277. `create_chat_invite(peer=$peer, *, legacy_revoke_permanent=?, request_needed=?, expire_date=?, usage_limit=?, title=?)`
+278. `chat_invites(peer=$peer, admin_id, limit=50, *, revoked=?, offset_date=?, offset_link=?)`
+279. `chat_invite_details(peer=$peer, link)`
+280. `edit_chat_invite(peer=$peer, link, *, revoked=?, expire_date=?, usage_limit=?, request_needed=?, title=?)`
+281. `purge_revoked_chat_invites(peer=$peer, admin_id)`
+282. `remove_chat_invite(peer=$peer, link)`
+283. `invite_admins(peer=$peer)`
+284. `invite_joiners(peer=$peer, offset_date=0, offset_user={'_': 'inputUserEmpty'}, limit=50, *, requested=?, subscription_expired=?, link=?, q=?)`
+285. `resolve_join_request(peer=$peer, user_id, *, approved=?)`
+286. `resolve_all_join_requests(peer=$peer, *, approved=?, link=?)`
+287. `channel_statistics(channel=$peer, *, dark=?)`
+288. `supergroup_statistics(channel=$peer, *, dark=?)`
+289. `message_statistics(channel=$peer, msg_id, *, dark=?)`
+290. `message_public_forwards(channel=$peer, msg_id, offset='', limit=50)`
+291. `story_statistics(peer=$peer, id=$message, *, dark=?)`
+292. `story_public_forwards(peer=$peer, id=$message, offset='', limit=50)`
+
+### 4. Дополнительные message helpers и overrides
+
+Это отдельный API поверх каталога. Учитывай методы, переопределённые SandboxContext:
+
+| Внешний вызов | Контракт |
+| --- | --- |
+| `await ctx.respond(content=None, **kwargs)` | Bound answer; output auto/edit/reply; при явном target — message operation |
+| `await ctx.send(text, **kwargs)` | В worker задаёт output=reply, не универсальный send-to-peer |
+| `await ctx.edit(text, **kwargs)` | Bound output=edit либо явная операция edit |
+| `await ctx.reply(message=None)` | Получить reply через fetch; **не отправить текст** |
+| `await ctx.reply_text(message=None)` | Текст reply; может быть None |
+| `await ctx.msg(chat_id, message_id)` | Fetch TL-словарь сообщения либо None |
+| `await ctx.resolve(value)` | Entity lookup, не гарантия полного User |
+| `await ctx.send_text(text, **kwargs)` | Обычная отправка через message operation |
+| `await ctx.reply_html(text, **kwargs)` / `edit_html(...)` | Bound response с output=reply/edit |
+| `await ctx.delete(revoke=True)` | Удалить конкретное сообщение; проверь target/peer |
+| `await ctx.pin(both_sides=None, *, notify=False, pm_oneside=False)` / `unpin()` | Не `silent=` из других библиотек |
+| `await ctx.react(emoji, **kwargs)` / `unreact()` | Строка, custom emoji ID или список реакций |
+| `await ctx.forward(to_chat, **kwargs)` / `forward_to(...)` / `copy_to(...)` | Copy выставляет drop_author; не произвольный upload |
+| `await ctx.get_sender()` / `get_chat()` / `get_input_chat()` / `get_input_sender()` / `get_input_channel()` | Resolve и TL peer conversion |
+| `await ctx.read()` / `mark_read()` / `read_contents()` | С учётом channel/topic |
+| `await ctx.get_reply_message()` / `refresh()` | Получение актуального сообщения |
+| `await ctx.get_buttons()` / `click(i=None, j=None, *, text=None, filter=None, data=None, share_phone=None, share_geo=None, password=None, open_url=False)` | Кнопки/голосование; phone/geo sharing явно разрешить; пароль — SRP, не строка |
+| `await ctx.vote(options)` / `retract_vote()` / `get_poll_results()` | Vote принимает options/индексы по контракту |
+| `await ctx.get_poll_votes(*, option=None, offset=None, limit=100)` | Получение голосовавших |
+| `await ctx.get_reactions()` / `get_reactors(*, reaction=None, offset=None, limit=100)` | Reactions list |
+| `await ctx.get_views(increment=False)` / `get_replies(*, offset_id=0, limit=100, **kwargs)` / `get_discussion()` | Не смешивать views с изменением read state |
+| `await ctx.get_link(*, grouped=False, thread=False)` | Telegram-ссылка конкретного сообщения |
+| `await ctx.edit_buttons(buttons=None)` / `remove_buttons()` / `edit_caption(caption, **kwargs)` | Модификация сообщения |
+| `await ctx.send_file(media, caption=None, **kwargs)` / `send_media(...)` / `respond_file(...)` / `respond_media(...)` | output/send semantics и assets для локальной загрузки |
+| `await ctx.reply_file(file, caption=None, **kwargs)` / `reply_media(...)` | Reply к конкретному сообщению |
+| `await ctx.send_photo(photo, caption=None, **kwargs)` / `reply_photo(...)` | По URL может идти external media; локальный upload через assets |
+| `send_video/reply_video`, `send_audio/reply_audio`, `send_voice/reply_voice`, `send_animation/reply_animation` | Все async; media, caption=None, **kwargs |
+| `await ctx.send_sticker(sticker, **kwargs)` / `reply_sticker(...)` | Caption отдельно не предусмотрен |
+| `await ctx.send_contact(phone, first_name, *, last_name='', **kwargs)` / `reply_contact(...)` | Контактные данные только по назначению функции |
+| `await ctx.send_location(latitude, longitude, **kwargs)` / `reply_location(...)` | Не путать порядок координат |
+| `await ctx.send_dice(emoji='🎲', **kwargs)` / `reply_dice(...)` | Native dice |
+| `await ctx.edit_media(media, *, caption=None, kind='document', **kwargs)` | Изменение медиа; проверить kind/upload |
+| `await ctx.send_rich(html, **kwargs)` / `edit_rich(rich, **kwargs)` / `reply_rich(...)` | Rich transport и fallback отдельно |
+| `await ctx.save(**kwargs)` | Переслать текущее сообщение в me, не произвольный notify API |
+| `await ctx.typing(action='sendMessageTypingAction')` | TL action constructor, не sugar `'typing'` |
+| `await ctx.schedule(text, when, **kwargs)` | Schedule date timestamp |
+| `await ctx.send_todo(title, items, *, others_can_append=False, others_can_complete=False, **kwargs)` | items — непустой список, ID уникальные positive int |
+| `await ctx.edit_todo(...)` / `append_todo(items)` | Проверяется реальное todo-сообщение |
+| `await ctx.send_poll(question, answers, *, multiple_choice=False, public_voters=False, correct_answers=None, solution=None, poll_options=None, **kwargs)` | `answers`, **не `options`**; минимум 2; correct_answers — уникальные индексы |
+| `await ctx.close_poll()` | Получить актуальный poll и выставить closed |
+| `await ctx.translate(text, to_lang=None, *, source='auto', provider='auto', **kwargs)` | telegram/google/mymemory; внешние providers требуют net; input ≤4000 UTF-8 bytes |
+
+Шаблон вызова с корректными keywords:
+
+```python
+async def command_example(ctx, invocation):
+    history = await ctx.chat_history(limit=10)
+    await ctx.respond(str(len(history.get("messages", []))), rich=False)
+```
+
+Пример предполагает `messages` dict-result для конкретного RPC; при других
+операциях проверяй их реальную форму. Не выполняй destructive methods как smoke-test.
+
+### 5. Fetch, системные данные, файлы
+
+Без raw `mt`: bound responses, fetch (`reply/msg/resolve`), `ctx.html` formatting,
+`ctx.tools` (с оговорками приложения B), `ctx.version`, `ctx.uptime`, `ctx.config` snapshot,
+`ctx.i18n.language`, `ctx.t`, доступные `ctx.ui/screens`/forms. Не выдумывай прямые
+`ctx.sender_id`, `ctx.out`, `ctx.raw_args`, `ctx.logs` по аналогии с другой платформой.
+
+`ctx.memory/ram/get_memory/get_ram` и `prefix/get_prefix` в worker имеют особенности:
+после замены base class на shared ContextOperations некоторые fallback значения
+могут оказаться 0/'.', а не переданный в payload runtime snapshot. Проверяй
+исполнение, не делай метрики/адресацию зависимыми от предполагаемого значения.
+
+`ctx.mt` — метод, возвращающий callable MTContext, а не безусловно готовый callable
+RPC-объект; для raw API предпочитай явно подтверждённый `ctx.tg.call` и `mt` capability.
+
+#### Assets (capability `assets`)
+
+В `8cab560` исправлен путь: host `assets` использует тот же `sandbox.workspace`,
+что worker. В старых версиях это не гарантировалось.
+
+- `await ctx.upload_file(source, file_name=...)` или `ctx.assets.upload(file, filename=...)`:
+  source в проверенном provider — **путь к существующему файлу workspace**, не BytesIO
+  и не произвольные bytes; возвращается uploaded file record.
+- `await ctx.download_file(source, destination=None)` / `ctx.assets.download(...)`:
+  source — message dict с `chat_id` и `id`/`message_id`. Результат — относительный
+  путь workspace. Не bytes. Не передавай один media dict без message identity.
+- `ctx.file_media(up, *, mime='application/octet-stream', file_name=None, force_file=True)`
+  — синхронная сборка InputMediaUploadedDocument; это не отправка и не upload.
+- `await ctx.read_attachment_text(*, reply=False, max_bytes=1048576)` использует
+  bound fetch; лимит допустим 1..4194304, декодирует UTF-8-sig, не требует assets.
+
+### 6. Что нельзя считать доказанным тестом
+
+Каталог проверен статически и contract-mocks; реальные Telegram RPC, namespace jail,
+права аккаунта и все 292 операции не запускались. Добавление списка в скилл не
+является обещанием, что каждый серверный метод доступен конкретной установке.
+
+<a id="tools-reference"></a>
+## Приложение B. Tools, regdate и search
+
+## Hotaru tools, regdate, search и formatting helpers
+
+Проверено 2026-11-09 по `relay/toolkit.py`, `relay/sandbox.py`, `relay/context.py`
+на `8cab560e2b9dbc009aab4670c8a78a9a790e2d1a`.
+
+### 1. Доступ и границы
+
+В worker `_build_tools` исполняет штатный toolkit и передаёт **76 экспортов
+`TOOLKIT_FUNCS`** в `ctx.tools`. Пользуйся `ctx.tools.<name>`, без импорта
+`relay.toolkit`. В host есть alias `ctx.toolkit`, но у проверенного SandboxContext
+его нет: не добавляй его в готовый внешний модуль по аналогии.
+
+Все функции ниже **синхронные**, кроме `search` и `check_restrictions`. `regdate`,
+formatting, парсеры и локальные преобразования не требуют capabilities и не
+делают сетевых запросов. Но экспорт имени не гарантирует работоспособность
+функции в sandbox: `prune_logs` и restriction-check имеют ограничения ниже.
+
+Типы в сигнатурах документируют код, а не runtime validation каждого аргумента.
+Не передавай недоверенные данные без проверки. Примеры — фрагменты тела handler,
+не самостоятельные `.hmod`: у готового файла сначала должен быть HOTARU.
+
+### 2. regdate — оценка регистрации Telegram
+
+```text
+ctx.tools.regdate(user_id, *, registration_month=None, not_after=None)
+```
+
+**Sync, локально, без `mt/net/state`.** Алгоритм использует встроенные ID/date
+anchors и интерполяцию, не Telegram RPC и не внешний API.
+
+Вход:
+
+- `user_id`: положительный integer `< 2**63` либо строка ASCII decimal digits;
+  bool, отрицательный marked chat ID, username и Telegram entity не подходят.
+- `registration_month`: optional строка строго `MM.YYYY`, не раньше запуска
+  Telegram 2013-08-14 и не из будущего. Это **заданное вызывающим ограничение**,
+  не автоматически полученная официальная дата. Не заполняй его догадкой.
+- `not_after`: optional строка строго `YYYY-MM-DD`, не из будущего: верхняя граница
+  по независимо известному событию/дате. Не интерпретируется как дата регистрации.
+- ID вне `_REGDATE_POINTS` без registration_month даёт ValueError. Не экстраполируй
+  за калибровку незаметно и не подавляй ошибку фиктивной датой.
+
+Результат — dict:
+
+| Ключ | Значение |
+| --- | --- |
+| `date` | Центральная оценка, ISO `YYYY-MM-DD` |
+| `earliest`, `latest` | Границы оценочного диапазона, ISO даты |
+| `error_days` | Максимальное отклонение от оценки до границ, integer |
+| `age_days` | Возраст относительно текущей даты UTC по центральной оценке |
+| `estimated` | Всегда True, включая anchor |
+| `source` | `anchor`, `model`, `registration_month`; может иметь `+upper_bound` или `conflict` |
+| `conflict` | Несовместимость известных ограничений с оценкой/диапазоном |
+| `registration_month`, `not_after` | Переданные ограничения либо пустые строки |
+
+Показывай пользователю «примерно», диапазон и при необходимости конфликт.
+Даже при `source='anchor'` это не подтверждённая точная дата. Не используй её
+как надёжный критерий блокировки/доверия. Если конфликт=True, не выдавай результат
+как точное пересечение ограничений: функция сохраняет диагностический конфликт.
+
+Пример без лишних capabilities:
+
+```python
+async def command_regdate(ctx, invocation):
     try:
-        seconds = int(args[0])
-        if seconds <= 0 or seconds > 3600:
-            await ctx.respond("Delay must be between 1 and 3600 seconds.")
-            return
-    except ValueError:
-        await ctx.respond("Invalid seconds number.")
+        info = ctx.tools.regdate(invocation.raw_args.strip())
+    except (TypeError, ValueError):
+        await ctx.respond("Нужен числовой ID в поддерживаемом диапазоне.", rich=False)
         return
-
-    text = " ".join(args[1:])
-    notice = await ctx.respond(f"{text}\n\n<i>💥 This message self-destructs in {seconds}s.</i>")
-    await asyncio.sleep(seconds)
-    try:
-        await ctx.delete_message(id=notice.id)
-    except Exception:
-        pass
+    text = (
+        f"Примерная регистрация: {info['date']}\n"
+        f"Диапазон: {info['earliest']} — {info['latest']}\n"
+        f"Погрешность: до {info['error_days']} дней"
+    )
+    if info["conflict"]:
+        text += "\nОграничения противоречат оценке."
+    await ctx.respond(text, rich=False)
 ```
 
-### Blueprint 3: Anti-Spam Channel & Group Watcher (`spam_sentinel.hmod`)
-Demonstrates passive `watchers`, regex filtering, and MTProto member administration using 292 contextual methods (requires only `state`, no `mt` needed):
-```python
-HOTARU = {
-    "id": "spam_sentinel",
-    "version": "1.0.0",
-    "commands": {
-        "sentinel": "toggle_sentinel_cmd",
-    },
-    "capabilities": ["state"],
-    "watchers": ["spam_filter_watcher"],
-}
+Локализуй строки в настоящем модуле. Для username отдельно resolve → положительный
+user ID → regdate; не передавай `ctx.message.id` (это ID сообщения).
 
-import re
+### 3. Асинхронный локальный поиск search
 
-SPAM_PATTERNS = [
-    re.compile(r"(crypto|giveaway|airdrop|binance|free\s*ton|usdt|claim\s*reward)", re.IGNORECASE),
-    re.compile(r"(t\.me/joinchat/|t\.me/\+[a-zA-Z0-9_-]+)", re.IGNORECASE),
-]
-
-async def toggle_sentinel_cmd(ctx):
-    active = await ctx.state.get("active", True)
-    await ctx.state.set("active", not active)
-    status = "ACTIVE" if not active else "DISABLED"
-    await ctx.respond(f"Spam Sentinel protection: <b>{status}</b>")
-
-async def spam_filter_watcher(ctx):
-    if ctx.out or not ctx.sender_id:
-        return
-
-    active = await ctx.state.get("active", True)
-    if not active:
-        return
-
-    text = ctx.message.text or ""
-    matched = any(p.search(text) for p in SPAM_PATTERNS)
-    if matched:
-        try:
-            # Delete spam message
-            await ctx.delete()
-            # Optionally restrict member for 24h
-            await ctx.ban_channel_member(user_id=ctx.sender_id, until_date=86400)
-        except Exception:
-            pass
+```text
+await ctx.tools.search(values, query, *, key=None, limit=10, min_score=0.76, layout=True)
 ```
 
-### Blueprint 4: System Telemetry & Daemon Monitor (`daemon_inspector.hmod`)
-Demonstrates integration with Hotaru's 29 init systems and interactive screens (zero capabilities needed):
+Без capabilities, не ищет в Telegram/интернете. Нормализует Unicode NFKC,
+регистр, ё/е, слова; учитывает совпадения, префиксы и ограниченные опечатки.
+При `layout=True` пробует RU/EN раскладку с небольшим штрафом к score.
+Периодически делает `await asyncio.sleep(0)`, не создаёт внешние jobs.
+
+- `values`: коллекция значений, не строка/bytes.
+- `query`: str; пустой нормализованный запрос возвращает [].
+- `key=None`: каждый value должен быть строкой либо последовательностью строк.
+- `key='name'`: извлекает `value['name']`, не object attribute.
+- Callable key: локальная функция, возвращающая строку или list/tuple строк;
+  не coroutine. Неверные типы поисковых полей дают TypeError.
+- `limit`: nonnegative int, bool недопустим; 0 возвращает [].
+- `min_score`: от 0 до 1.
+- Результат отсортирован по score; при равенстве сохраняется приоритет исходного
+  порядка. Запись: `{'value': original, 'score': float, 'matched': str, 'layout': bool}`.
+  Это не список исходных объектов: извлекай hit['value'] явно.
+
 ```python
-HOTARU = {
-    "id": "daemon_inspector",
-    "version": "1.0.0",
-    "commands": {
-        "daemon": "daemon_cmd",
-    },
-    "capabilities": [],
-}
-
-from hotaru.daemon import detect_init_system, daemon_status
-
-async def daemon_cmd(ctx):
-    async def on_refresh(handle):
-        await render()
-
-    async def render():
-        init = detect_init_system()
-        status = daemon_status()
-        body = (
-            f"<b>Daemon & Service Inspector</b>\n\n"
-            f"• <b>Init System</b>: <code>{init.name}</code> ({init.id})\n"
-            f"• <b>Scope</b>: <code>{'Root System' if init.is_root else 'User Space'}</code>\n"
-            f"• <b>Service Installed</b>: <code>{'Yes' if status.installed else 'No'}</code>\n"
-            f"• <b>Process Running</b>: <code>{'Active' if status.running else 'Stopped'}</code>\n"
-            f"• <b>Daemon PID</b>: <code>{status.pid or 'N/A'}</code>\n"
-            f"• <b>Unit Path</b>: <code>{init.unit_path()}</code>\n"
-            f"• <b>Check Command</b>: <code>{init.status_command()}</code>"
-        )
-        buttons = [
-            [ctx.screens.primary("Refresh Status", on_refresh)],
-            [ctx.screens.close()],
-        ]
-        await ctx.screens.show("Daemon Monitor", body, buttons=buttons)
-
-    await render()
+async def command_find(ctx, invocation):
+    items = [{"name": "Backup", "id": "backups"}, {"name": "Settings", "id": "settings"}]
+    hits = await ctx.tools.search(items, invocation.raw_args, key="name", limit=5)
+    text = "\n".join(ctx.tools.escape(hit["value"]["name"]) for hit in hits)
+    await ctx.respond(text or "Нет совпадений.", rich=False)
 ```
 
-### Blueprint 5: Audio Pitch Shifter & Voice Converter (`voice_mod.hmod`)
-Demonstrates `files` and `shell` capabilities with ffmpeg transcoding:
-```python
-HOTARU = {
-    "id": "voice_mod",
-    "version": "1.0.0",
-    "commands": {
-        "pitch": "pitch_cmd",
-    },
-    "capabilities": ["files", "shell"],
-}
+### 4. Полный каталог tools: 76 экспортов
 
-import asyncio
-import os
+В следующих строках вызов без префикса означает `ctx.tools.<name>(...)`.
+Возвращаемые типы взяты из определения функции. `Any` не означает сериализацию
+любого объекта через IPC: tools исполняются локально внутри worker.
 
-async def pitch_cmd(ctx):
-    if not ctx.reply_to or not ctx.reply_to.media:
-        await ctx.respond("Reply to a voice note or audio file with .pitch <factor> (e.g. 1.25)")
-        return
+#### Аргументы — 6
 
-    factor = ctx.args[0] if ctx.args else '1.2'
-    await ctx.respond("Downloading and adjusting pitch...")
-    audio_bytes = await ctx.download(ctx.reply_to.media)
+| Сигнатура | Что делает / ограничения |
+| --- | --- |
+| `args_parse(text: str) -> list[str]` | **Полный текст команды**; отбрасывает первый токен, применяет shlex к остатку; при неверных кавычках возвращает остаток одним элементом |
+| `args_raw(text: str) -> str` | Отбрасывает первый токен полного текста команды |
+| `args_split(text: str, separator: str \| list[str]) -> list[str]` | Разбивает raw args, trim и удаление пустых частей |
+| `args_int(text: str) -> list[int]` | Числа из args_parse; нечисловые токены пропускаются |
+| `args_bool(text: str) -> list[bool]` | Известные yes/no/on/off/true/false/1/0/да/нет/вкл/выкл; остальные пропускаются |
+| `args_float(text: str) -> list[float]` | Floats из args_parse; неверные токены пропускаются |
 
-    in_file = "/tmp/sandbox/in_audio.ogg"
-    out_file = "/tmp/sandbox/out_audio.ogg"
-    with open(in_file, 'wb') as f:
-        f.write(audio_bytes)
+**Ловушка:** `args_parse(invocation.raw_args)` потеряет первый аргумент. Для raw_args
+используй `shlex.split(invocation.raw_args)` с явной обработкой ошибок либо передай
+synthetic full command text, если именно toolkit parser нужен по контракту.
 
-    cmd = f"ffmpeg -y -i {in_file} -filter:a 'asetrate=48000*{factor},aresample=48000' {out_file}"
-    proc = await asyncio.create_subprocess_shell(cmd)
-    await proc.communicate()
+#### HTML, entities и ссылки — 12
 
-    if os.path.exists(out_file):
-        with open(out_file, 'rb') as f:
-            await ctx.reply_voice(f.read())
-        await ctx.delete()
-    else:
-        await ctx.respond("Audio pitch modulation failed.")
+| Сигнатура | Семантика |
+| --- | --- |
+| `escape(value: Any) -> str` | HTML text escaping без quotes |
+| `escape_attr(value: Any) -> str` | HTML attribute escaping с quotes |
+| `escape_smart(text: str) -> str` | Сохраняет allowlisted tags, escape остальное; **не sanitizer атрибутов/URL** |
+| `strip_tags(text: str, keep_tg: bool=True) -> str` | В текущей реализации итоговый regex удаляет все tags даже при keep_tg=True; не обещай сохранение Telegram tags |
+| `strip_emoji(text: str) -> str` | Regex-удаление диапазонов emoji; не универсальный grapheme parser |
+| `flag(code: str) -> str` | Две ASCII letters → regional indicator flag; иначе исходник |
+| `entity_url(entity: object, openmessage: bool=False) -> str` | Локальная сборка tg:// для user/username; не делает resolve |
+| `entity_link(entity: object, label: str \| None=None) -> str` | Escaped HTML link по entity_url; без URL возвращает escaped label |
+| `valid_url(url: str) -> bool` | Только bool(urlparse(url).netloc); это **не** проверка безопасности/SSRF |
+| `is_url(text: str) -> bool` | Ограниченный HTTP(S) regex, не полный стандарт URL |
+| `urls_extract(text: str) -> list[str]` | Regex извлекает HTTP(S) ссылки |
+| `html_fix(text: str) -> str` | Alias escape_smart; не структурный HTML validator |
+
+Ни valid_url, ни is_url, ни escape_smart не дают права обходить сетевую политику.
+Для полностью недоверенного текста используй escape, а не escape_smart.
+
+#### Коллекции и служебные данные — 9
+
+| Сигнатура | Семантика |
+| --- | --- |
+| `chunk(items: list[Any] \| tuple[Any, ...] \| str, size: int) -> list[Any]` | Slices размера size>0; не HTML-aware |
+| `random_str(size: int, charset: str \| None=None) -> str` | random.choice; **не криптографический токен**; size<1 → '' |
+| `merge_dicts(a: dict[str, Any], b: dict[str, Any], *, deep: bool=True) -> dict[str, Any]` | Мутирует **b**, приоритет у a; list merge убирает дубли через dict.fromkeys |
+| `json_ok(value: Any) -> bool` | Проверяет json.dumps; не проверяет IPC limits или business schema |
+| `flatten(nested: list[Any]) -> list[Any]` | Разворачивает только один уровень вложенных list, не рекурсивно |
+| `censor(obj: Any, fields: list[str] \| None=None, replacement: str='***') -> Any` | Рекурсивно dict/list, маскирует строковые значения известных ключей; numeric и неизвестные секреты могут остаться |
+| `attr(obj: Any, name: str, default: Any=None) -> Any` | getattr с подавлением Exception; **не dict.get** |
+| `face() -> str` | Случайный escaped kaomoji |
+| `hash_short(text: str, length: int=8) -> str` | Срез hex SHA-256; не парольный hash и не уникальный ID-гарант |
+
+#### Message/entity introspection — 7
+
+| Сигнатура | Семантика |
+| --- | --- |
+| `chat_id(message: Any) -> int \| None` | Извлекает chat_id; для marked channel ID удаляет -100 prefix, то есть может вернуть **raw positive channel ID** |
+| `entity_id(entity: Any) -> int \| None` | channel_id/chat_id/user_id/id для dict, иначе .id; не делает Telegram resolve |
+| `topic_id(message: Any) -> int \| None` | topic_id/message_thread_id/top_msg_id; не разбирает все варианты reply header |
+| `mime(message: Any) -> str` | Шаллоу media/document lookup; при иной структуре может вернуть '' |
+| `msg_link(message: Any, chat: Any=None) -> str` | Локальная сборка ссылки; raw/marked ID и username могут потребовать дополнительной обработки |
+| `has_media(message: Any) -> bool` | Проверяет доступные поля; не fetch скрытого/непереданного attachment |
+| `target_id(message: Any, arg_index: int=0) -> int \| None` | Text mention/числовой аргумент; не полноценный username resolver |
+
+`tools.chat_id` нельзя бездумно передавать как адресата RPC: не путай raw channel
+ID и marked chat ID. Для достоверной ссылки используй `await ctx.get_link()` на
+полном конкретном сообщении, для пользователя — `ctx.resolve` и проверку типа entity.
+
+#### Время и числа — 12
+
+| Сигнатура | Семантика |
+| --- | --- |
+| `file_size(size_bytes: int \| float) -> str` | Формат по 1024, B..PB |
+| `iso_time() -> str` | Текущее datetime UTC isoformat |
+| `uptime() -> int` | Секунды с импорта toolkit в данном процессе, **не обязательно runtime uptime** |
+| `uptime_fmt(language: str='en') -> str` | duration(toolkit uptime, language) |
+| `duration(seconds: int \| float, language: str='en') -> str` | Локализованная длительность; normalize locale; отрицательное → 0; не планировщик |
+| `timestamp(value: int \| float, language: str='en') -> str` | Unix timestamp → локализованная дата/время **UTC** |
+| `time_range(start: int \| float, end: int \| float \| None=None, language: str='en') -> str` | Форматированный UTC диапазон |
+| `plural(count: int \| float, one: str, few: str='', many: str='') -> str` | Выбирает форму; возвращает форму, **не число + форму** |
+| `percent(value: int \| float, total: int \| float, decimals: int=1) -> str` | Процент; total=0 → '0%'; не clamp до 100 |
+| `clamp(value: int \| float, minimum: int \| float, maximum: int \| float) -> int \| float` | Ограничить диапазон |
+| `mask(value: str, visible: int=4, char: str='•') -> str` | Маскирование строки; проверяй visible>0: крайние значения ведут себя по Python slices |
+| `countdown(seconds: int \| float) -> str` | duration или 'now'; это отображение, **не timer/task** |
+
+Для uptime самого userbot предпочитай подтверждённый `ctx.uptime`, а не время
+жизни worker/toolkit. Поддержка локалей formatter не равна наличию перевода ядра.
+
+#### Шаблоны и представление — 17
+
+| Сигнатура | Семантика |
+| --- | --- |
+| `render(template: str, **data: Any) -> str` | Простой replace `{key}`; **нет escaping, type validation и scopes** |
+| `template_fields(raw: object) -> dict[str, dict[str, Any]]` | Валидация 1..64 полей, type/example/description/format |
+| `template_names(template: str, fields: dict[str, Any] \| None=None, *, legacy_braces: bool=False) -> list[str]` | Имена placeholders; с fields проверяет declared names |
+| `template_render(template: object, fields: object, values: object=None, *, legacy_braces: bool=False) -> str` | Безопасный declared-template pipeline; values=None использует example values |
+| `truncate(text: str, limit: int, suffix: str='…') -> str` | Текстовое обрезание с попыткой сохранить слово; не HTML-safe split |
+| `table(rows: list[list[Any] \| tuple[Any, ...] \| dict[str, Any]], headers: list[str] \| None=None) -> str` | **Rich HTML `<table>`**, escaped cells; не ASCII table |
+| `progress(current: int \| float, total: int \| float, width: int=10, filled: str='█', empty: str='░') -> str` | Текстовый progress bar с clamp ratio |
+| `code_block(text: str, language: str='') -> str` | Escaped `<pre><code>` |
+| `spoiler(text: str) -> str` | Оборачивает в tg-spoiler, **не escape содержимое** |
+| `blockquote(text: str, expandable: bool=False) -> str` | Оборачивает HTML; содержимое **не escape** |
+| `mention(user_id: int \| str, name: str \| None=None) -> str` | tg://user; label escape; user_id сначала validate |
+| `link(label: str, url: str) -> str` | Escaped HTML label/href; URL safety отдельно |
+| `list_items(items: list[str], ordered: bool=False) -> str` | Rich ul/ol; items **не escape** |
+| `kv(pairs: dict[str, Any] \| list[tuple[str, Any]], bold_keys: bool=True) -> str` | Escaped key/value, `<br>` separators |
+| `tree(items: list[str], indent: str='  ') -> str` | Escaped плоское дерево в code; indent в текущем теле не используется |
+| `badge(text: str, style: str='info') -> str` | Текстовый icon+escaped label, не Telegram button |
+| `wordmark() -> str` | Статическая последовательность tg-emoji wordmark |
+
+`template_validate` существует внутри файла, но **не экспортирован** в
+TOOLKIT_FUNCS: не вызывай `ctx.tools.template_validate`. Для межмодульных полей
+нужен `ctx.render_template_async`, не локальная подстановка с обходом scopes.
+
+#### Rich/text/buttons — 7
+
+| Сигнатура | Семантика |
+| --- | --- |
+| `rich_to_html(message: object) -> str` | TL rich_message blocks из dict → HTML; не произвольный HTML renderer |
+| `message_text(message: object) -> str` | Plain текст из rich/message/raw_text/text/caption; str возвращается как есть; None/неполное сообщение → '' |
+| `entities_to_html(text: str \| None, entities: list[object] \| tuple[object, ...] \| None=None) -> str` | Telegram UTF-16 entity offsets → HTML; не удаляй offsets до преобразования |
+| `btn_html(button: dict[str, Any]) -> str` | Rich tg-button из url/copy_text/callback_data; **не регистрирует handler и не подписывает callback** |
+| `buttons_html(buttons: list[Any], kind: str='page') -> str` | Row/group rich HTML, kind='text' → плоский список tags |
+| `needs_form(buttons: object) -> bool` | Input detection по старому dict-полю input, не универсальная проверка всех UI routes |
+| `needs_callback(buttons: object) -> bool` | Проверяет некоторые callback/input поля; **не учитывает все worker action_id/Screen kinds** |
+
+`message_text` работает только с переданными данными. Для неполного ctx.message
+сначала fetch при необходимости. Он может вернуть plain текст с `<`/`&`, поэтому
+escape перед повторной HTML-отправкой обязателен.
+
+#### Пагинация, диагностика, special tools — 6
+
+| Сигнатура | Семантика |
+| --- | --- |
+| `paginate_chunks(text: str, limit: int=4000) -> list[str]` | Деление текста по строкам/символам; **не HTML-aware**; '' → ['']; limit должен быть положительным |
+| `classify_error(exc: Any) -> dict[str, Any]` | Локальная эвристика по тексту/seconds, поля type/is_restriction/flood_wait/detail/recoverable |
+| `await check_restrictions(ctx: Any) -> dict[str, Any]` | Проверяет users.getUsers только если ctx имеет настоящий app/runtime.app; в sandbox обычно его нет |
+| `prune_logs(root: str \| Path='.', max_file_bytes: int=8*1024*1024, keep_tail_bytes: int=1*1024*1024) -> int` | Внутри импортирует hotaru.observatory; **не worker-safe**, не вызывай из внешнего модуля |
+| `regdate(user_id: object, *, registration_month: object=None, not_after: object=None) -> dict[str, str \| int \| bool]` | Локальная оценка регистрации, см. раздел 2 |
+| `await search(values: Any, query: object, *, key: Any=None, limit: object=10, min_score: float=0.76, layout: bool=True) -> list[dict[str, Any]]` | Локальный fuzzy search, см. раздел 3 |
+
+`check_restrictions` без host app вернёт default `can_send=True`, но это **не
+проверка** состояния Telegram. `ctx.classify_error`/`ctx.check_restrictions` из
+shared ContextOperations тоже могут импортировать relay.toolkit, что запрещено
+worker audit hook. Для локальной классификации используй `ctx.tools.classify_error`.
+Не обещай успешный account health check по default результату и не импортируй
+ядро, чтобы обойти ограничение.
+
+### 5. Отдельный ctx.html (не tools)
+
+Проверенный `_HtmlHelper` worker предоставляет sync:
+
+- `ctx.html.escape(value)`;
+- `bold(value)`, `italic(value)`, `code(value)`, `underline(value)`, `quote(value)`;
+- `link(label, url)`;
+- `pre(value, language=None)`.
+
+Они escape содержимое. Это отличается от `tools.blockquote/spoiler/list_items`,
+которые принимают уже подготовленную разметку. Форматирование не отправляет
+сообщение и не требует capabilities.
+
+### 6. Критерий достоверности
+
+Список экспортов и сигнатуры проверяются встроенным скриптом
+из [приложения D](#api-inspector) с аргументами `<Hotaru> --section tools`. Источник `TOOLKIT_FUNCS` важнее случайных top-level def и
+неполного автодополнения. Не устанавливай внешние библиотеки для уже имеющихся
+tools. При обновлении исходника сравни состав, сигнатуры и поведение, а не только
+число функций. Live Telegram и Linux sandbox не подтверждены одним AST-тестом.
+
+<a id="method-cards"></a>
+## Приложение C. Полные карточки методов
+
+## Hotaru: полные карточки контекстных методов
+
+292 карточки, сформированные из AST исходников Hotaru; без импорта ядра и Telegram RPC.
+Базовый снимок скилла: `8cab560e2b9dbc009aab4670c8a78a9a790e2d1a`, 2026-11-09.
+При регенерации по другой версии актуальность определяют SHA-256 ниже, а не эта отметка.
+
+### Как читать карточки
+
+- Это справочные сигнатуры в стиле Python, не исполняемые вызовы: `*` означает
+  рекомендуемые keyword-аргументы; реальные positional slots указаны отдельно.
+- Все операции асинхронные: в handler используй `await ctx.<name>(...)`.
+- `CURRENT_PEER`, `CURRENT_MESSAGE`, `RANDOM_ID` обозначают defaults ядра,
+  а не имена, которые нужно объявлять в модуле. Обычно соответствующий keyword пропускают.
+- TL `flags.N?T` — optional поле; `Vector<T>` — последовательность; типы сохраняют
+  запись исходной TL-схемы и не являются готовыми Python-аннотациями.
+- «Обязательный» означает: вызывающий обязан передать значение, поскольку ядро
+  не подставляет default. Наличие обязательного TL-поля не исключает default ядра.
+- Optional `None` в справочной сигнатуре означает пропуск поля, не обязательную
+  отправку None в Telegram. Keyword со статусом «запрещён» передавать нельзя.
+- **Результат: `Any`, зависит от RPC.** CTX_CATALOG не хранит тип результата,
+  а host распаковывает/фильтрует response. Непроверенные returns сайта не копируются.
+  Для конкретного результата сверяй TL result schema используемого GoyGram и host adapter.
+- «Без raw mt» не отменяет ACL Telegram, denylist, Premium, media/assets, net,
+  state и другие ограничения всей операции. Подробности: [приложение A](#context-contract).
+
+### Контроль источников
+
+| Файл | SHA-256 содержимого |
+| --- | --- |
+| `relay/context.py` | `af66ab88029113b354451c0748a5adb641f3dcfab0a7998d073368f4c5f79b74` |
+| `relay/toolkit.py` | `6fbae44abad4595b3695fecead063fa66c50ea72b3784924e2c9e6e023d9f013` |
+| `relay/sandbox.py` | `34c660ebc571fac589dc1406da093c7cedfe78654d4ae394c06a1af3cb904815` |
+| `relay/caps.py` | `215248de25954b1023342b1ea4a328230b499dd68d411f04200dba7fe29ab9d7` |
+
+### Навигация по namespace
+
+- **messages (126):** [set_checklist_completed](#ctx-set_checklist_completed), [add_poll_answer](#ctx-add_poll_answer), [remove_poll_answer](#ctx-remove_poll_answer), [unread_poll_votes](#ctx-unread_poll_votes), [mark_poll_votes_read](#ctx-mark_poll_votes_read), [scheduled_messages](#ctx-scheduled_messages), [scheduled_by_ids](#ctx-scheduled_by_ids), [publish_scheduled](#ctx-publish_scheduled), [cancel_scheduled](#ctx-cancel_scheduled), [configure_chat_reactions](#ctx-configure_chat_reactions), [available_reactions](#ctx-available_reactions), [set_default_reaction](#ctx-set_default_reaction), [unread_reactions](#ctx-unread_reactions), [mark_reactions_read](#ctx-mark_reactions_read), [popular_reactions](#ctx-popular_reactions), [recent_reactions](#ctx-recent_reactions), [clear_recent_reactions](#ctx-clear_recent_reactions), [remove_member_reactions](#ctx-remove_member_reactions), [remove_member_message_reaction](#ctx-remove_member_message_reaction), [saved_dialogs](#ctx-saved_dialogs), [saved_history](#ctx-saved_history), [clear_saved_history](#ctx-clear_saved_history), [pinned_saved_dialogs](#ctx-pinned_saved_dialogs), [set_saved_dialog_pinned](#ctx-set_saved_dialog_pinned), [reorder_saved_pins](#ctx-reorder_saved_pins), [saved_reaction_tags](#ctx-saved_reaction_tags), [rename_saved_tag](#ctx-rename_saved_tag), [suggested_saved_tags](#ctx-suggested_saved_tags), [saved_dialogs_by_peers](#ctx-saved_dialogs_by_peers), [mark_saved_history_read](#ctx-mark_saved_history_read), [forum_topics](#ctx-forum_topics), [forum_topics_by_ids](#ctx-forum_topics_by_ids), [edit_forum_topic](#ctx-edit_forum_topic), [set_forum_topic_pinned](#ctx-set_forum_topic_pinned), [reorder_forum_pins](#ctx-reorder_forum_pins), [create_forum_topic](#ctx-create_forum_topic), [remove_forum_topic](#ctx-remove_forum_topic), [stickers_for_emoji](#ctx-stickers_for_emoji), [installed_sticker_sets](#ctx-installed_sticker_sets), [sticker_set](#ctx-sticker_set), [install_sticker_set](#ctx-install_sticker_set), [uninstall_sticker_set](#ctx-uninstall_sticker_set), [reorder_sticker_sets](#ctx-reorder_sticker_sets), [saved_gifs](#ctx-saved_gifs), [set_gif_saved](#ctx-set_gif_saved), [featured_sticker_sets](#ctx-featured_sticker_sets), [mark_featured_stickers_seen](#ctx-mark_featured_stickers_seen), [recent_stickers](#ctx-recent_stickers), [set_sticker_recent](#ctx-set_sticker_recent), [clear_recent_stickers](#ctx-clear_recent_stickers), [archived_sticker_sets](#ctx-archived_sticker_sets), [installed_masks](#ctx-installed_masks), [media_sticker_sets](#ctx-media_sticker_sets), [favorite_stickers](#ctx-favorite_stickers), [set_sticker_favorite](#ctx-set_sticker_favorite), [search_sticker_sets](#ctx-search_sticker_sets), [bulk_sticker_set_action](#ctx-bulk_sticker_set_action), [older_featured_sticker_sets](#ctx-older_featured_sticker_sets), [custom_emoji_documents](#ctx-custom_emoji_documents), [installed_emoji_sets](#ctx-installed_emoji_sets), [featured_emoji_sets](#ctx-featured_emoji_sets), [search_custom_emoji](#ctx-search_custom_emoji), [search_emoji_sets](#ctx-search_emoji_sets), [owned_sticker_sets](#ctx-owned_sticker_sets), [search_stickers](#ctx-search_stickers), [dialogs](#ctx-dialogs), [chat_history](#ctx-chat_history), [search_chat_messages](#ctx-search_chat_messages), [mark_chat_read](#ctx-mark_chat_read), [clear_chat_history](#ctx-clear_chat_history), [peer_settings](#ctx-peer_settings), [basic_groups](#ctx-basic_groups), [basic_group_details](#ctx-basic_group_details), [search_all_messages](#ctx-search_all_messages), [message_editability](#ctx-message_editability), [peer_dialogs](#ctx-peer_dialogs), [all_drafts](#ctx-all_drafts), [mutual_groups](#ctx-mutual_groups), [set_dialog_pinned](#ctx-set_dialog_pinned), [reorder_dialog_pins](#ctx-reorder_dialog_pins), [pinned_dialogs](#ctx-pinned_dialogs), [unread_mentions](#ctx-unread_mentions), [mark_mentions_read](#ctx-mark_mentions_read), [recent_live_locations](#ctx-recent_live_locations), [set_dialog_unread](#ctx-set_dialog_unread), [unread_dialog_marks](#ctx-unread_dialog_marks), [clear_all_drafts](#ctx-clear_all_drafts), [chat_online_count](#ctx-chat_online_count), [message_type_counts](#ctx-message_type_counts), [dismiss_peer_settings_bar](#ctx-dismiss_peer_settings_bar), [mark_discussion_read](#ctx-mark_discussion_read), [unpin_all_chat_messages](#ctx-unpin_all_chat_messages), [message_readers](#ctx-message_readers), [message_search_calendar](#ctx-message_search_calendar), [message_search_positions](#ctx-message_search_positions), [set_default_send_as](#ctx-set_default_send_as), [sent_media_search](#ctx-sent_media_search), [outgoing_read_date](#ctx-outgoing_read_date), [chat_folders](#ctx-chat_folders), [suggested_chat_folders](#ctx-suggested_chat_folders), [save_chat_folder](#ctx-save_chat_folder), [reorder_chat_folders](#ctx-reorder_chat_folders), [set_folder_tags_visible](#ctx-set_folder_tags_visible), [rename_basic_group](#ctx-rename_basic_group), [set_basic_group_photo](#ctx-set_basic_group_photo), [add_basic_group_member](#ctx-add_basic_group_member), [remove_basic_group_member](#ctx-remove_basic_group_member), [create_basic_group](#ctx-create_basic_group), [set_basic_group_admin](#ctx-set_basic_group_admin), [upgrade_basic_group](#ctx-upgrade_basic_group), [edit_chat_description](#ctx-edit_chat_description), [set_default_member_restrictions](#ctx-set_default_member_restrictions), [remove_basic_group](#ctx-remove_basic_group), [set_chat_auto_delete](#ctx-set_chat_auto_delete), [set_content_protection](#ctx-set_content_protection), [edit_member_rank](#ctx-edit_member_rank), [create_chat_invite](#ctx-create_chat_invite), [chat_invites](#ctx-chat_invites), [chat_invite_details](#ctx-chat_invite_details), [edit_chat_invite](#ctx-edit_chat_invite), [purge_revoked_chat_invites](#ctx-purge_revoked_chat_invites), [remove_chat_invite](#ctx-remove_chat_invite), [invite_admins](#ctx-invite_admins), [invite_joiners](#ctx-invite_joiners), [resolve_join_request](#ctx-resolve_join_request), [resolve_all_join_requests](#ctx-resolve_all_join_requests)
+- **stats (7):** [poll_statistics](#ctx-poll_statistics), [channel_statistics](#ctx-channel_statistics), [supergroup_statistics](#ctx-supergroup_statistics), [message_statistics](#ctx-message_statistics), [message_public_forwards](#ctx-message_public_forwards), [story_statistics](#ctx-story_statistics), [story_public_forwards](#ctx-story_public_forwards)
+- **channels (46):** [set_forum_enabled](#ctx-set_forum_enabled), [set_forum_message_view](#ctx-set_forum_message_view), [channel_message_author](#ctx-channel_message_author), [mark_channel_read](#ctx-mark_channel_read), [channel_members](#ctx-channel_members), [channel_member](#ctx-channel_member), [channel_details](#ctx-channel_details), [create_channel](#ctx-create_channel), [set_channel_admin](#ctx-set_channel_admin), [rename_channel](#ctx-rename_channel), [set_channel_photo](#ctx-set_channel_photo), [check_channel_username](#ctx-check_channel_username), [set_channel_username](#ctx-set_channel_username), [join_channel](#ctx-join_channel), [leave_channel](#ctx-leave_channel), [invite_channel_members](#ctx-invite_channel_members), [remove_channel](#ctx-remove_channel), [set_channel_signatures](#ctx-set_channel_signatures), [owned_public_channels](#ctx-owned_public_channels), [restrict_channel_member](#ctx-restrict_channel_member), [channel_admin_log](#ctx-channel_admin_log), [set_group_sticker_set](#ctx-set_group_sticker_set), [mark_channel_media_read](#ctx-mark_channel_media_read), [clear_channel_history](#ctx-clear_channel_history), [set_prehistory_hidden](#ctx-set_prehistory_hidden), [left_channels](#ctx-left_channels), [eligible_discussion_groups](#ctx-eligible_discussion_groups), [set_discussion_group](#ctx-set_discussion_group), [set_group_location](#ctx-set_group_location), [set_slow_mode](#ctx-set_slow_mode), [inactive_channels](#ctx-inactive_channels), [send_as_identities](#ctx-send_as_identities), [remove_member_history](#ctx-remove_member_history), [set_join_to_send](#ctx-set_join_to_send), [set_join_requests](#ctx-set_join_requests), [reorder_channel_usernames](#ctx-reorder_channel_usernames), [set_channel_username_active](#ctx-set_channel_username_active), [deactivate_channel_usernames](#ctx-deactivate_channel_usernames), [set_antispam](#ctx-set_antispam), [set_members_hidden](#ctx-set_members_hidden), [set_channel_color](#ctx-set_channel_color), [related_channels](#ctx-related_channels), [set_channel_emoji_status](#ctx-set_channel_emoji_status), [set_group_emoji_set](#ctx-set_group_emoji_set), [set_channel_auto_translation](#ctx-set_channel_auto_translation), [set_channel_profile_tab](#ctx-set_channel_profile_tab)
+- **stories (29):** [story_posting_quota](#ctx-story_posting_quota), [post_story](#ctx-post_story), [edit_story](#ctx-edit_story), [delete_stories](#ctx-delete_stories), [set_stories_on_profile](#ctx-set_stories_on_profile), [story_feed](#ctx-story_feed), [profile_stories](#ctx-profile_stories), [archived_stories](#ctx-archived_stories), [stories_by_ids](#ctx-stories_by_ids), [mark_stories_read](#ctx-mark_stories_read), [story_viewers](#ctx-story_viewers), [story_view_counts](#ctx-story_view_counts), [story_link](#ctx-story_link), [activate_story_stealth](#ctx-activate_story_stealth), [react_to_story](#ctx-react_to_story), [peer_stories](#ctx-peer_stories), [story_read_markers](#ctx-story_read_markers), [peer_latest_story_ids](#ctx-peer_latest_story_ids), [story_posting_chats](#ctx-story_posting_chats), [set_peer_stories_hidden](#ctx-set_peer_stories_hidden), [story_reaction_senders](#ctx-story_reaction_senders), [reorder_profile_story_pins](#ctx-reorder_profile_story_pins), [search_stories](#ctx-search_stories), [create_story_album](#ctx-create_story_album), [edit_story_album](#ctx-edit_story_album), [reorder_story_albums](#ctx-reorder_story_albums), [remove_story_album](#ctx-remove_story_album), [story_albums](#ctx-story_albums), [story_album_items](#ctx-story_album_items)
+- **stickers (11):** [create_sticker_set](#ctx-create_sticker_set), [remove_sticker](#ctx-remove_sticker), [move_sticker](#ctx-move_sticker), [add_sticker](#ctx-add_sticker), [set_sticker_set_thumbnail](#ctx-set_sticker_set_thumbnail), [check_sticker_set_name](#ctx-check_sticker_set_name), [suggest_sticker_set_name](#ctx-suggest_sticker_set_name), [edit_sticker_metadata](#ctx-edit_sticker_metadata), [rename_sticker_set](#ctx-rename_sticker_set), [remove_sticker_set](#ctx-remove_sticker_set), [replace_sticker](#ctx-replace_sticker)
+- **contacts (21):** [contact_ids](#ctx-contact_ids), [contact_statuses](#ctx-contact_statuses), [contacts_list](#ctx-contacts_list), [import_contacts](#ctx-import_contacts), [remove_contacts](#ctx-remove_contacts), [remove_contacts_by_phone](#ctx-remove_contacts_by_phone), [block_peer](#ctx-block_peer), [unblock_peer](#ctx-unblock_peer), [blocked_peers](#ctx-blocked_peers), [search_public_peers](#ctx-search_public_peers), [frequent_peers](#ctx-frequent_peers), [reset_peer_rating](#ctx-reset_peer_rating), [clear_imported_contacts](#ctx-clear_imported_contacts), [imported_contacts](#ctx-imported_contacts), [set_frequent_peers_enabled](#ctx-set_frequent_peers_enabled), [add_contact](#ctx-add_contact), [accept_contact](#ctx-accept_contact), [set_close_friends](#ctx-set_close_friends), [replace_blocklist](#ctx-replace_blocklist), [contact_birthdays](#ctx-contact_birthdays), [edit_contact_note](#ctx-edit_contact_note)
+- **folders (1):** [move_dialogs_to_archive](#ctx-move_dialogs_to_archive)
+- **chatlists (11):** [share_chat_folder](#ctx-share_chat_folder), [remove_folder_invite](#ctx-remove_folder_invite), [edit_folder_invite](#ctx-edit_folder_invite), [folder_invites](#ctx-folder_invites), [inspect_folder_invite](#ctx-inspect_folder_invite), [join_folder_invite](#ctx-join_folder_invite), [folder_updates](#ctx-folder_updates), [accept_folder_updates](#ctx-accept_folder_updates), [dismiss_folder_updates](#ctx-dismiss_folder_updates), [folder_leave_suggestions](#ctx-folder_leave_suggestions), [leave_shared_folder](#ctx-leave_shared_folder)
+- **account (30):** [edit_profile](#ctx-edit_profile), [set_online_status](#ctx-set_online_status), [check_profile_username](#ctx-check_profile_username), [set_profile_username](#ctx-set_profile_username), [privacy_rules](#ctx-privacy_rules), [account_inactivity_ttl](#ctx-account_inactivity_ttl), [set_emoji_status](#ctx-set_emoji_status), [suggested_emoji_statuses](#ctx-suggested_emoji_statuses), [recent_emoji_statuses](#ctx-recent_emoji_statuses), [clear_recent_emoji_statuses](#ctx-clear_recent_emoji_statuses), [reorder_profile_usernames](#ctx-reorder_profile_usernames), [set_profile_username_active](#ctx-set_profile_username_active), [profile_photo_emojis](#ctx-profile_photo_emojis), [set_profile_color](#ctx-set_profile_color), [set_birthday](#ctx-set_birthday), [set_personal_channel](#ctx-set_personal_channel), [set_profile_tab](#ctx-set_profile_tab), [set_music_saved](#ctx-set_music_saved), [saved_music_ids](#ctx-saved_music_ids), [notification_settings](#ctx-notification_settings), [set_notification_settings](#ctx-set_notification_settings), [reset_notification_settings](#ctx-reset_notification_settings), [contact_signup_notifications](#ctx-contact_signup_notifications), [set_contact_signup_notifications](#ctx-set_contact_signup_notifications), [notification_exceptions](#ctx-notification_exceptions), [reaction_notification_settings](#ctx-reaction_notification_settings), [set_reaction_notification_settings](#ctx-set_reaction_notification_settings), [saved_notification_sounds](#ctx-saved_notification_sounds), [set_notification_sound_saved](#ctx-set_notification_sound_saved), [upload_notification_sound](#ctx-upload_notification_sound)
+- **users (5):** [user_details](#ctx-user_details), [contact_requirements](#ctx-contact_requirements), [user_music](#ctx-user_music), [user_music_by_documents](#ctx-user_music_by_documents), [suggest_contact_birthday](#ctx-suggest_contact_birthday)
+- **photos (5):** [select_profile_photo](#ctx-select_profile_photo), [upload_profile_photo](#ctx-upload_profile_photo), [remove_profile_photos](#ctx-remove_profile_photos), [profile_photos](#ctx-profile_photos), [set_contact_photo](#ctx-set_contact_photo)
+
+### Карточки методов
+
+<a id="ctx-set_checklist_completed"></a>
+#### 1. `ctx.set_checklist_completed`
+
+- **MTProto RPC:** `messages.toggleTodoCompleted`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.toggleTodoCompleted`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.toggleTodoCompleted`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_checklist_completed(*, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE, completed, incompleted)
 ```
 
-### Blueprint 6: Persistent Todo & Checklist Manager (`todo_list.hmod`)
-Demonstrates multi-key SQLite state persistence with formatted checklists (requires only `state`):
+**Порядок positional slots:** `peer, msg_id, completed, incompleted`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+| `completed` | `Vector<int>` | да | — |
+| `incompleted` | `Vector<int>` | да | — |
+
+<a id="ctx-add_poll_answer"></a>
+#### 2. `ctx.add_poll_answer`
+
+- **MTProto RPC:** `messages.addPollAnswer`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.addPollAnswer`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.addPollAnswer`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.add_poll_answer(*, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE, answer)
+```
+
+**Порядок positional slots:** `peer, msg_id, answer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+| `answer` | `PollAnswer` | да | — |
+
+<a id="ctx-remove_poll_answer"></a>
+#### 3. `ctx.remove_poll_answer`
+
+- **MTProto RPC:** `messages.deletePollAnswer`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deletePollAnswer`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deletePollAnswer`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_poll_answer(*, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE, option)
+```
+
+**Порядок positional slots:** `peer, msg_id, option`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+| `option` | `bytes` | да | — |
+
+<a id="ctx-unread_poll_votes"></a>
+#### 4. `ctx.unread_poll_votes`
+
+- **MTProto RPC:** `messages.getUnreadPollVotes`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getUnreadPollVotes`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getUnreadPollVotes`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.unread_poll_votes(*, peer=CURRENT_PEER, top_msg_id=None, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0)
+```
+
+**Порядок positional slots:** `peer, offset_id, add_offset, limit, max_id, min_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+| `offset_id` | `int` | нет | `0` |
+| `add_offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `max_id` | `int` | нет | `0` |
+| `min_id` | `int` | нет | `0` |
+
+<a id="ctx-mark_poll_votes_read"></a>
+#### 5. `ctx.mark_poll_votes_read`
+
+- **MTProto RPC:** `messages.readPollVotes`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.readPollVotes`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.readPollVotes`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_poll_votes_read(*, peer=CURRENT_PEER, top_msg_id=None)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+
+<a id="ctx-poll_statistics"></a>
+#### 6. `ctx.poll_statistics`
+
+- **MTProto RPC:** `stats.getPollStats`
+- **Namespace:** `stats`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stats.getPollStats`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stats.getPollStats`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.poll_statistics(*, dark=None, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE)
+```
+
+**Порядок positional slots:** `peer, msg_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `dark` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+
+<a id="ctx-scheduled_messages"></a>
+#### 7. `ctx.scheduled_messages`
+
+- **MTProto RPC:** `messages.getScheduledHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getScheduledHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getScheduledHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.scheduled_messages(*, peer=CURRENT_PEER, hash=0)
+```
+
+**Порядок positional slots:** `peer, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-scheduled_by_ids"></a>
+#### 8. `ctx.scheduled_by_ids`
+
+- **MTProto RPC:** `messages.getScheduledMessages`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getScheduledMessages`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getScheduledMessages`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.scheduled_by_ids(*, peer=CURRENT_PEER, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-publish_scheduled"></a>
+#### 9. `ctx.publish_scheduled`
+
+- **MTProto RPC:** `messages.sendScheduledMessages`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.sendScheduledMessages`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.sendScheduledMessages`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.publish_scheduled(*, peer=CURRENT_PEER, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-cancel_scheduled"></a>
+#### 10. `ctx.cancel_scheduled`
+
+- **MTProto RPC:** `messages.deleteScheduledMessages`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteScheduledMessages`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteScheduledMessages`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.cancel_scheduled(*, peer=CURRENT_PEER, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-configure_chat_reactions"></a>
+#### 11. `ctx.configure_chat_reactions`
+
+- **MTProto RPC:** `messages.setChatAvailableReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.setChatAvailableReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.setChatAvailableReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.configure_chat_reactions(*, peer=CURRENT_PEER, available_reactions, reactions_limit=None, paid_enabled=None)
+```
+
+**Порядок positional slots:** `peer, available_reactions`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `available_reactions` | `ChatReactions` | да | — |
+| `reactions_limit` | `flags.0?int` | нет | поле пропускается |
+| `paid_enabled` | `flags.1?Bool` | нет | поле пропускается |
+
+<a id="ctx-available_reactions"></a>
+#### 12. `ctx.available_reactions`
+
+- **MTProto RPC:** `messages.getAvailableReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getAvailableReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getAvailableReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.available_reactions(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `int` | нет | `0` |
+
+<a id="ctx-set_default_reaction"></a>
+#### 13. `ctx.set_default_reaction`
+
+- **MTProto RPC:** `messages.setDefaultReaction`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.setDefaultReaction`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.setDefaultReaction`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_default_reaction(*, reaction)
+```
+
+**Порядок positional slots:** `reaction`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `reaction` | `Reaction` | да | — |
+
+<a id="ctx-unread_reactions"></a>
+#### 14. `ctx.unread_reactions`
+
+- **MTProto RPC:** `messages.getUnreadReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getUnreadReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getUnreadReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.unread_reactions(*, peer=CURRENT_PEER, top_msg_id=None, saved_peer_id=None, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0)
+```
+
+**Порядок positional slots:** `peer, offset_id, add_offset, limit, max_id, min_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+| `saved_peer_id` | `flags.1?InputPeer` | нет | поле пропускается |
+| `offset_id` | `int` | нет | `0` |
+| `add_offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `max_id` | `int` | нет | `0` |
+| `min_id` | `int` | нет | `0` |
+
+<a id="ctx-mark_reactions_read"></a>
+#### 15. `ctx.mark_reactions_read`
+
+- **MTProto RPC:** `messages.readReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.readReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.readReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_reactions_read(*, peer=CURRENT_PEER, top_msg_id=None, saved_peer_id=None)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+| `saved_peer_id` | `flags.1?InputPeer` | нет | поле пропускается |
+
+<a id="ctx-popular_reactions"></a>
+#### 16. `ctx.popular_reactions`
+
+- **MTProto RPC:** `messages.getTopReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getTopReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getTopReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.popular_reactions(*, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-recent_reactions"></a>
+#### 17. `ctx.recent_reactions`
+
+- **MTProto RPC:** `messages.getRecentReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getRecentReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getRecentReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.recent_reactions(*, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-clear_recent_reactions"></a>
+#### 18. `ctx.clear_recent_reactions`
+
+- **MTProto RPC:** `messages.clearRecentReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.clearRecentReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.clearRecentReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_recent_reactions()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-remove_member_reactions"></a>
+#### 19. `ctx.remove_member_reactions`
+
+- **MTProto RPC:** `messages.deleteParticipantReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteParticipantReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteParticipantReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_member_reactions(*, peer=CURRENT_PEER, participant)
+```
+
+**Порядок positional slots:** `peer, participant`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `participant` | `InputPeer` | да | — |
+
+<a id="ctx-remove_member_message_reaction"></a>
+#### 20. `ctx.remove_member_message_reaction`
+
+- **MTProto RPC:** `messages.deleteParticipantReaction`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteParticipantReaction`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteParticipantReaction`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_member_message_reaction(*, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE, participant)
+```
+
+**Порядок positional slots:** `peer, msg_id, participant`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+| `participant` | `InputPeer` | да | — |
+
+<a id="ctx-saved_dialogs"></a>
+#### 21. `ctx.saved_dialogs`
+
+- **MTProto RPC:** `messages.getSavedDialogs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSavedDialogs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSavedDialogs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.saved_dialogs(*, exclude_pinned=None, parent_peer=None, offset_date=0, offset_id=0, offset_peer={'_': 'inputPeerEmpty'}, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `offset_date, offset_id, offset_peer, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `exclude_pinned` | `flags.0?true` | нет | поле пропускается |
+| `parent_peer` | `flags.1?InputPeer` | нет | поле пропускается |
+| `offset_date` | `int` | нет | `0` |
+| `offset_id` | `int` | нет | `0` |
+| `offset_peer` | `InputPeer` | нет | `{'_': 'inputPeerEmpty'}` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-saved_history"></a>
+#### 22. `ctx.saved_history`
+
+- **MTProto RPC:** `messages.getSavedHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSavedHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSavedHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.saved_history(*, parent_peer=None, peer, offset_id=0, offset_date=0, add_offset=0, limit=50, max_id=0, min_id=0, hash=0)
+```
+
+**Порядок positional slots:** `peer, offset_id, offset_date, add_offset, limit, max_id, min_id, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `parent_peer` | `flags.0?InputPeer` | нет | поле пропускается |
+| `peer` | `InputPeer` | да | — |
+| `offset_id` | `int` | нет | `0` |
+| `offset_date` | `int` | нет | `0` |
+| `add_offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `max_id` | `int` | нет | `0` |
+| `min_id` | `int` | нет | `0` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-clear_saved_history"></a>
+#### 23. `ctx.clear_saved_history`
+
+- **MTProto RPC:** `messages.deleteSavedHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteSavedHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteSavedHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_saved_history(*, parent_peer=None, peer, max_id, min_date=None, max_date=None)
+```
+
+**Порядок positional slots:** `peer, max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `parent_peer` | `flags.0?InputPeer` | нет | поле пропускается |
+| `peer` | `InputPeer` | да | — |
+| `max_id` | `int` | да | — |
+| `min_date` | `flags.2?int` | нет | поле пропускается |
+| `max_date` | `flags.3?int` | нет | поле пропускается |
+
+<a id="ctx-pinned_saved_dialogs"></a>
+#### 24. `ctx.pinned_saved_dialogs`
+
+- **MTProto RPC:** `messages.getPinnedSavedDialogs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getPinnedSavedDialogs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getPinnedSavedDialogs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.pinned_saved_dialogs()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-set_saved_dialog_pinned"></a>
+#### 25. `ctx.set_saved_dialog_pinned`
+
+- **MTProto RPC:** `messages.toggleSavedDialogPin`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.toggleSavedDialogPin`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.toggleSavedDialogPin`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_saved_dialog_pinned(*, pinned=None, peer)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `pinned` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputDialogPeer` | да | — |
+
+<a id="ctx-reorder_saved_pins"></a>
+#### 26. `ctx.reorder_saved_pins`
+
+- **MTProto RPC:** `messages.reorderPinnedSavedDialogs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.reorderPinnedSavedDialogs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.reorderPinnedSavedDialogs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_saved_pins(*, force=None, order)
+```
+
+**Порядок positional slots:** `order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `force` | `flags.0?true` | нет | поле пропускается |
+| `order` | `Vector<InputDialogPeer>` | да | — |
+
+<a id="ctx-saved_reaction_tags"></a>
+#### 27. `ctx.saved_reaction_tags`
+
+- **MTProto RPC:** `messages.getSavedReactionTags`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSavedReactionTags`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSavedReactionTags`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.saved_reaction_tags(*, peer=None, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `flags.0?InputPeer` | нет | поле пропускается |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-rename_saved_tag"></a>
+#### 28. `ctx.rename_saved_tag`
+
+- **MTProto RPC:** `messages.updateSavedReactionTag`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.updateSavedReactionTag`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.updateSavedReactionTag`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.rename_saved_tag(*, reaction, title=None)
+```
+
+**Порядок positional slots:** `reaction`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `reaction` | `Reaction` | да | — |
+| `title` | `flags.0?string` | нет | поле пропускается |
+
+<a id="ctx-suggested_saved_tags"></a>
+#### 29. `ctx.suggested_saved_tags`
+
+- **MTProto RPC:** `messages.getDefaultTagReactions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getDefaultTagReactions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getDefaultTagReactions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.suggested_saved_tags(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-saved_dialogs_by_peers"></a>
+#### 30. `ctx.saved_dialogs_by_peers`
+
+- **MTProto RPC:** `messages.getSavedDialogsByID`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSavedDialogsByID`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSavedDialogsByID`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.saved_dialogs_by_peers(*, parent_peer=None, ids)
+```
+
+**Порядок positional slots:** `ids`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `parent_peer` | `flags.1?InputPeer` | нет | поле пропускается |
+| `ids` | `Vector<InputPeer>` | да | — |
+
+<a id="ctx-mark_saved_history_read"></a>
+#### 31. `ctx.mark_saved_history_read`
+
+- **MTProto RPC:** `messages.readSavedHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.readSavedHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.readSavedHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_saved_history_read(*, parent_peer, peer, max_id)
+```
+
+**Порядок positional slots:** `parent_peer, peer, max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `parent_peer` | `InputPeer` | да | — |
+| `peer` | `InputPeer` | да | — |
+| `max_id` | `int` | да | — |
+
+<a id="ctx-forum_topics"></a>
+#### 32. `ctx.forum_topics`
+
+- **MTProto RPC:** `messages.getForumTopics`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getForumTopics`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getForumTopics`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.forum_topics(*, peer=CURRENT_PEER, q=None, offset_date=0, offset_id=0, offset_topic=0, limit=50)
+```
+
+**Порядок positional slots:** `peer, offset_date, offset_id, offset_topic, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `q` | `flags.0?string` | нет | поле пропускается |
+| `offset_date` | `int` | нет | `0` |
+| `offset_id` | `int` | нет | `0` |
+| `offset_topic` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-forum_topics_by_ids"></a>
+#### 33. `ctx.forum_topics_by_ids`
+
+- **MTProto RPC:** `messages.getForumTopicsByID`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getForumTopicsByID`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getForumTopicsByID`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.forum_topics_by_ids(*, peer=CURRENT_PEER, topics)
+```
+
+**Порядок positional slots:** `peer, topics`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `topics` | `Vector<int>` | да | — |
+
+<a id="ctx-edit_forum_topic"></a>
+#### 34. `ctx.edit_forum_topic`
+
+- **MTProto RPC:** `messages.editForumTopic`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editForumTopic`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editForumTopic`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_forum_topic(*, peer=CURRENT_PEER, topic_id, title=None, icon_emoji_id=None, closed=None, hidden=None)
+```
+
+**Порядок positional slots:** `peer, topic_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `topic_id` | `int` | да | — |
+| `title` | `flags.0?string` | нет | поле пропускается |
+| `icon_emoji_id` | `flags.1?long` | нет | поле пропускается |
+| `closed` | `flags.2?Bool` | нет | поле пропускается |
+| `hidden` | `flags.3?Bool` | нет | поле пропускается |
+
+<a id="ctx-set_forum_topic_pinned"></a>
+#### 35. `ctx.set_forum_topic_pinned`
+
+- **MTProto RPC:** `messages.updatePinnedForumTopic`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.updatePinnedForumTopic`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.updatePinnedForumTopic`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_forum_topic_pinned(*, peer=CURRENT_PEER, topic_id, pinned)
+```
+
+**Порядок positional slots:** `peer, topic_id, pinned`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `topic_id` | `int` | да | — |
+| `pinned` | `Bool` | да | — |
+
+<a id="ctx-reorder_forum_pins"></a>
+#### 36. `ctx.reorder_forum_pins`
+
+- **MTProto RPC:** `messages.reorderPinnedForumTopics`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.reorderPinnedForumTopics`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.reorderPinnedForumTopics`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_forum_pins(*, force=None, peer=CURRENT_PEER, order)
+```
+
+**Порядок positional slots:** `peer, order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `force` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `order` | `Vector<int>` | да | — |
+
+<a id="ctx-create_forum_topic"></a>
+#### 37. `ctx.create_forum_topic`
+
+- **MTProto RPC:** `messages.createForumTopic`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.createForumTopic`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.createForumTopic`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.create_forum_topic(*, title_missing=None, peer=CURRENT_PEER, title, icon_color=None, icon_emoji_id=None, random_id=RANDOM_ID, send_as=None)
+```
+
+**Порядок positional slots:** `peer, title, random_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `title_missing` | `flags.4?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `title` | `string` | да | — |
+| `icon_color` | `flags.0?int` | нет | поле пропускается |
+| `icon_emoji_id` | `flags.3?long` | нет | поле пропускается |
+| `random_id` | `long` | нет | `RANDOM_ID` |
+| `send_as` | `flags.2?InputPeer` | нет | поле пропускается |
+
+<a id="ctx-remove_forum_topic"></a>
+#### 38. `ctx.remove_forum_topic`
+
+- **MTProto RPC:** `messages.deleteTopicHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteTopicHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteTopicHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_forum_topic(*, peer=CURRENT_PEER, top_msg_id)
+```
+
+**Порядок positional slots:** `peer, top_msg_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `int` | да | — |
+
+<a id="ctx-set_forum_enabled"></a>
+#### 39. `ctx.set_forum_enabled`
+
+- **MTProto RPC:** `channels.toggleForum`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleForum`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleForum`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_forum_enabled(*, channel=CURRENT_PEER, enabled, tabs)
+```
+
+**Порядок positional slots:** `channel, enabled, tabs`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+| `tabs` | `Bool` | да | — |
+
+<a id="ctx-set_forum_message_view"></a>
+#### 40. `ctx.set_forum_message_view`
+
+- **MTProto RPC:** `channels.toggleViewForumAsMessages`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleViewForumAsMessages`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleViewForumAsMessages`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_forum_message_view(*, channel=CURRENT_PEER, enabled)
+```
+
+**Порядок positional slots:** `channel, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-story_posting_quota"></a>
+#### 41. `ctx.story_posting_quota`
+
+- **MTProto RPC:** `stories.canSendStory`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.canSendStory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.canSendStory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_posting_quota(*, peer)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+
+<a id="ctx-post_story"></a>
+#### 42. `ctx.post_story`
+
+- **MTProto RPC:** `stories.sendStory`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.sendStory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.sendStory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.post_story(*, pinned=None, noforwards=None, fwd_modified=None, peer, media, media_areas=None, caption=None, entities=None, privacy_rules, random_id=RANDOM_ID, period=None, fwd_from_id=None, fwd_from_story=None, albums=None, music=None)
+```
+
+**Порядок positional slots:** `peer, media, privacy_rules, random_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `pinned` | `flags.2?true` | нет | поле пропускается |
+| `noforwards` | `flags.4?true` | нет | поле пропускается |
+| `fwd_modified` | `flags.7?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | да | — |
+| `media` | `InputMedia` | да | — |
+| `media_areas` | `flags.5?Vector<MediaArea>` | нет | поле пропускается |
+| `caption` | `flags.0?string` | нет | поле пропускается |
+| `entities` | `flags.1?Vector<MessageEntity>` | нет | поле пропускается |
+| `privacy_rules` | `Vector<InputPrivacyRule>` | да | — |
+| `random_id` | `long` | нет | `RANDOM_ID` |
+| `period` | `flags.3?int` | нет | поле пропускается |
+| `fwd_from_id` | `flags.6?InputPeer` | нет | поле пропускается |
+| `fwd_from_story` | `flags.6?int` | нет | поле пропускается |
+| `albums` | `flags.8?Vector<int>` | нет | поле пропускается |
+| `music` | `flags.9?InputDocument` | нет | поле пропускается |
+
+<a id="ctx-edit_story"></a>
+#### 43. `ctx.edit_story`
+
+- **MTProto RPC:** `stories.editStory`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.editStory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.editStory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_story(*, peer, id, media=None, media_areas=None, caption=None, entities=None, privacy_rules=None, music=None)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `id` | `int` | да | — |
+| `media` | `flags.0?InputMedia` | нет | поле пропускается |
+| `media_areas` | `flags.3?Vector<MediaArea>` | нет | поле пропускается |
+| `caption` | `flags.1?string` | нет | поле пропускается |
+| `entities` | `flags.1?Vector<MessageEntity>` | нет | поле пропускается |
+| `privacy_rules` | `flags.2?Vector<InputPrivacyRule>` | нет | поле пропускается |
+| `music` | `flags.4?InputDocument` | нет | поле пропускается |
+
+<a id="ctx-delete_stories"></a>
+#### 44. `ctx.delete_stories`
+
+- **MTProto RPC:** `stories.deleteStories`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.deleteStories`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.deleteStories`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.delete_stories(*, peer, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-set_stories_on_profile"></a>
+#### 45. `ctx.set_stories_on_profile`
+
+- **MTProto RPC:** `stories.togglePinned`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.togglePinned`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.togglePinned`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_stories_on_profile(*, peer, id, pinned)
+```
+
+**Порядок positional slots:** `peer, id, pinned`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `id` | `Vector<int>` | да | — |
+| `pinned` | `Bool` | да | — |
+
+<a id="ctx-story_feed"></a>
+#### 46. `ctx.story_feed`
+
+- **MTProto RPC:** `stories.getAllStories`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getAllStories`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getAllStories`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_feed(*, next=None, hidden=None, state=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `next` | `flags.1?true` | нет | поле пропускается |
+| `hidden` | `flags.2?true` | нет | поле пропускается |
+| `state` | `flags.0?string` | нет | поле пропускается |
+
+<a id="ctx-profile_stories"></a>
+#### 47. `ctx.profile_stories`
+
+- **MTProto RPC:** `stories.getPinnedStories`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getPinnedStories`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getPinnedStories`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.profile_stories(*, peer, offset_id=0, limit=50)
+```
+
+**Порядок positional slots:** `peer, offset_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `offset_id` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-archived_stories"></a>
+#### 48. `ctx.archived_stories`
+
+- **MTProto RPC:** `stories.getStoriesArchive`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getStoriesArchive`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getStoriesArchive`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.archived_stories(*, peer, offset_id=0, limit=50)
+```
+
+**Порядок positional slots:** `peer, offset_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `offset_id` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-stories_by_ids"></a>
+#### 49. `ctx.stories_by_ids`
+
+- **MTProto RPC:** `stories.getStoriesByID`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getStoriesByID`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getStoriesByID`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.stories_by_ids(*, peer, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-mark_stories_read"></a>
+#### 50. `ctx.mark_stories_read`
+
+- **MTProto RPC:** `stories.readStories`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.readStories`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.readStories`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_stories_read(*, peer, max_id=0)
+```
+
+**Порядок positional slots:** `peer, max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `max_id` | `int` | нет | `0` |
+
+<a id="ctx-story_viewers"></a>
+#### 51. `ctx.story_viewers`
+
+- **MTProto RPC:** `stories.getStoryViewsList`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getStoryViewsList`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getStoryViewsList`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_viewers(*, just_contacts=None, reactions_first=None, forwards_first=None, peer, q=None, id, offset='', limit=50)
+```
+
+**Порядок positional slots:** `peer, id, offset, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `just_contacts` | `flags.0?true` | нет | поле пропускается |
+| `reactions_first` | `flags.2?true` | нет | поле пропускается |
+| `forwards_first` | `flags.3?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | да | — |
+| `q` | `flags.1?string` | нет | поле пропускается |
+| `id` | `int` | да | — |
+| `offset` | `string` | нет | `''` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-story_view_counts"></a>
+#### 52. `ctx.story_view_counts`
+
+- **MTProto RPC:** `stories.getStoriesViews`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getStoriesViews`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getStoriesViews`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_view_counts(*, peer, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-story_link"></a>
+#### 53. `ctx.story_link`
+
+- **MTProto RPC:** `stories.exportStoryLink`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.exportStoryLink`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.exportStoryLink`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_link(*, peer, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `id` | `int` | да | — |
+
+<a id="ctx-activate_story_stealth"></a>
+#### 54. `ctx.activate_story_stealth`
+
+- **MTProto RPC:** `stories.activateStealthMode`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.activateStealthMode`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.activateStealthMode`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.activate_story_stealth(*, past=None, future=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `past` | `flags.0?true` | нет | поле пропускается |
+| `future` | `flags.1?true` | нет | поле пропускается |
+
+<a id="ctx-react_to_story"></a>
+#### 55. `ctx.react_to_story`
+
+- **MTProto RPC:** `stories.sendReaction`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.sendReaction`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.sendReaction`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.react_to_story(*, add_to_recent=None, peer, story_id, reaction)
+```
+
+**Порядок positional slots:** `peer, story_id, reaction`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `add_to_recent` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | да | — |
+| `story_id` | `int` | да | — |
+| `reaction` | `Reaction` | да | — |
+
+<a id="ctx-peer_stories"></a>
+#### 56. `ctx.peer_stories`
+
+- **MTProto RPC:** `stories.getPeerStories`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getPeerStories`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getPeerStories`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.peer_stories(*, peer)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+
+<a id="ctx-story_read_markers"></a>
+#### 57. `ctx.story_read_markers`
+
+- **MTProto RPC:** `stories.getAllReadPeerStories`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getAllReadPeerStories`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getAllReadPeerStories`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_read_markers()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-peer_latest_story_ids"></a>
+#### 58. `ctx.peer_latest_story_ids`
+
+- **MTProto RPC:** `stories.getPeerMaxIDs`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getPeerMaxIDs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getPeerMaxIDs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.peer_latest_story_ids(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `Vector<InputPeer>` | да | — |
+
+<a id="ctx-story_posting_chats"></a>
+#### 59. `ctx.story_posting_chats`
+
+- **MTProto RPC:** `stories.getChatsToSend`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getChatsToSend`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getChatsToSend`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_posting_chats()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-set_peer_stories_hidden"></a>
+#### 60. `ctx.set_peer_stories_hidden`
+
+- **MTProto RPC:** `stories.togglePeerStoriesHidden`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.togglePeerStoriesHidden`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.togglePeerStoriesHidden`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_peer_stories_hidden(*, peer, hidden)
+```
+
+**Порядок positional slots:** `peer, hidden`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `hidden` | `Bool` | да | — |
+
+<a id="ctx-story_reaction_senders"></a>
+#### 61. `ctx.story_reaction_senders`
+
+- **MTProto RPC:** `stories.getStoryReactionsList`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getStoryReactionsList`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getStoryReactionsList`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_reaction_senders(*, forwards_first=None, peer, id, reaction=None, offset=None, limit=50)
+```
+
+**Порядок positional slots:** `peer, id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `forwards_first` | `flags.2?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | да | — |
+| `id` | `int` | да | — |
+| `reaction` | `flags.0?Reaction` | нет | поле пропускается |
+| `offset` | `flags.1?string` | нет | поле пропускается |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-reorder_profile_story_pins"></a>
+#### 62. `ctx.reorder_profile_story_pins`
+
+- **MTProto RPC:** `stories.togglePinnedToTop`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.togglePinnedToTop`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.togglePinnedToTop`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_profile_story_pins(*, peer, id)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-search_stories"></a>
+#### 63. `ctx.search_stories`
+
+- **MTProto RPC:** `stories.searchPosts`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.searchPosts`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.searchPosts`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_stories(*, hashtag=None, area=None, peer=None, offset='', limit=50)
+```
+
+**Порядок positional slots:** `offset, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hashtag` | `flags.0?string` | нет | поле пропускается |
+| `area` | `flags.1?MediaArea` | нет | поле пропускается |
+| `peer` | `flags.2?InputPeer` | нет | поле пропускается |
+| `offset` | `string` | нет | `''` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-create_story_album"></a>
+#### 64. `ctx.create_story_album`
+
+- **MTProto RPC:** `stories.createAlbum`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.createAlbum`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.createAlbum`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.create_story_album(*, peer, title, stories)
+```
+
+**Порядок positional slots:** `peer, title, stories`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `title` | `string` | да | — |
+| `stories` | `Vector<int>` | да | — |
+
+<a id="ctx-edit_story_album"></a>
+#### 65. `ctx.edit_story_album`
+
+- **MTProto RPC:** `stories.updateAlbum`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.updateAlbum`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.updateAlbum`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_story_album(*, peer, album_id, title=None, delete_stories=None, add_stories=None, order=None)
+```
+
+**Порядок positional slots:** `peer, album_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `album_id` | `int` | да | — |
+| `title` | `flags.0?string` | нет | поле пропускается |
+| `delete_stories` | `flags.1?Vector<int>` | нет | поле пропускается |
+| `add_stories` | `flags.2?Vector<int>` | нет | поле пропускается |
+| `order` | `flags.3?Vector<int>` | нет | поле пропускается |
+
+<a id="ctx-reorder_story_albums"></a>
+#### 66. `ctx.reorder_story_albums`
+
+- **MTProto RPC:** `stories.reorderAlbums`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.reorderAlbums`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.reorderAlbums`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_story_albums(*, peer, order)
+```
+
+**Порядок positional slots:** `peer, order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `order` | `Vector<int>` | да | — |
+
+<a id="ctx-remove_story_album"></a>
+#### 67. `ctx.remove_story_album`
+
+- **MTProto RPC:** `stories.deleteAlbum`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.deleteAlbum`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.deleteAlbum`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_story_album(*, peer, album_id)
+```
+
+**Порядок positional slots:** `peer, album_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `album_id` | `int` | да | — |
+
+<a id="ctx-story_albums"></a>
+#### 68. `ctx.story_albums`
+
+- **MTProto RPC:** `stories.getAlbums`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getAlbums`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getAlbums`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_albums(*, peer, hash=0)
+```
+
+**Порядок positional slots:** `peer, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-story_album_items"></a>
+#### 69. `ctx.story_album_items`
+
+- **MTProto RPC:** `stories.getAlbumStories`
+- **Namespace:** `stories`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stories.getAlbumStories`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stories.getAlbumStories`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_album_items(*, peer, album_id, offset=0, limit=50)
+```
+
+**Порядок positional slots:** `peer, album_id, offset, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | да | — |
+| `album_id` | `int` | да | — |
+| `offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-stickers_for_emoji"></a>
+#### 70. `ctx.stickers_for_emoji`
+
+- **MTProto RPC:** `messages.getStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.stickers_for_emoji(*, emoticon, hash=0)
+```
+
+**Порядок positional slots:** `emoticon, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `emoticon` | `string` | да | — |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-installed_sticker_sets"></a>
+#### 71. `ctx.installed_sticker_sets`
+
+- **MTProto RPC:** `messages.getAllStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getAllStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getAllStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.installed_sticker_sets(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-sticker_set"></a>
+#### 72. `ctx.sticker_set`
+
+- **MTProto RPC:** `messages.getStickerSet`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getStickerSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getStickerSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.sticker_set(*, stickerset, hash=0)
+```
+
+**Порядок positional slots:** `stickerset, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `stickerset` | `InputStickerSet` | да | — |
+| `hash` | `int` | нет | `0` |
+
+<a id="ctx-install_sticker_set"></a>
+#### 73. `ctx.install_sticker_set`
+
+- **MTProto RPC:** `messages.installStickerSet`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.installStickerSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.installStickerSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.install_sticker_set(*, stickerset, archived=False)
+```
+
+**Порядок positional slots:** `stickerset, archived`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `stickerset` | `InputStickerSet` | да | — |
+| `archived` | `Bool` | нет | `False` |
+
+<a id="ctx-uninstall_sticker_set"></a>
+#### 74. `ctx.uninstall_sticker_set`
+
+- **MTProto RPC:** `messages.uninstallStickerSet`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.uninstallStickerSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.uninstallStickerSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.uninstall_sticker_set(*, stickerset)
+```
+
+**Порядок positional slots:** `stickerset`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `stickerset` | `InputStickerSet` | да | — |
+
+<a id="ctx-reorder_sticker_sets"></a>
+#### 75. `ctx.reorder_sticker_sets`
+
+- **MTProto RPC:** `messages.reorderStickerSets`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.reorderStickerSets`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.reorderStickerSets`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_sticker_sets(*, masks=None, emojis=None, order)
+```
+
+**Порядок positional slots:** `order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `masks` | `flags.0?true` | нет | поле пропускается |
+| `emojis` | `flags.1?true` | нет | поле пропускается |
+| `order` | `Vector<long>` | да | — |
+
+<a id="ctx-saved_gifs"></a>
+#### 76. `ctx.saved_gifs`
+
+- **MTProto RPC:** `messages.getSavedGifs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSavedGifs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSavedGifs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.saved_gifs(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-set_gif_saved"></a>
+#### 77. `ctx.set_gif_saved`
+
+- **MTProto RPC:** `messages.saveGif`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.saveGif`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.saveGif`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_gif_saved(*, id, unsave)
+```
+
+**Порядок positional slots:** `id, unsave`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputDocument` | да | — |
+| `unsave` | `Bool` | да | — |
+
+<a id="ctx-featured_sticker_sets"></a>
+#### 78. `ctx.featured_sticker_sets`
+
+- **MTProto RPC:** `messages.getFeaturedStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getFeaturedStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getFeaturedStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.featured_sticker_sets(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-mark_featured_stickers_seen"></a>
+#### 79. `ctx.mark_featured_stickers_seen`
+
+- **MTProto RPC:** `messages.readFeaturedStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.readFeaturedStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.readFeaturedStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_featured_stickers_seen(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `Vector<long>` | да | — |
+
+<a id="ctx-recent_stickers"></a>
+#### 80. `ctx.recent_stickers`
+
+- **MTProto RPC:** `messages.getRecentStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getRecentStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getRecentStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.recent_stickers(*, attached=None, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `attached` | `flags.0?true` | нет | поле пропускается |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-set_sticker_recent"></a>
+#### 81. `ctx.set_sticker_recent`
+
+- **MTProto RPC:** `messages.saveRecentSticker`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.saveRecentSticker`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.saveRecentSticker`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_sticker_recent(*, attached=None, id, unsave)
+```
+
+**Порядок positional slots:** `id, unsave`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `attached` | `flags.0?true` | нет | поле пропускается |
+| `id` | `InputDocument` | да | — |
+| `unsave` | `Bool` | да | — |
+
+<a id="ctx-clear_recent_stickers"></a>
+#### 82. `ctx.clear_recent_stickers`
+
+- **MTProto RPC:** `messages.clearRecentStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.clearRecentStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.clearRecentStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_recent_stickers(*, attached=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `attached` | `flags.0?true` | нет | поле пропускается |
+
+<a id="ctx-archived_sticker_sets"></a>
+#### 83. `ctx.archived_sticker_sets`
+
+- **MTProto RPC:** `messages.getArchivedStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getArchivedStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getArchivedStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.archived_sticker_sets(*, masks=None, emojis=None, offset_id=0, limit=50)
+```
+
+**Порядок positional slots:** `offset_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `masks` | `flags.0?true` | нет | поле пропускается |
+| `emojis` | `flags.1?true` | нет | поле пропускается |
+| `offset_id` | `long` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-installed_masks"></a>
+#### 84. `ctx.installed_masks`
+
+- **MTProto RPC:** `messages.getMaskStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getMaskStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getMaskStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.installed_masks(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-media_sticker_sets"></a>
+#### 85. `ctx.media_sticker_sets`
+
+- **MTProto RPC:** `messages.getAttachedStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getAttachedStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getAttachedStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.media_sticker_sets(*, media)
+```
+
+**Порядок positional slots:** `media`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `media` | `InputStickeredMedia` | да | — |
+
+<a id="ctx-favorite_stickers"></a>
+#### 86. `ctx.favorite_stickers`
+
+- **MTProto RPC:** `messages.getFavedStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getFavedStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getFavedStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.favorite_stickers(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-set_sticker_favorite"></a>
+#### 87. `ctx.set_sticker_favorite`
+
+- **MTProto RPC:** `messages.faveSticker`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.faveSticker`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.faveSticker`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_sticker_favorite(*, id, unfave)
+```
+
+**Порядок positional slots:** `id, unfave`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputDocument` | да | — |
+| `unfave` | `Bool` | да | — |
+
+<a id="ctx-search_sticker_sets"></a>
+#### 88. `ctx.search_sticker_sets`
+
+- **MTProto RPC:** `messages.searchStickerSets`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.searchStickerSets`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.searchStickerSets`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_sticker_sets(*, exclude_featured=None, q, hash=0)
+```
+
+**Порядок positional slots:** `q, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `exclude_featured` | `flags.0?true` | нет | поле пропускается |
+| `q` | `string` | да | — |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-bulk_sticker_set_action"></a>
+#### 89. `ctx.bulk_sticker_set_action`
+
+- **MTProto RPC:** `messages.toggleStickerSets`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.toggleStickerSets`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.toggleStickerSets`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.bulk_sticker_set_action(*, uninstall=None, archive=None, unarchive=None, stickersets)
+```
+
+**Порядок positional slots:** `stickersets`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `uninstall` | `flags.0?true` | нет | поле пропускается |
+| `archive` | `flags.1?true` | нет | поле пропускается |
+| `unarchive` | `flags.2?true` | нет | поле пропускается |
+| `stickersets` | `Vector<InputStickerSet>` | да | — |
+
+<a id="ctx-older_featured_sticker_sets"></a>
+#### 90. `ctx.older_featured_sticker_sets`
+
+- **MTProto RPC:** `messages.getOldFeaturedStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getOldFeaturedStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getOldFeaturedStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.older_featured_sticker_sets(*, offset=0, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `offset, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-custom_emoji_documents"></a>
+#### 91. `ctx.custom_emoji_documents`
+
+- **MTProto RPC:** `messages.getCustomEmojiDocuments`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getCustomEmojiDocuments`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getCustomEmojiDocuments`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.custom_emoji_documents(*, document_id)
+```
+
+**Порядок positional slots:** `document_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `document_id` | `Vector<long>` | да | — |
+
+<a id="ctx-installed_emoji_sets"></a>
+#### 92. `ctx.installed_emoji_sets`
+
+- **MTProto RPC:** `messages.getEmojiStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getEmojiStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getEmojiStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.installed_emoji_sets(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-featured_emoji_sets"></a>
+#### 93. `ctx.featured_emoji_sets`
+
+- **MTProto RPC:** `messages.getFeaturedEmojiStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getFeaturedEmojiStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getFeaturedEmojiStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.featured_emoji_sets(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-search_custom_emoji"></a>
+#### 94. `ctx.search_custom_emoji`
+
+- **MTProto RPC:** `messages.searchCustomEmoji`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.searchCustomEmoji`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.searchCustomEmoji`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_custom_emoji(*, emoticon, hash=0)
+```
+
+**Порядок positional slots:** `emoticon, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `emoticon` | `string` | да | — |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-search_emoji_sets"></a>
+#### 95. `ctx.search_emoji_sets`
+
+- **MTProto RPC:** `messages.searchEmojiStickerSets`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.searchEmojiStickerSets`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.searchEmojiStickerSets`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_emoji_sets(*, exclude_featured=None, q, hash=0)
+```
+
+**Порядок positional slots:** `q, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `exclude_featured` | `flags.0?true` | нет | поле пропускается |
+| `q` | `string` | да | — |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-owned_sticker_sets"></a>
+#### 96. `ctx.owned_sticker_sets`
+
+- **MTProto RPC:** `messages.getMyStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getMyStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getMyStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.owned_sticker_sets(*, offset_id=0, limit=50)
+```
+
+**Порядок positional slots:** `offset_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `offset_id` | `long` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-search_stickers"></a>
+#### 97. `ctx.search_stickers`
+
+- **MTProto RPC:** `messages.searchStickers`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.searchStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.searchStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_stickers(*, emojis=None, q, emoticon, lang_code, offset=0, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `q, emoticon, lang_code, offset, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `emojis` | `flags.0?true` | нет | поле пропускается |
+| `q` | `string` | да | — |
+| `emoticon` | `string` | да | — |
+| `lang_code` | `Vector<string>` | да | — |
+| `offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-create_sticker_set"></a>
+#### 98. `ctx.create_sticker_set`
+
+- **MTProto RPC:** `stickers.createStickerSet`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.createStickerSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.createStickerSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.create_sticker_set(*, masks=None, emojis=None, text_color=None, user_id, title, short_name, thumb=None, stickers, software=None)
+```
+
+**Порядок positional slots:** `user_id, title, short_name, stickers`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `masks` | `flags.0?true` | нет | поле пропускается |
+| `emojis` | `flags.5?true` | нет | поле пропускается |
+| `text_color` | `flags.6?true` | нет | поле пропускается |
+| `user_id` | `InputUser` | да | — |
+| `title` | `string` | да | — |
+| `short_name` | `string` | да | — |
+| `thumb` | `flags.2?InputDocument` | нет | поле пропускается |
+| `stickers` | `Vector<InputStickerSetItem>` | да | — |
+| `software` | `flags.3?string` | нет | поле пропускается |
+
+<a id="ctx-remove_sticker"></a>
+#### 99. `ctx.remove_sticker`
+
+- **MTProto RPC:** `stickers.removeStickerFromSet`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.removeStickerFromSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.removeStickerFromSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_sticker(*, sticker)
+```
+
+**Порядок positional slots:** `sticker`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `sticker` | `InputDocument` | да | — |
+
+<a id="ctx-move_sticker"></a>
+#### 100. `ctx.move_sticker`
+
+- **MTProto RPC:** `stickers.changeStickerPosition`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.changeStickerPosition`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.changeStickerPosition`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.move_sticker(*, sticker, position)
+```
+
+**Порядок positional slots:** `sticker, position`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `sticker` | `InputDocument` | да | — |
+| `position` | `int` | да | — |
+
+<a id="ctx-add_sticker"></a>
+#### 101. `ctx.add_sticker`
+
+- **MTProto RPC:** `stickers.addStickerToSet`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.addStickerToSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.addStickerToSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.add_sticker(*, stickerset, sticker)
+```
+
+**Порядок positional slots:** `stickerset, sticker`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `stickerset` | `InputStickerSet` | да | — |
+| `sticker` | `InputStickerSetItem` | да | — |
+
+<a id="ctx-set_sticker_set_thumbnail"></a>
+#### 102. `ctx.set_sticker_set_thumbnail`
+
+- **MTProto RPC:** `stickers.setStickerSetThumb`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.setStickerSetThumb`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.setStickerSetThumb`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_sticker_set_thumbnail(*, stickerset, thumb=None, thumb_document_id=None)
+```
+
+**Порядок positional slots:** `stickerset`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `stickerset` | `InputStickerSet` | да | — |
+| `thumb` | `flags.0?InputDocument` | нет | поле пропускается |
+| `thumb_document_id` | `flags.1?long` | нет | поле пропускается |
+
+<a id="ctx-check_sticker_set_name"></a>
+#### 103. `ctx.check_sticker_set_name`
+
+- **MTProto RPC:** `stickers.checkShortName`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.checkShortName`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.checkShortName`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.check_sticker_set_name(*, short_name)
+```
+
+**Порядок positional slots:** `short_name`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `short_name` | `string` | да | — |
+
+<a id="ctx-suggest_sticker_set_name"></a>
+#### 104. `ctx.suggest_sticker_set_name`
+
+- **MTProto RPC:** `stickers.suggestShortName`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.suggestShortName`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.suggestShortName`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.suggest_sticker_set_name(*, title)
+```
+
+**Порядок positional slots:** `title`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `title` | `string` | да | — |
+
+<a id="ctx-edit_sticker_metadata"></a>
+#### 105. `ctx.edit_sticker_metadata`
+
+- **MTProto RPC:** `stickers.changeSticker`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.changeSticker`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.changeSticker`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_sticker_metadata(*, sticker, emoji=None, mask_coords=None, keywords=None)
+```
+
+**Порядок positional slots:** `sticker`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `sticker` | `InputDocument` | да | — |
+| `emoji` | `flags.0?string` | нет | поле пропускается |
+| `mask_coords` | `flags.1?MaskCoords` | нет | поле пропускается |
+| `keywords` | `flags.2?string` | нет | поле пропускается |
+
+<a id="ctx-rename_sticker_set"></a>
+#### 106. `ctx.rename_sticker_set`
+
+- **MTProto RPC:** `stickers.renameStickerSet`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.renameStickerSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.renameStickerSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.rename_sticker_set(*, stickerset, title)
+```
+
+**Порядок positional slots:** `stickerset, title`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `stickerset` | `InputStickerSet` | да | — |
+| `title` | `string` | да | — |
+
+<a id="ctx-remove_sticker_set"></a>
+#### 107. `ctx.remove_sticker_set`
+
+- **MTProto RPC:** `stickers.deleteStickerSet`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.deleteStickerSet`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.deleteStickerSet`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_sticker_set(*, stickerset)
+```
+
+**Порядок positional slots:** `stickerset`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `stickerset` | `InputStickerSet` | да | — |
+
+<a id="ctx-replace_sticker"></a>
+#### 108. `ctx.replace_sticker`
+
+- **MTProto RPC:** `stickers.replaceSticker`
+- **Namespace:** `stickers`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stickers.replaceSticker`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stickers.replaceSticker`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.replace_sticker(*, sticker, new_sticker)
+```
+
+**Порядок positional slots:** `sticker, new_sticker`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `sticker` | `InputDocument` | да | — |
+| `new_sticker` | `InputStickerSetItem` | да | — |
+
+<a id="ctx-contact_ids"></a>
+#### 109. `ctx.contact_ids`
+
+- **MTProto RPC:** `contacts.getContactIDs`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.getContactIDs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.getContactIDs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.contact_ids(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-contact_statuses"></a>
+#### 110. `ctx.contact_statuses`
+
+- **MTProto RPC:** `contacts.getStatuses`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.getStatuses`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.getStatuses`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.contact_statuses()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-contacts_list"></a>
+#### 111. `ctx.contacts_list`
+
+- **MTProto RPC:** `contacts.getContacts`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.getContacts`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.getContacts`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.contacts_list(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-import_contacts"></a>
+#### 112. `ctx.import_contacts`
+
+- **MTProto RPC:** `contacts.importContacts`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.importContacts`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.importContacts`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.import_contacts(*, contacts)
+```
+
+**Порядок positional slots:** `contacts`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `contacts` | `Vector<InputContact>` | да | — |
+
+<a id="ctx-remove_contacts"></a>
+#### 113. `ctx.remove_contacts`
+
+- **MTProto RPC:** `contacts.deleteContacts`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.deleteContacts`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.deleteContacts`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_contacts(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `Vector<InputUser>` | да | — |
+
+<a id="ctx-remove_contacts_by_phone"></a>
+#### 114. `ctx.remove_contacts_by_phone`
+
+- **MTProto RPC:** `contacts.deleteByPhones`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.deleteByPhones`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.deleteByPhones`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_contacts_by_phone(*, phones)
+```
+
+**Порядок positional slots:** `phones`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `phones` | `Vector<string>` | да | — |
+
+<a id="ctx-block_peer"></a>
+#### 115. `ctx.block_peer`
+
+- **MTProto RPC:** `contacts.block`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.block`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.block`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.block_peer(*, my_stories_from=None, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `my_stories_from` | `flags.0?true` | нет | поле пропускается |
+| `id` | `InputPeer` | да | — |
+
+<a id="ctx-unblock_peer"></a>
+#### 116. `ctx.unblock_peer`
+
+- **MTProto RPC:** `contacts.unblock`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.unblock`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.unblock`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.unblock_peer(*, my_stories_from=None, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `my_stories_from` | `flags.0?true` | нет | поле пропускается |
+| `id` | `InputPeer` | да | — |
+
+<a id="ctx-blocked_peers"></a>
+#### 117. `ctx.blocked_peers`
+
+- **MTProto RPC:** `contacts.getBlocked`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.getBlocked`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.getBlocked`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.blocked_peers(*, my_stories_from=None, offset=0, limit=50)
+```
+
+**Порядок positional slots:** `offset, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `my_stories_from` | `flags.0?true` | нет | поле пропускается |
+| `offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-search_public_peers"></a>
+#### 118. `ctx.search_public_peers`
+
+- **MTProto RPC:** `contacts.search`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.search`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.search`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_public_peers(*, broadcasts=None, bots=None, q, limit=50)
+```
+
+**Порядок positional slots:** `q, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `broadcasts` | `flags.0?true` | нет | поле пропускается |
+| `bots` | `flags.1?true` | нет | поле пропускается |
+| `q` | `string` | да | — |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-frequent_peers"></a>
+#### 119. `ctx.frequent_peers`
+
+- **MTProto RPC:** `contacts.getTopPeers`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.getTopPeers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.getTopPeers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.frequent_peers(*, correspondents=None, bots_pm=None, bots_inline=None, phone_calls=None, forward_users=None, forward_chats=None, groups=None, channels=None, bots_app=None, bots_guestchat=None, offset=0, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `offset, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `correspondents` | `flags.0?true` | нет | поле пропускается |
+| `bots_pm` | `flags.1?true` | нет | поле пропускается |
+| `bots_inline` | `flags.2?true` | нет | поле пропускается |
+| `phone_calls` | `flags.3?true` | нет | поле пропускается |
+| `forward_users` | `flags.4?true` | нет | поле пропускается |
+| `forward_chats` | `flags.5?true` | нет | поле пропускается |
+| `groups` | `flags.10?true` | нет | поле пропускается |
+| `channels` | `flags.15?true` | нет | поле пропускается |
+| `bots_app` | `flags.16?true` | нет | поле пропускается |
+| `bots_guestchat` | `flags.17?true` | нет | поле пропускается |
+| `offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-reset_peer_rating"></a>
+#### 120. `ctx.reset_peer_rating`
+
+- **MTProto RPC:** `contacts.resetTopPeerRating`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.resetTopPeerRating`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.resetTopPeerRating`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reset_peer_rating(*, category, peer)
+```
+
+**Порядок positional slots:** `category, peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `category` | `TopPeerCategory` | да | — |
+| `peer` | `InputPeer` | да | — |
+
+<a id="ctx-clear_imported_contacts"></a>
+#### 121. `ctx.clear_imported_contacts`
+
+- **MTProto RPC:** `contacts.resetSaved`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.resetSaved`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.resetSaved`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_imported_contacts()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-imported_contacts"></a>
+#### 122. `ctx.imported_contacts`
+
+- **MTProto RPC:** `contacts.getSaved`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.getSaved`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.getSaved`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.imported_contacts()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-set_frequent_peers_enabled"></a>
+#### 123. `ctx.set_frequent_peers_enabled`
+
+- **MTProto RPC:** `contacts.toggleTopPeers`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.toggleTopPeers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.toggleTopPeers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_frequent_peers_enabled(*, enabled)
+```
+
+**Порядок positional slots:** `enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-add_contact"></a>
+#### 124. `ctx.add_contact`
+
+- **MTProto RPC:** `contacts.addContact`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.addContact`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.addContact`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.add_contact(*, add_phone_privacy_exception=None, id, first_name, last_name, phone, note=None)
+```
+
+**Порядок positional slots:** `id, first_name, last_name, phone`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `add_phone_privacy_exception` | `flags.0?true` | нет | поле пропускается |
+| `id` | `InputUser` | да | — |
+| `first_name` | `string` | да | — |
+| `last_name` | `string` | да | — |
+| `phone` | `string` | да | — |
+| `note` | `flags.1?TextWithEntities` | нет | поле пропускается |
+
+<a id="ctx-accept_contact"></a>
+#### 125. `ctx.accept_contact`
+
+- **MTProto RPC:** `contacts.acceptContact`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.acceptContact`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.acceptContact`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.accept_contact(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputUser` | да | — |
+
+<a id="ctx-set_close_friends"></a>
+#### 126. `ctx.set_close_friends`
+
+- **MTProto RPC:** `contacts.editCloseFriends`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.editCloseFriends`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.editCloseFriends`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_close_friends(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `Vector<long>` | да | — |
+
+<a id="ctx-replace_blocklist"></a>
+#### 127. `ctx.replace_blocklist`
+
+- **MTProto RPC:** `contacts.setBlocked`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.setBlocked`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.setBlocked`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.replace_blocklist(*, my_stories_from=None, id, limit=50)
+```
+
+**Порядок positional slots:** `id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `my_stories_from` | `flags.0?true` | нет | поле пропускается |
+| `id` | `Vector<InputPeer>` | да | — |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-contact_birthdays"></a>
+#### 128. `ctx.contact_birthdays`
+
+- **MTProto RPC:** `contacts.getBirthdays`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.getBirthdays`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.getBirthdays`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.contact_birthdays()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-edit_contact_note"></a>
+#### 129. `ctx.edit_contact_note`
+
+- **MTProto RPC:** `contacts.updateContactNote`
+- **Namespace:** `contacts`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `contacts.updateContactNote`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `contacts.updateContactNote`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_contact_note(*, id, note)
+```
+
+**Порядок positional slots:** `id, note`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputUser` | да | — |
+| `note` | `TextWithEntities` | да | — |
+
+<a id="ctx-dialogs"></a>
+#### 130. `ctx.dialogs`
+
+- **MTProto RPC:** `messages.getDialogs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getDialogs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getDialogs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.dialogs(*, exclude_pinned=None, folder_id=None, offset_date=0, offset_id=0, offset_peer={'_': 'inputPeerEmpty'}, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `offset_date, offset_id, offset_peer, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `exclude_pinned` | `flags.0?true` | нет | поле пропускается |
+| `folder_id` | `flags.1?int` | нет | поле пропускается |
+| `offset_date` | `int` | нет | `0` |
+| `offset_id` | `int` | нет | `0` |
+| `offset_peer` | `InputPeer` | нет | `{'_': 'inputPeerEmpty'}` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-chat_history"></a>
+#### 131. `ctx.chat_history`
+
+- **MTProto RPC:** `messages.getHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.chat_history(*, peer=CURRENT_PEER, offset_id=0, offset_date=0, add_offset=0, limit=50, max_id=0, min_id=0, hash=0)
+```
+
+**Порядок positional slots:** `peer, offset_id, offset_date, add_offset, limit, max_id, min_id, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `offset_id` | `int` | нет | `0` |
+| `offset_date` | `int` | нет | `0` |
+| `add_offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `max_id` | `int` | нет | `0` |
+| `min_id` | `int` | нет | `0` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-search_chat_messages"></a>
+#### 132. `ctx.search_chat_messages`
+
+- **MTProto RPC:** `messages.search`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.search`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.search`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_chat_messages(*, peer=CURRENT_PEER, q, from_id=None, saved_peer_id=None, saved_reaction=None, top_msg_id=None, filter={'_': 'inputMessagesFilterEmpty'}, min_date=0, max_date=0, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0, hash=0)
+```
+
+**Порядок positional slots:** `peer, q, filter, min_date, max_date, offset_id, add_offset, limit, max_id, min_id, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `q` | `string` | да | — |
+| `from_id` | `flags.0?InputPeer` | нет | поле пропускается |
+| `saved_peer_id` | `flags.2?InputPeer` | нет | поле пропускается |
+| `saved_reaction` | `flags.3?Vector<Reaction>` | нет | поле пропускается |
+| `top_msg_id` | `flags.1?int` | нет | поле пропускается |
+| `filter` | `MessagesFilter` | нет | `{'_': 'inputMessagesFilterEmpty'}` |
+| `min_date` | `int` | нет | `0` |
+| `max_date` | `int` | нет | `0` |
+| `offset_id` | `int` | нет | `0` |
+| `add_offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `max_id` | `int` | нет | `0` |
+| `min_id` | `int` | нет | `0` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-mark_chat_read"></a>
+#### 133. `ctx.mark_chat_read`
+
+- **MTProto RPC:** `messages.readHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.readHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.readHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_chat_read(*, peer=CURRENT_PEER, max_id)
+```
+
+**Порядок positional slots:** `peer, max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `max_id` | `int` | да | — |
+
+<a id="ctx-clear_chat_history"></a>
+#### 134. `ctx.clear_chat_history`
+
+- **MTProto RPC:** `messages.deleteHistory`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_chat_history(*, just_clear=None, revoke=None, peer=CURRENT_PEER, max_id, min_date=None, max_date=None)
+```
+
+**Порядок positional slots:** `peer, max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `just_clear` | `flags.0?true` | нет | поле пропускается |
+| `revoke` | `flags.1?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `max_id` | `int` | да | — |
+| `min_date` | `flags.2?int` | нет | поле пропускается |
+| `max_date` | `flags.3?int` | нет | поле пропускается |
+
+<a id="ctx-peer_settings"></a>
+#### 135. `ctx.peer_settings`
+
+- **MTProto RPC:** `messages.getPeerSettings`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getPeerSettings`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getPeerSettings`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.peer_settings(*, peer=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+
+<a id="ctx-basic_groups"></a>
+#### 136. `ctx.basic_groups`
+
+- **MTProto RPC:** `messages.getChats`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getChats`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getChats`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.basic_groups(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `Vector<long>` | да | — |
+
+<a id="ctx-basic_group_details"></a>
+#### 137. `ctx.basic_group_details`
+
+- **MTProto RPC:** `messages.getFullChat`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getFullChat`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getFullChat`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.basic_group_details(*, chat_id)
+```
+
+**Порядок positional slots:** `chat_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chat_id` | `long` | да | — |
+
+<a id="ctx-search_all_messages"></a>
+#### 138. `ctx.search_all_messages`
+
+- **MTProto RPC:** `messages.searchGlobal`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.searchGlobal`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.searchGlobal`, converts contextual parameters and returns the host-processed RPC response body.
+- **Политика:** **BLOCKED** в проверенном CapabilityHost. Присутствует в каталоге, но не разрешён; raw `mt` запрет не снимает.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.search_all_messages(*, broadcasts_only=None, groups_only=None, users_only=None, folder_id=None, community=None, q, filter={'_': 'inputMessagesFilterEmpty'}, min_date=0, max_date=0, offset_rate=0, offset_peer={'_': 'inputPeerEmpty'}, offset_id=0, limit=50)
+```
+
+**Порядок positional slots:** `q, filter, min_date, max_date, offset_rate, offset_peer, offset_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `broadcasts_only` | `flags.1?true` | нет | поле пропускается |
+| `groups_only` | `flags.2?true` | нет | поле пропускается |
+| `users_only` | `flags.3?true` | нет | поле пропускается |
+| `folder_id` | `flags.0?int` | нет | поле пропускается |
+| `community` | `flags.4?InputChannel` | нет | поле пропускается |
+| `q` | `string` | да | — |
+| `filter` | `MessagesFilter` | нет | `{'_': 'inputMessagesFilterEmpty'}` |
+| `min_date` | `int` | нет | `0` |
+| `max_date` | `int` | нет | `0` |
+| `offset_rate` | `int` | нет | `0` |
+| `offset_peer` | `InputPeer` | нет | `{'_': 'inputPeerEmpty'}` |
+| `offset_id` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-message_editability"></a>
+#### 139. `ctx.message_editability`
+
+- **MTProto RPC:** `messages.getMessageEditData`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getMessageEditData`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getMessageEditData`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.message_editability(*, peer=CURRENT_PEER, id=CURRENT_MESSAGE)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `id` | `int` | нет | `CURRENT_MESSAGE` |
+
+<a id="ctx-peer_dialogs"></a>
+#### 140. `ctx.peer_dialogs`
+
+- **MTProto RPC:** `messages.getPeerDialogs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getPeerDialogs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getPeerDialogs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.peer_dialogs(*, peers)
+```
+
+**Порядок positional slots:** `peers`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peers` | `Vector<InputDialogPeer>` | да | — |
+
+<a id="ctx-all_drafts"></a>
+#### 141. `ctx.all_drafts`
+
+- **MTProto RPC:** `messages.getAllDrafts`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getAllDrafts`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getAllDrafts`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.all_drafts()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-mutual_groups"></a>
+#### 142. `ctx.mutual_groups`
+
+- **MTProto RPC:** `messages.getCommonChats`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getCommonChats`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getCommonChats`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mutual_groups(*, user_id, max_id=0, limit=50)
+```
+
+**Порядок positional slots:** `user_id, max_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `user_id` | `InputUser` | да | — |
+| `max_id` | `long` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-set_dialog_pinned"></a>
+#### 143. `ctx.set_dialog_pinned`
+
+- **MTProto RPC:** `messages.toggleDialogPin`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.toggleDialogPin`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.toggleDialogPin`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_dialog_pinned(*, pinned=None, peer)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `pinned` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputDialogPeer` | да | — |
+
+<a id="ctx-reorder_dialog_pins"></a>
+#### 144. `ctx.reorder_dialog_pins`
+
+- **MTProto RPC:** `messages.reorderPinnedDialogs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.reorderPinnedDialogs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.reorderPinnedDialogs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_dialog_pins(*, force=None, folder_id, order)
+```
+
+**Порядок positional slots:** `folder_id, order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `force` | `flags.0?true` | нет | поле пропускается |
+| `folder_id` | `int` | да | — |
+| `order` | `Vector<InputDialogPeer>` | да | — |
+
+<a id="ctx-pinned_dialogs"></a>
+#### 145. `ctx.pinned_dialogs`
+
+- **MTProto RPC:** `messages.getPinnedDialogs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getPinnedDialogs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getPinnedDialogs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.pinned_dialogs(*, folder_id)
+```
+
+**Порядок positional slots:** `folder_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `folder_id` | `int` | да | — |
+
+<a id="ctx-unread_mentions"></a>
+#### 146. `ctx.unread_mentions`
+
+- **MTProto RPC:** `messages.getUnreadMentions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getUnreadMentions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getUnreadMentions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.unread_mentions(*, peer=CURRENT_PEER, top_msg_id=None, offset_id=0, add_offset=0, limit=50, max_id=0, min_id=0)
+```
+
+**Порядок positional slots:** `peer, offset_id, add_offset, limit, max_id, min_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+| `offset_id` | `int` | нет | `0` |
+| `add_offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `max_id` | `int` | нет | `0` |
+| `min_id` | `int` | нет | `0` |
+
+<a id="ctx-mark_mentions_read"></a>
+#### 147. `ctx.mark_mentions_read`
+
+- **MTProto RPC:** `messages.readMentions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.readMentions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.readMentions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_mentions_read(*, peer=CURRENT_PEER, top_msg_id=None)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+
+<a id="ctx-recent_live_locations"></a>
+#### 148. `ctx.recent_live_locations`
+
+- **MTProto RPC:** `messages.getRecentLocations`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getRecentLocations`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getRecentLocations`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.recent_live_locations(*, peer=CURRENT_PEER, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `peer, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-set_dialog_unread"></a>
+#### 149. `ctx.set_dialog_unread`
+
+- **MTProto RPC:** `messages.markDialogUnread`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.markDialogUnread`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.markDialogUnread`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_dialog_unread(*, unread=None, parent_peer=None, peer)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `unread` | `flags.0?true` | нет | поле пропускается |
+| `parent_peer` | `flags.1?InputPeer` | нет | поле пропускается |
+| `peer` | `InputDialogPeer` | да | — |
+
+<a id="ctx-unread_dialog_marks"></a>
+#### 150. `ctx.unread_dialog_marks`
+
+- **MTProto RPC:** `messages.getDialogUnreadMarks`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getDialogUnreadMarks`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getDialogUnreadMarks`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.unread_dialog_marks(*, parent_peer=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `parent_peer` | `flags.0?InputPeer` | нет | поле пропускается |
+
+<a id="ctx-clear_all_drafts"></a>
+#### 151. `ctx.clear_all_drafts`
+
+- **MTProto RPC:** `messages.clearAllDrafts`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.clearAllDrafts`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.clearAllDrafts`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_all_drafts()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-chat_online_count"></a>
+#### 152. `ctx.chat_online_count`
+
+- **MTProto RPC:** `messages.getOnlines`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getOnlines`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getOnlines`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.chat_online_count(*, peer=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+
+<a id="ctx-message_type_counts"></a>
+#### 153. `ctx.message_type_counts`
+
+- **MTProto RPC:** `messages.getSearchCounters`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSearchCounters`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSearchCounters`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.message_type_counts(*, peer=CURRENT_PEER, saved_peer_id=None, top_msg_id=None, filters)
+```
+
+**Порядок positional slots:** `peer, filters`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `saved_peer_id` | `flags.2?InputPeer` | нет | поле пропускается |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+| `filters` | `Vector<MessagesFilter>` | да | — |
+
+<a id="ctx-dismiss_peer_settings_bar"></a>
+#### 154. `ctx.dismiss_peer_settings_bar`
+
+- **MTProto RPC:** `messages.hidePeerSettingsBar`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.hidePeerSettingsBar`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.hidePeerSettingsBar`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.dismiss_peer_settings_bar(*, peer=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+
+<a id="ctx-mark_discussion_read"></a>
+#### 155. `ctx.mark_discussion_read`
+
+- **MTProto RPC:** `messages.readDiscussion`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.readDiscussion`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.readDiscussion`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_discussion_read(*, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE, read_max_id)
+```
+
+**Порядок positional slots:** `peer, msg_id, read_max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+| `read_max_id` | `int` | да | — |
+
+<a id="ctx-unpin_all_chat_messages"></a>
+#### 156. `ctx.unpin_all_chat_messages`
+
+- **MTProto RPC:** `messages.unpinAllMessages`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.unpinAllMessages`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.unpinAllMessages`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.unpin_all_chat_messages(*, peer=CURRENT_PEER, top_msg_id=None, saved_peer_id=None)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `top_msg_id` | `flags.0?int` | нет | поле пропускается |
+| `saved_peer_id` | `flags.1?InputPeer` | нет | поле пропускается |
+
+<a id="ctx-message_readers"></a>
+#### 157. `ctx.message_readers`
+
+- **MTProto RPC:** `messages.getMessageReadParticipants`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getMessageReadParticipants`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getMessageReadParticipants`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.message_readers(*, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE)
+```
+
+**Порядок positional slots:** `peer, msg_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+
+<a id="ctx-message_search_calendar"></a>
+#### 158. `ctx.message_search_calendar`
+
+- **MTProto RPC:** `messages.getSearchResultsCalendar`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSearchResultsCalendar`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSearchResultsCalendar`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.message_search_calendar(*, peer=CURRENT_PEER, saved_peer_id=None, filter={'_': 'inputMessagesFilterEmpty'}, offset_id=0, offset_date=0)
+```
+
+**Порядок positional slots:** `peer, filter, offset_id, offset_date`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `saved_peer_id` | `flags.2?InputPeer` | нет | поле пропускается |
+| `filter` | `MessagesFilter` | нет | `{'_': 'inputMessagesFilterEmpty'}` |
+| `offset_id` | `int` | нет | `0` |
+| `offset_date` | `int` | нет | `0` |
+
+<a id="ctx-message_search_positions"></a>
+#### 159. `ctx.message_search_positions`
+
+- **MTProto RPC:** `messages.getSearchResultsPositions`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSearchResultsPositions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSearchResultsPositions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.message_search_positions(*, peer=CURRENT_PEER, saved_peer_id=None, filter={'_': 'inputMessagesFilterEmpty'}, offset_id=0, limit=50)
+```
+
+**Порядок positional slots:** `peer, filter, offset_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `saved_peer_id` | `flags.2?InputPeer` | нет | поле пропускается |
+| `filter` | `MessagesFilter` | нет | `{'_': 'inputMessagesFilterEmpty'}` |
+| `offset_id` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-set_default_send_as"></a>
+#### 160. `ctx.set_default_send_as`
+
+- **MTProto RPC:** `messages.saveDefaultSendAs`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.saveDefaultSendAs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.saveDefaultSendAs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_default_send_as(*, peer=CURRENT_PEER, send_as)
+```
+
+**Порядок positional slots:** `peer, send_as`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `send_as` | `InputPeer` | да | — |
+
+<a id="ctx-sent_media_search"></a>
+#### 161. `ctx.sent_media_search`
+
+- **MTProto RPC:** `messages.searchSentMedia`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.searchSentMedia`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.searchSentMedia`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.sent_media_search(*, q, filter={'_': 'inputMessagesFilterEmpty'}, limit=50)
+```
+
+**Порядок positional slots:** `q, filter, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `q` | `string` | да | — |
+| `filter` | `MessagesFilter` | нет | `{'_': 'inputMessagesFilterEmpty'}` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-outgoing_read_date"></a>
+#### 162. `ctx.outgoing_read_date`
+
+- **MTProto RPC:** `messages.getOutboxReadDate`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getOutboxReadDate`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getOutboxReadDate`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.outgoing_read_date(*, peer=CURRENT_PEER, msg_id=CURRENT_MESSAGE)
+```
+
+**Порядок positional slots:** `peer, msg_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | нет | `CURRENT_MESSAGE` |
+
+<a id="ctx-channel_message_author"></a>
+#### 163. `ctx.channel_message_author`
+
+- **MTProto RPC:** `channels.getMessageAuthor`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getMessageAuthor`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getMessageAuthor`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.channel_message_author(*, channel=CURRENT_PEER, id)
+```
+
+**Порядок positional slots:** `channel, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `id` | `int` | да | — |
+
+<a id="ctx-move_dialogs_to_archive"></a>
+#### 164. `ctx.move_dialogs_to_archive`
+
+- **MTProto RPC:** `folders.editPeerFolders`
+- **Namespace:** `folders`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `folders.editPeerFolders`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `folders.editPeerFolders`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.move_dialogs_to_archive(*, folder_peers)
+```
+
+**Порядок positional slots:** `folder_peers`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `folder_peers` | `Vector<InputFolderPeer>` | да | — |
+
+<a id="ctx-chat_folders"></a>
+#### 165. `ctx.chat_folders`
+
+- **MTProto RPC:** `messages.getDialogFilters`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getDialogFilters`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getDialogFilters`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.chat_folders()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-suggested_chat_folders"></a>
+#### 166. `ctx.suggested_chat_folders`
+
+- **MTProto RPC:** `messages.getSuggestedDialogFilters`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getSuggestedDialogFilters`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getSuggestedDialogFilters`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.suggested_chat_folders()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-save_chat_folder"></a>
+#### 167. `ctx.save_chat_folder`
+
+- **MTProto RPC:** `messages.updateDialogFilter`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.updateDialogFilter`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.updateDialogFilter`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.save_chat_folder(*, id, filter=None)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `int` | да | — |
+| `filter` | `flags.0?DialogFilter` | нет | поле пропускается |
+
+<a id="ctx-reorder_chat_folders"></a>
+#### 168. `ctx.reorder_chat_folders`
+
+- **MTProto RPC:** `messages.updateDialogFiltersOrder`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.updateDialogFiltersOrder`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.updateDialogFiltersOrder`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_chat_folders(*, order)
+```
+
+**Порядок positional slots:** `order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `order` | `Vector<int>` | да | — |
+
+<a id="ctx-set_folder_tags_visible"></a>
+#### 169. `ctx.set_folder_tags_visible`
+
+- **MTProto RPC:** `messages.toggleDialogFilterTags`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.toggleDialogFilterTags`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.toggleDialogFilterTags`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_folder_tags_visible(*, enabled)
+```
+
+**Порядок positional slots:** `enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-share_chat_folder"></a>
+#### 170. `ctx.share_chat_folder`
+
+- **MTProto RPC:** `chatlists.exportChatlistInvite`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.exportChatlistInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.exportChatlistInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.share_chat_folder(*, chatlist, title, peers)
+```
+
+**Порядок positional slots:** `chatlist, title, peers`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+| `title` | `string` | да | — |
+| `peers` | `Vector<InputPeer>` | да | — |
+
+<a id="ctx-remove_folder_invite"></a>
+#### 171. `ctx.remove_folder_invite`
+
+- **MTProto RPC:** `chatlists.deleteExportedInvite`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.deleteExportedInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.deleteExportedInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_folder_invite(*, chatlist, slug)
+```
+
+**Порядок positional slots:** `chatlist, slug`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+| `slug` | `string` | да | — |
+
+<a id="ctx-edit_folder_invite"></a>
+#### 172. `ctx.edit_folder_invite`
+
+- **MTProto RPC:** `chatlists.editExportedInvite`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.editExportedInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.editExportedInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_folder_invite(*, chatlist, slug, title=None, peers=None)
+```
+
+**Порядок positional slots:** `chatlist, slug`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+| `slug` | `string` | да | — |
+| `title` | `flags.1?string` | нет | поле пропускается |
+| `peers` | `flags.2?Vector<InputPeer>` | нет | поле пропускается |
+
+<a id="ctx-folder_invites"></a>
+#### 173. `ctx.folder_invites`
+
+- **MTProto RPC:** `chatlists.getExportedInvites`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.getExportedInvites`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.getExportedInvites`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.folder_invites(*, chatlist)
+```
+
+**Порядок positional slots:** `chatlist`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+
+<a id="ctx-inspect_folder_invite"></a>
+#### 174. `ctx.inspect_folder_invite`
+
+- **MTProto RPC:** `chatlists.checkChatlistInvite`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.checkChatlistInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.checkChatlistInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.inspect_folder_invite(*, slug)
+```
+
+**Порядок positional slots:** `slug`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `slug` | `string` | да | — |
+
+<a id="ctx-join_folder_invite"></a>
+#### 175. `ctx.join_folder_invite`
+
+- **MTProto RPC:** `chatlists.joinChatlistInvite`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.joinChatlistInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.joinChatlistInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.join_folder_invite(*, slug, peers)
+```
+
+**Порядок positional slots:** `slug, peers`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `slug` | `string` | да | — |
+| `peers` | `Vector<InputPeer>` | да | — |
+
+<a id="ctx-folder_updates"></a>
+#### 176. `ctx.folder_updates`
+
+- **MTProto RPC:** `chatlists.getChatlistUpdates`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.getChatlistUpdates`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.getChatlistUpdates`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.folder_updates(*, chatlist)
+```
+
+**Порядок positional slots:** `chatlist`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+
+<a id="ctx-accept_folder_updates"></a>
+#### 177. `ctx.accept_folder_updates`
+
+- **MTProto RPC:** `chatlists.joinChatlistUpdates`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.joinChatlistUpdates`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.joinChatlistUpdates`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.accept_folder_updates(*, chatlist, peers)
+```
+
+**Порядок positional slots:** `chatlist, peers`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+| `peers` | `Vector<InputPeer>` | да | — |
+
+<a id="ctx-dismiss_folder_updates"></a>
+#### 178. `ctx.dismiss_folder_updates`
+
+- **MTProto RPC:** `chatlists.hideChatlistUpdates`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.hideChatlistUpdates`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.hideChatlistUpdates`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.dismiss_folder_updates(*, chatlist)
+```
+
+**Порядок positional slots:** `chatlist`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+
+<a id="ctx-folder_leave_suggestions"></a>
+#### 179. `ctx.folder_leave_suggestions`
+
+- **MTProto RPC:** `chatlists.getLeaveChatlistSuggestions`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.getLeaveChatlistSuggestions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.getLeaveChatlistSuggestions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.folder_leave_suggestions(*, chatlist)
+```
+
+**Порядок positional slots:** `chatlist`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+
+<a id="ctx-leave_shared_folder"></a>
+#### 180. `ctx.leave_shared_folder`
+
+- **MTProto RPC:** `chatlists.leaveChatlist`
+- **Namespace:** `chatlists`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `chatlists.leaveChatlist`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `chatlists.leaveChatlist`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.leave_shared_folder(*, chatlist, peers)
+```
+
+**Порядок positional slots:** `chatlist, peers`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chatlist` | `InputChatlist` | да | — |
+| `peers` | `Vector<InputPeer>` | да | — |
+
+<a id="ctx-edit_profile"></a>
+#### 181. `ctx.edit_profile`
+
+- **MTProto RPC:** `account.updateProfile`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updateProfile`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updateProfile`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_profile(*, first_name=None, last_name=None, about=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `first_name` | `flags.0?string` | нет | поле пропускается |
+| `last_name` | `flags.1?string` | нет | поле пропускается |
+| `about` | `flags.2?string` | нет | поле пропускается |
+
+<a id="ctx-set_online_status"></a>
+#### 182. `ctx.set_online_status`
+
+- **MTProto RPC:** `account.updateStatus`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updateStatus`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updateStatus`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_online_status(*, offline)
+```
+
+**Порядок positional slots:** `offline`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `offline` | `Bool` | да | — |
+
+<a id="ctx-check_profile_username"></a>
+#### 183. `ctx.check_profile_username`
+
+- **MTProto RPC:** `account.checkUsername`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.checkUsername`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.checkUsername`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.check_profile_username(*, username)
+```
+
+**Порядок positional slots:** `username`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `username` | `string` | да | — |
+
+<a id="ctx-set_profile_username"></a>
+#### 184. `ctx.set_profile_username`
+
+- **MTProto RPC:** `account.updateUsername`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updateUsername`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updateUsername`, converts contextual parameters and returns the host-processed RPC response body.
+- **Политика:** **BLOCKED** в проверенном CapabilityHost. Присутствует в каталоге, но не разрешён; raw `mt` запрет не снимает.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_profile_username(*, username)
+```
+
+**Порядок positional slots:** `username`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `username` | `string` | да | — |
+
+<a id="ctx-privacy_rules"></a>
+#### 185. `ctx.privacy_rules`
+
+- **MTProto RPC:** `account.getPrivacy`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getPrivacy`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getPrivacy`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.privacy_rules(*, key)
+```
+
+**Порядок positional slots:** `key`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `key` | `InputPrivacyKey` | да | — |
+
+<a id="ctx-account_inactivity_ttl"></a>
+#### 186. `ctx.account_inactivity_ttl`
+
+- **MTProto RPC:** `account.getAccountTTL`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getAccountTTL`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getAccountTTL`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.account_inactivity_ttl()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-set_emoji_status"></a>
+#### 187. `ctx.set_emoji_status`
+
+- **MTProto RPC:** `account.updateEmojiStatus`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updateEmojiStatus`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updateEmojiStatus`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_emoji_status(*, emoji_status)
+```
+
+**Порядок positional slots:** `emoji_status`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `emoji_status` | `EmojiStatus` | да | — |
+
+<a id="ctx-suggested_emoji_statuses"></a>
+#### 188. `ctx.suggested_emoji_statuses`
+
+- **MTProto RPC:** `account.getDefaultEmojiStatuses`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getDefaultEmojiStatuses`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getDefaultEmojiStatuses`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.suggested_emoji_statuses(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-recent_emoji_statuses"></a>
+#### 189. `ctx.recent_emoji_statuses`
+
+- **MTProto RPC:** `account.getRecentEmojiStatuses`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getRecentEmojiStatuses`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getRecentEmojiStatuses`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.recent_emoji_statuses(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-clear_recent_emoji_statuses"></a>
+#### 190. `ctx.clear_recent_emoji_statuses`
+
+- **MTProto RPC:** `account.clearRecentEmojiStatuses`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.clearRecentEmojiStatuses`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.clearRecentEmojiStatuses`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_recent_emoji_statuses()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-reorder_profile_usernames"></a>
+#### 191. `ctx.reorder_profile_usernames`
+
+- **MTProto RPC:** `account.reorderUsernames`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.reorderUsernames`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.reorderUsernames`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_profile_usernames(*, order)
+```
+
+**Порядок positional slots:** `order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `order` | `Vector<string>` | да | — |
+
+<a id="ctx-set_profile_username_active"></a>
+#### 192. `ctx.set_profile_username_active`
+
+- **MTProto RPC:** `account.toggleUsername`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.toggleUsername`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.toggleUsername`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_profile_username_active(*, username, active)
+```
+
+**Порядок positional slots:** `username, active`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `username` | `string` | да | — |
+| `active` | `Bool` | да | — |
+
+<a id="ctx-profile_photo_emojis"></a>
+#### 193. `ctx.profile_photo_emojis`
+
+- **MTProto RPC:** `account.getDefaultProfilePhotoEmojis`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getDefaultProfilePhotoEmojis`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getDefaultProfilePhotoEmojis`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.profile_photo_emojis(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-set_profile_color"></a>
+#### 194. `ctx.set_profile_color`
+
+- **MTProto RPC:** `account.updateColor`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updateColor`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updateColor`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_profile_color(*, for_profile=None, color=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `for_profile` | `flags.1?true` | нет | поле пропускается |
+| `color` | `flags.2?PeerColor` | нет | поле пропускается |
+
+<a id="ctx-set_birthday"></a>
+#### 195. `ctx.set_birthday`
+
+- **MTProto RPC:** `account.updateBirthday`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updateBirthday`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updateBirthday`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_birthday(*, birthday=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `birthday` | `flags.0?Birthday` | нет | поле пропускается |
+
+<a id="ctx-set_personal_channel"></a>
+#### 196. `ctx.set_personal_channel`
+
+- **MTProto RPC:** `account.updatePersonalChannel`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updatePersonalChannel`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updatePersonalChannel`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_personal_channel(*, channel)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | да | — |
+
+<a id="ctx-set_profile_tab"></a>
+#### 197. `ctx.set_profile_tab`
+
+- **MTProto RPC:** `account.setMainProfileTab`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.setMainProfileTab`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.setMainProfileTab`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_profile_tab(*, tab)
+```
+
+**Порядок positional slots:** `tab`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `tab` | `ProfileTab` | да | — |
+
+<a id="ctx-set_music_saved"></a>
+#### 198. `ctx.set_music_saved`
+
+- **MTProto RPC:** `account.saveMusic`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.saveMusic`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.saveMusic`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_music_saved(*, unsave=None, id, after_id=None)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `unsave` | `flags.0?true` | нет | поле пропускается |
+| `id` | `InputDocument` | да | — |
+| `after_id` | `flags.1?InputDocument` | нет | поле пропускается |
+
+<a id="ctx-saved_music_ids"></a>
+#### 199. `ctx.saved_music_ids`
+
+- **MTProto RPC:** `account.getSavedMusicIds`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getSavedMusicIds`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getSavedMusicIds`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.saved_music_ids(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-user_details"></a>
+#### 200. `ctx.user_details`
+
+- **MTProto RPC:** `users.getFullUser`
+- **Namespace:** `users`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `users.getFullUser`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `users.getFullUser`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.user_details(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputUser` | да | — |
+
+<a id="ctx-contact_requirements"></a>
+#### 201. `ctx.contact_requirements`
+
+- **MTProto RPC:** `users.getRequirementsToContact`
+- **Namespace:** `users`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `users.getRequirementsToContact`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `users.getRequirementsToContact`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.contact_requirements(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `Vector<InputUser>` | да | — |
+
+<a id="ctx-user_music"></a>
+#### 202. `ctx.user_music`
+
+- **MTProto RPC:** `users.getSavedMusic`
+- **Namespace:** `users`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `users.getSavedMusic`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `users.getSavedMusic`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.user_music(*, id, offset=0, limit=50, hash=0)
+```
+
+**Порядок positional slots:** `id, offset, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputUser` | да | — |
+| `offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-user_music_by_documents"></a>
+#### 203. `ctx.user_music_by_documents`
+
+- **MTProto RPC:** `users.getSavedMusicByID`
+- **Namespace:** `users`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `users.getSavedMusicByID`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `users.getSavedMusicByID`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.user_music_by_documents(*, id, documents)
+```
+
+**Порядок positional slots:** `id, documents`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputUser` | да | — |
+| `documents` | `Vector<InputDocument>` | да | — |
+
+<a id="ctx-suggest_contact_birthday"></a>
+#### 204. `ctx.suggest_contact_birthday`
+
+- **MTProto RPC:** `users.suggestBirthday`
+- **Namespace:** `users`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `users.suggestBirthday`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `users.suggestBirthday`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.suggest_contact_birthday(*, id, birthday)
+```
+
+**Порядок positional slots:** `id, birthday`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputUser` | да | — |
+| `birthday` | `Birthday` | да | — |
+
+<a id="ctx-select_profile_photo"></a>
+#### 205. `ctx.select_profile_photo`
+
+- **MTProto RPC:** `photos.updateProfilePhoto`
+- **Namespace:** `photos`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `photos.updateProfilePhoto`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `photos.updateProfilePhoto`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.select_profile_photo(*, fallback=None, bot=None, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `fallback` | `flags.0?true` | нет | поле пропускается |
+| `bot` | `flags.1?InputUser` | нет | поле пропускается |
+| `id` | `InputPhoto` | да | — |
+
+<a id="ctx-upload_profile_photo"></a>
+#### 206. `ctx.upload_profile_photo`
+
+- **MTProto RPC:** `photos.uploadProfilePhoto`
+- **Namespace:** `photos`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `photos.uploadProfilePhoto`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `photos.uploadProfilePhoto`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.upload_profile_photo(*, fallback=None, bot=None, file=None, video=None, video_start_ts=None, video_emoji_markup=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `fallback` | `flags.3?true` | нет | поле пропускается |
+| `bot` | `flags.5?InputUser` | нет | поле пропускается |
+| `file` | `flags.0?InputFile` | нет | поле пропускается |
+| `video` | `flags.1?InputFile` | нет | поле пропускается |
+| `video_start_ts` | `flags.2?double` | нет | поле пропускается |
+| `video_emoji_markup` | `flags.4?VideoSize` | нет | поле пропускается |
+
+<a id="ctx-remove_profile_photos"></a>
+#### 207. `ctx.remove_profile_photos`
+
+- **MTProto RPC:** `photos.deletePhotos`
+- **Namespace:** `photos`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `photos.deletePhotos`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `photos.deletePhotos`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_profile_photos(*, id)
+```
+
+**Порядок positional slots:** `id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `Vector<InputPhoto>` | да | — |
+
+<a id="ctx-profile_photos"></a>
+#### 208. `ctx.profile_photos`
+
+- **MTProto RPC:** `photos.getUserPhotos`
+- **Namespace:** `photos`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `photos.getUserPhotos`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `photos.getUserPhotos`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.profile_photos(*, user_id, offset=0, max_id=0, limit=50)
+```
+
+**Порядок positional slots:** `user_id, offset, max_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `user_id` | `InputUser` | да | — |
+| `offset` | `int` | нет | `0` |
+| `max_id` | `long` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-set_contact_photo"></a>
+#### 209. `ctx.set_contact_photo`
+
+- **MTProto RPC:** `photos.uploadContactProfilePhoto`
+- **Namespace:** `photos`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `photos.uploadContactProfilePhoto`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `photos.uploadContactProfilePhoto`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_contact_photo(*, suggest=None, save=None, user_id, file=None, video=None, video_start_ts=None, video_emoji_markup=None)
+```
+
+**Порядок positional slots:** `user_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `suggest` | `flags.3?true` | нет | поле пропускается |
+| `save` | `flags.4?true` | нет | поле пропускается |
+| `user_id` | `InputUser` | да | — |
+| `file` | `flags.0?InputFile` | нет | поле пропускается |
+| `video` | `flags.1?InputFile` | нет | поле пропускается |
+| `video_start_ts` | `flags.2?double` | нет | поле пропускается |
+| `video_emoji_markup` | `flags.5?VideoSize` | нет | поле пропускается |
+
+<a id="ctx-notification_settings"></a>
+#### 210. `ctx.notification_settings`
+
+- **MTProto RPC:** `account.getNotifySettings`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getNotifySettings`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getNotifySettings`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.notification_settings(*, peer)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputNotifyPeer` | да | — |
+
+<a id="ctx-set_notification_settings"></a>
+#### 211. `ctx.set_notification_settings`
+
+- **MTProto RPC:** `account.updateNotifySettings`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.updateNotifySettings`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.updateNotifySettings`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_notification_settings(*, peer, settings)
+```
+
+**Порядок positional slots:** `peer, settings`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputNotifyPeer` | да | — |
+| `settings` | `InputPeerNotifySettings` | да | — |
+
+<a id="ctx-reset_notification_settings"></a>
+#### 212. `ctx.reset_notification_settings`
+
+- **MTProto RPC:** `account.resetNotifySettings`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.resetNotifySettings`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.resetNotifySettings`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reset_notification_settings()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-contact_signup_notifications"></a>
+#### 213. `ctx.contact_signup_notifications`
+
+- **MTProto RPC:** `account.getContactSignUpNotification`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getContactSignUpNotification`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getContactSignUpNotification`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.contact_signup_notifications()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-set_contact_signup_notifications"></a>
+#### 214. `ctx.set_contact_signup_notifications`
+
+- **MTProto RPC:** `account.setContactSignUpNotification`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.setContactSignUpNotification`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.setContactSignUpNotification`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_contact_signup_notifications(*, silent)
+```
+
+**Порядок positional slots:** `silent`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `silent` | `Bool` | да | — |
+
+<a id="ctx-notification_exceptions"></a>
+#### 215. `ctx.notification_exceptions`
+
+- **MTProto RPC:** `account.getNotifyExceptions`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getNotifyExceptions`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getNotifyExceptions`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.notification_exceptions(*, compare_sound=None, compare_stories=None, peer=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `compare_sound` | `flags.1?true` | нет | поле пропускается |
+| `compare_stories` | `flags.2?true` | нет | поле пропускается |
+| `peer` | `flags.0?InputNotifyPeer` | нет | поле пропускается |
+
+<a id="ctx-reaction_notification_settings"></a>
+#### 216. `ctx.reaction_notification_settings`
+
+- **MTProto RPC:** `account.getReactionsNotifySettings`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getReactionsNotifySettings`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getReactionsNotifySettings`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reaction_notification_settings()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-set_reaction_notification_settings"></a>
+#### 217. `ctx.set_reaction_notification_settings`
+
+- **MTProto RPC:** `account.setReactionsNotifySettings`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.setReactionsNotifySettings`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.setReactionsNotifySettings`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_reaction_notification_settings(*, settings)
+```
+
+**Порядок positional slots:** `settings`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `settings` | `ReactionsNotifySettings` | да | — |
+
+<a id="ctx-saved_notification_sounds"></a>
+#### 218. `ctx.saved_notification_sounds`
+
+- **MTProto RPC:** `account.getSavedRingtones`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.getSavedRingtones`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.getSavedRingtones`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.saved_notification_sounds(*, hash=0)
+```
+
+**Порядок positional slots:** `hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `hash` | `long` | нет | `0` |
+
+<a id="ctx-set_notification_sound_saved"></a>
+#### 219. `ctx.set_notification_sound_saved`
+
+- **MTProto RPC:** `account.saveRingtone`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.saveRingtone`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.saveRingtone`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_notification_sound_saved(*, id, unsave)
+```
+
+**Порядок positional slots:** `id, unsave`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `id` | `InputDocument` | да | — |
+| `unsave` | `Bool` | да | — |
+
+<a id="ctx-upload_notification_sound"></a>
+#### 220. `ctx.upload_notification_sound`
+
+- **MTProto RPC:** `account.uploadRingtone`
+- **Namespace:** `account`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `account.uploadRingtone`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `account.uploadRingtone`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.upload_notification_sound(*, file, file_name, mime_type)
+```
+
+**Порядок positional slots:** `file, file_name, mime_type`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `file` | `InputFile` | да | — |
+| `file_name` | `string` | да | — |
+| `mime_type` | `string` | да | — |
+
+<a id="ctx-rename_basic_group"></a>
+#### 221. `ctx.rename_basic_group`
+
+- **MTProto RPC:** `messages.editChatTitle`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editChatTitle`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editChatTitle`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.rename_basic_group(*, chat_id, title)
+```
+
+**Порядок positional slots:** `chat_id, title`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chat_id` | `long` | да | — |
+| `title` | `string` | да | — |
+
+<a id="ctx-set_basic_group_photo"></a>
+#### 222. `ctx.set_basic_group_photo`
+
+- **MTProto RPC:** `messages.editChatPhoto`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editChatPhoto`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editChatPhoto`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_basic_group_photo(*, chat_id, photo)
+```
+
+**Порядок positional slots:** `chat_id, photo`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chat_id` | `long` | да | — |
+| `photo` | `InputChatPhoto` | да | — |
+
+<a id="ctx-add_basic_group_member"></a>
+#### 223. `ctx.add_basic_group_member`
+
+- **MTProto RPC:** `messages.addChatUser`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.addChatUser`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.addChatUser`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.add_basic_group_member(*, chat_id, user_id, fwd_limit=0)
+```
+
+**Порядок positional slots:** `chat_id, user_id, fwd_limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chat_id` | `long` | да | — |
+| `user_id` | `InputUser` | да | — |
+| `fwd_limit` | `int` | нет | `0` |
+
+<a id="ctx-remove_basic_group_member"></a>
+#### 224. `ctx.remove_basic_group_member`
+
+- **MTProto RPC:** `messages.deleteChatUser`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteChatUser`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteChatUser`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_basic_group_member(*, revoke_history=None, chat_id, user_id)
+```
+
+**Порядок positional slots:** `chat_id, user_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `revoke_history` | `flags.0?true` | нет | поле пропускается |
+| `chat_id` | `long` | да | — |
+| `user_id` | `InputUser` | да | — |
+
+<a id="ctx-create_basic_group"></a>
+#### 225. `ctx.create_basic_group`
+
+- **MTProto RPC:** `messages.createChat`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.createChat`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.createChat`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.create_basic_group(*, users, title, ttl_period=None)
+```
+
+**Порядок positional slots:** `users, title`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `users` | `Vector<InputUser>` | да | — |
+| `title` | `string` | да | — |
+| `ttl_period` | `flags.0?int` | нет | поле пропускается |
+
+<a id="ctx-set_basic_group_admin"></a>
+#### 226. `ctx.set_basic_group_admin`
+
+- **MTProto RPC:** `messages.editChatAdmin`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editChatAdmin`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editChatAdmin`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_basic_group_admin(*, chat_id, user_id, is_admin)
+```
+
+**Порядок positional slots:** `chat_id, user_id, is_admin`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chat_id` | `long` | да | — |
+| `user_id` | `InputUser` | да | — |
+| `is_admin` | `Bool` | да | — |
+
+<a id="ctx-upgrade_basic_group"></a>
+#### 227. `ctx.upgrade_basic_group`
+
+- **MTProto RPC:** `messages.migrateChat`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.migrateChat`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.migrateChat`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.upgrade_basic_group(*, chat_id)
+```
+
+**Порядок positional slots:** `chat_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chat_id` | `long` | да | — |
+
+<a id="ctx-edit_chat_description"></a>
+#### 228. `ctx.edit_chat_description`
+
+- **MTProto RPC:** `messages.editChatAbout`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editChatAbout`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editChatAbout`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_chat_description(*, peer=CURRENT_PEER, about)
+```
+
+**Порядок positional slots:** `peer, about`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `about` | `string` | да | — |
+
+<a id="ctx-set_default_member_restrictions"></a>
+#### 229. `ctx.set_default_member_restrictions`
+
+- **MTProto RPC:** `messages.editChatDefaultBannedRights`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editChatDefaultBannedRights`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editChatDefaultBannedRights`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_default_member_restrictions(*, peer=CURRENT_PEER, banned_rights)
+```
+
+**Порядок positional slots:** `peer, banned_rights`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `banned_rights` | `ChatBannedRights` | да | — |
+
+<a id="ctx-remove_basic_group"></a>
+#### 230. `ctx.remove_basic_group`
+
+- **MTProto RPC:** `messages.deleteChat`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteChat`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteChat`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_basic_group(*, chat_id)
+```
+
+**Порядок positional slots:** `chat_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `chat_id` | `long` | да | — |
+
+<a id="ctx-set_chat_auto_delete"></a>
+#### 231. `ctx.set_chat_auto_delete`
+
+- **MTProto RPC:** `messages.setHistoryTTL`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.setHistoryTTL`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.setHistoryTTL`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_chat_auto_delete(*, peer=CURRENT_PEER, period)
+```
+
+**Порядок positional slots:** `peer, period`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `period` | `int` | да | — |
+
+<a id="ctx-set_content_protection"></a>
+#### 232. `ctx.set_content_protection`
+
+- **MTProto RPC:** `messages.toggleNoForwards`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.toggleNoForwards`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.toggleNoForwards`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_content_protection(*, peer=CURRENT_PEER, enabled, request_msg_id=None)
+```
+
+**Порядок positional slots:** `peer, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+| `request_msg_id` | `flags.0?int` | нет | поле пропускается |
+
+<a id="ctx-mark_channel_read"></a>
+#### 233. `ctx.mark_channel_read`
+
+- **MTProto RPC:** `channels.readHistory`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.readHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.readHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_channel_read(*, channel=CURRENT_PEER, max_id)
+```
+
+**Порядок positional slots:** `channel, max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `max_id` | `int` | да | — |
+
+<a id="ctx-channel_members"></a>
+#### 234. `ctx.channel_members`
+
+- **MTProto RPC:** `channels.getParticipants`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getParticipants`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getParticipants`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.channel_members(*, channel=CURRENT_PEER, filter={'_': 'channelParticipantsRecent'}, offset=0, limit=50, hash)
+```
+
+**Порядок positional slots:** `channel, filter, offset, limit, hash`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `filter` | `ChannelParticipantsFilter` | нет | `{'_': 'channelParticipantsRecent'}` |
+| `offset` | `int` | нет | `0` |
+| `limit` | `int` | нет | `50` |
+| `hash` | `long` | да | — |
+
+<a id="ctx-channel_member"></a>
+#### 235. `ctx.channel_member`
+
+- **MTProto RPC:** `channels.getParticipant`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getParticipant`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getParticipant`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.channel_member(*, channel=CURRENT_PEER, participant)
+```
+
+**Порядок positional slots:** `channel, participant`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `participant` | `InputPeer` | да | — |
+
+<a id="ctx-channel_details"></a>
+#### 236. `ctx.channel_details`
+
+- **MTProto RPC:** `channels.getFullChannel`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getFullChannel`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getFullChannel`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.channel_details(*, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-create_channel"></a>
+#### 237. `ctx.create_channel`
+
+- **MTProto RPC:** `channels.createChannel`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.createChannel`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.createChannel`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.create_channel(*, broadcast=None, megagroup=None, for_import=None, forum=None, title, about, geo_point=None, address=None, ttl_period=None)
+```
+
+**Порядок positional slots:** `title, about`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `broadcast` | `flags.0?true` | нет | поле пропускается |
+| `megagroup` | `flags.1?true` | нет | поле пропускается |
+| `for_import` | `flags.3?true` | нет | поле пропускается |
+| `forum` | `flags.5?true` | нет | поле пропускается |
+| `title` | `string` | да | — |
+| `about` | `string` | да | — |
+| `geo_point` | `flags.2?InputGeoPoint` | нет | поле пропускается |
+| `address` | `flags.2?string` | нет | поле пропускается |
+| `ttl_period` | `flags.4?int` | нет | поле пропускается |
+
+<a id="ctx-set_channel_admin"></a>
+#### 238. `ctx.set_channel_admin`
+
+- **MTProto RPC:** `channels.editAdmin`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.editAdmin`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.editAdmin`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_admin(*, channel=CURRENT_PEER, user_id, admin_rights, rank=None)
+```
+
+**Порядок positional slots:** `channel, user_id, admin_rights`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `user_id` | `InputUser` | да | — |
+| `admin_rights` | `ChatAdminRights` | да | — |
+| `rank` | `flags.0?string` | нет | поле пропускается |
+
+<a id="ctx-rename_channel"></a>
+#### 239. `ctx.rename_channel`
+
+- **MTProto RPC:** `channels.editTitle`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.editTitle`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.editTitle`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.rename_channel(*, channel=CURRENT_PEER, title)
+```
+
+**Порядок positional slots:** `channel, title`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `title` | `string` | да | — |
+
+<a id="ctx-set_channel_photo"></a>
+#### 240. `ctx.set_channel_photo`
+
+- **MTProto RPC:** `channels.editPhoto`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.editPhoto`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.editPhoto`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_photo(*, channel=CURRENT_PEER, photo)
+```
+
+**Порядок positional slots:** `channel, photo`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `photo` | `InputChatPhoto` | да | — |
+
+<a id="ctx-check_channel_username"></a>
+#### 241. `ctx.check_channel_username`
+
+- **MTProto RPC:** `channels.checkUsername`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.checkUsername`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.checkUsername`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.check_channel_username(*, channel=CURRENT_PEER, username)
+```
+
+**Порядок positional slots:** `channel, username`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `username` | `string` | да | — |
+
+<a id="ctx-set_channel_username"></a>
+#### 242. `ctx.set_channel_username`
+
+- **MTProto RPC:** `channels.updateUsername`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.updateUsername`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.updateUsername`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_username(*, channel=CURRENT_PEER, username)
+```
+
+**Порядок positional slots:** `channel, username`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `username` | `string` | да | — |
+
+<a id="ctx-join_channel"></a>
+#### 243. `ctx.join_channel`
+
+- **MTProto RPC:** `channels.joinChannel`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.joinChannel`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.joinChannel`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.join_channel(*, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-leave_channel"></a>
+#### 244. `ctx.leave_channel`
+
+- **MTProto RPC:** `channels.leaveChannel`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.leaveChannel`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.leaveChannel`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.leave_channel(*, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-invite_channel_members"></a>
+#### 245. `ctx.invite_channel_members`
+
+- **MTProto RPC:** `channels.inviteToChannel`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.inviteToChannel`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.inviteToChannel`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.invite_channel_members(*, channel=CURRENT_PEER, users)
+```
+
+**Порядок positional slots:** `channel, users`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `users` | `Vector<InputUser>` | да | — |
+
+<a id="ctx-remove_channel"></a>
+#### 246. `ctx.remove_channel`
+
+- **MTProto RPC:** `channels.deleteChannel`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.deleteChannel`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.deleteChannel`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_channel(*, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-set_channel_signatures"></a>
+#### 247. `ctx.set_channel_signatures`
+
+- **MTProto RPC:** `channels.toggleSignatures`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleSignatures`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleSignatures`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_signatures(*, signatures_enabled=None, profiles_enabled=None, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `signatures_enabled` | `flags.0?true` | нет | поле пропускается |
+| `profiles_enabled` | `flags.1?true` | нет | поле пропускается |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-owned_public_channels"></a>
+#### 248. `ctx.owned_public_channels`
+
+- **MTProto RPC:** `channels.getAdminedPublicChannels`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getAdminedPublicChannels`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getAdminedPublicChannels`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.owned_public_channels(*, by_location=None, check_limit=None, for_personal=None, for_community_peer=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `by_location` | `flags.0?true` | нет | поле пропускается |
+| `check_limit` | `flags.1?true` | нет | поле пропускается |
+| `for_personal` | `flags.2?true` | нет | поле пропускается |
+| `for_community_peer` | `flags.3?true` | нет | поле пропускается |
+
+<a id="ctx-restrict_channel_member"></a>
+#### 249. `ctx.restrict_channel_member`
+
+- **MTProto RPC:** `channels.editBanned`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.editBanned`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.editBanned`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.restrict_channel_member(*, channel=CURRENT_PEER, participant, banned_rights)
+```
+
+**Порядок positional slots:** `channel, participant, banned_rights`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `participant` | `InputPeer` | да | — |
+| `banned_rights` | `ChatBannedRights` | да | — |
+
+<a id="ctx-channel_admin_log"></a>
+#### 250. `ctx.channel_admin_log`
+
+- **MTProto RPC:** `channels.getAdminLog`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getAdminLog`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getAdminLog`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.channel_admin_log(*, channel=CURRENT_PEER, q='', events_filter=None, admins=None, max_id, min_id, limit=50)
+```
+
+**Порядок positional slots:** `channel, q, max_id, min_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `q` | `string` | нет | `''` |
+| `events_filter` | `flags.0?ChannelAdminLogEventsFilter` | нет | поле пропускается |
+| `admins` | `flags.1?Vector<InputUser>` | нет | поле пропускается |
+| `max_id` | `long` | да | — |
+| `min_id` | `long` | да | — |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-set_group_sticker_set"></a>
+#### 251. `ctx.set_group_sticker_set`
+
+- **MTProto RPC:** `channels.setStickers`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.setStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.setStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_group_sticker_set(*, channel=CURRENT_PEER, stickerset)
+```
+
+**Порядок positional slots:** `channel, stickerset`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `stickerset` | `InputStickerSet` | да | — |
+
+<a id="ctx-mark_channel_media_read"></a>
+#### 252. `ctx.mark_channel_media_read`
+
+- **MTProto RPC:** `channels.readMessageContents`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.readMessageContents`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.readMessageContents`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.mark_channel_media_read(*, channel=CURRENT_PEER, id)
+```
+
+**Порядок positional slots:** `channel, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `id` | `Vector<int>` | да | — |
+
+<a id="ctx-clear_channel_history"></a>
+#### 253. `ctx.clear_channel_history`
+
+- **MTProto RPC:** `channels.deleteHistory`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.deleteHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.deleteHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.clear_channel_history(*, for_everyone=None, channel=CURRENT_PEER, max_id)
+```
+
+**Порядок positional slots:** `channel, max_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `for_everyone` | `flags.0?true` | нет | поле пропускается |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `max_id` | `int` | да | — |
+
+<a id="ctx-set_prehistory_hidden"></a>
+#### 254. `ctx.set_prehistory_hidden`
+
+- **MTProto RPC:** `channels.togglePreHistoryHidden`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.togglePreHistoryHidden`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.togglePreHistoryHidden`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_prehistory_hidden(*, channel=CURRENT_PEER, enabled)
+```
+
+**Порядок positional slots:** `channel, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-left_channels"></a>
+#### 255. `ctx.left_channels`
+
+- **MTProto RPC:** `channels.getLeftChannels`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getLeftChannels`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getLeftChannels`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.left_channels(*, offset=0)
+```
+
+**Порядок positional slots:** `offset`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `offset` | `int` | нет | `0` |
+
+<a id="ctx-eligible_discussion_groups"></a>
+#### 256. `ctx.eligible_discussion_groups`
+
+- **MTProto RPC:** `channels.getGroupsForDiscussion`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getGroupsForDiscussion`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getGroupsForDiscussion`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.eligible_discussion_groups()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-set_discussion_group"></a>
+#### 257. `ctx.set_discussion_group`
+
+- **MTProto RPC:** `channels.setDiscussionGroup`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.setDiscussionGroup`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.setDiscussionGroup`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_discussion_group(*, broadcast, group)
+```
+
+**Порядок positional slots:** `broadcast, group`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `broadcast` | `InputChannel` | да | — |
+| `group` | `InputChannel` | да | — |
+
+<a id="ctx-set_group_location"></a>
+#### 258. `ctx.set_group_location`
+
+- **MTProto RPC:** `channels.editLocation`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.editLocation`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.editLocation`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_group_location(*, channel=CURRENT_PEER, geo_point, address)
+```
+
+**Порядок positional slots:** `channel, geo_point, address`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `geo_point` | `InputGeoPoint` | да | — |
+| `address` | `string` | да | — |
+
+<a id="ctx-set_slow_mode"></a>
+#### 259. `ctx.set_slow_mode`
+
+- **MTProto RPC:** `channels.toggleSlowMode`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleSlowMode`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleSlowMode`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_slow_mode(*, channel=CURRENT_PEER, seconds)
+```
+
+**Порядок positional slots:** `channel, seconds`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `seconds` | `int` | да | — |
+
+<a id="ctx-inactive_channels"></a>
+#### 260. `ctx.inactive_channels`
+
+- **MTProto RPC:** `channels.getInactiveChannels`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getInactiveChannels`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getInactiveChannels`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.inactive_channels()
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| — | — | — | Аргументов нет |
+
+<a id="ctx-send_as_identities"></a>
+#### 261. `ctx.send_as_identities`
+
+- **MTProto RPC:** `channels.getSendAs`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getSendAs`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getSendAs`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.send_as_identities(*, for_paid_reactions=None, for_live_stories=None, peer=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `for_paid_reactions` | `flags.0?true` | нет | поле пропускается |
+| `for_live_stories` | `flags.1?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+
+<a id="ctx-remove_member_history"></a>
+#### 262. `ctx.remove_member_history`
+
+- **MTProto RPC:** `channels.deleteParticipantHistory`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.deleteParticipantHistory`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.deleteParticipantHistory`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_member_history(*, channel=CURRENT_PEER, participant)
+```
+
+**Порядок positional slots:** `channel, participant`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `participant` | `InputPeer` | да | — |
+
+<a id="ctx-set_join_to_send"></a>
+#### 263. `ctx.set_join_to_send`
+
+- **MTProto RPC:** `channels.toggleJoinToSend`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleJoinToSend`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleJoinToSend`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_join_to_send(*, channel=CURRENT_PEER, enabled)
+```
+
+**Порядок positional slots:** `channel, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-set_join_requests"></a>
+#### 264. `ctx.set_join_requests`
+
+- **MTProto RPC:** `channels.toggleJoinRequest`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleJoinRequest`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleJoinRequest`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_join_requests(*, apply_to_invites=None, channel=CURRENT_PEER, enabled, guard_bot=None)
+```
+
+**Порядок positional slots:** `channel, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `apply_to_invites` | `flags.1?true` | нет | поле пропускается |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+| `guard_bot` | `flags.0?InputUser` | нет | поле пропускается |
+
+<a id="ctx-reorder_channel_usernames"></a>
+#### 265. `ctx.reorder_channel_usernames`
+
+- **MTProto RPC:** `channels.reorderUsernames`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.reorderUsernames`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.reorderUsernames`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.reorder_channel_usernames(*, channel=CURRENT_PEER, order)
+```
+
+**Порядок positional slots:** `channel, order`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `order` | `Vector<string>` | да | — |
+
+<a id="ctx-set_channel_username_active"></a>
+#### 266. `ctx.set_channel_username_active`
+
+- **MTProto RPC:** `channels.toggleUsername`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleUsername`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleUsername`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_username_active(*, channel=CURRENT_PEER, username, active)
+```
+
+**Порядок positional slots:** `channel, username, active`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `username` | `string` | да | — |
+| `active` | `Bool` | да | — |
+
+<a id="ctx-deactivate_channel_usernames"></a>
+#### 267. `ctx.deactivate_channel_usernames`
+
+- **MTProto RPC:** `channels.deactivateAllUsernames`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.deactivateAllUsernames`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.deactivateAllUsernames`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.deactivate_channel_usernames(*, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-set_antispam"></a>
+#### 268. `ctx.set_antispam`
+
+- **MTProto RPC:** `channels.toggleAntiSpam`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleAntiSpam`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleAntiSpam`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_antispam(*, channel=CURRENT_PEER, enabled)
+```
+
+**Порядок positional slots:** `channel, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-set_members_hidden"></a>
+#### 269. `ctx.set_members_hidden`
+
+- **MTProto RPC:** `channels.toggleParticipantsHidden`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleParticipantsHidden`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleParticipantsHidden`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_members_hidden(*, channel=CURRENT_PEER, enabled)
+```
+
+**Порядок positional slots:** `channel, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-set_channel_color"></a>
+#### 270. `ctx.set_channel_color`
+
+- **MTProto RPC:** `channels.updateColor`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.updateColor`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.updateColor`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_color(*, for_profile=None, channel=CURRENT_PEER, color=None, background_emoji_id=None)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `for_profile` | `flags.1?true` | нет | поле пропускается |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `color` | `flags.2?int` | нет | поле пропускается |
+| `background_emoji_id` | `flags.0?long` | нет | поле пропускается |
+
+<a id="ctx-related_channels"></a>
+#### 271. `ctx.related_channels`
+
+- **MTProto RPC:** `channels.getChannelRecommendations`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.getChannelRecommendations`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.getChannelRecommendations`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.related_channels(*, channel=None)
+```
+
+**Порядок positional slots:** нет, только keyword-поля при наличии.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `flags.0?InputChannel` | нет | поле пропускается |
+
+<a id="ctx-set_channel_emoji_status"></a>
+#### 272. `ctx.set_channel_emoji_status`
+
+- **MTProto RPC:** `channels.updateEmojiStatus`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.updateEmojiStatus`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.updateEmojiStatus`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_emoji_status(*, channel=CURRENT_PEER, emoji_status)
+```
+
+**Порядок positional slots:** `channel, emoji_status`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `emoji_status` | `EmojiStatus` | да | — |
+
+<a id="ctx-set_group_emoji_set"></a>
+#### 273. `ctx.set_group_emoji_set`
+
+- **MTProto RPC:** `channels.setEmojiStickers`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.setEmojiStickers`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.setEmojiStickers`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_group_emoji_set(*, channel=CURRENT_PEER, stickerset)
+```
+
+**Порядок positional slots:** `channel, stickerset`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `stickerset` | `InputStickerSet` | да | — |
+
+<a id="ctx-set_channel_auto_translation"></a>
+#### 274. `ctx.set_channel_auto_translation`
+
+- **MTProto RPC:** `channels.toggleAutotranslation`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.toggleAutotranslation`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.toggleAutotranslation`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_auto_translation(*, channel=CURRENT_PEER, enabled)
+```
+
+**Порядок positional slots:** `channel, enabled`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `enabled` | `Bool` | да | — |
+
+<a id="ctx-set_channel_profile_tab"></a>
+#### 275. `ctx.set_channel_profile_tab`
+
+- **MTProto RPC:** `channels.setMainProfileTab`
+- **Namespace:** `channels`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `channels.setMainProfileTab`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `channels.setMainProfileTab`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.set_channel_profile_tab(*, channel=CURRENT_PEER, tab)
+```
+
+**Порядок positional slots:** `channel, tab`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `tab` | `ProfileTab` | да | — |
+
+<a id="ctx-edit_member_rank"></a>
+#### 276. `ctx.edit_member_rank`
+
+- **MTProto RPC:** `messages.editChatParticipantRank`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editChatParticipantRank`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editChatParticipantRank`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_member_rank(*, peer=CURRENT_PEER, participant, rank)
+```
+
+**Порядок positional slots:** `peer, participant, rank`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `participant` | `InputPeer` | да | — |
+| `rank` | `string` | да | — |
+
+<a id="ctx-create_chat_invite"></a>
+#### 277. `ctx.create_chat_invite`
+
+- **MTProto RPC:** `messages.exportChatInvite`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.exportChatInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.exportChatInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.create_chat_invite(*, legacy_revoke_permanent=None, request_needed=None, peer=CURRENT_PEER, expire_date=None, usage_limit=None, title=None)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `legacy_revoke_permanent` | `flags.2?true` | нет | поле пропускается |
+| `request_needed` | `flags.3?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `expire_date` | `flags.0?int` | нет | поле пропускается |
+| `usage_limit` | `flags.1?int` | нет | поле пропускается |
+| `title` | `flags.4?string` | нет | поле пропускается |
+| `subscription_pricing` | `flags.5?StarsSubscriptionPricing` | нельзя передавать | запрещён helper-политикой |
+
+<a id="ctx-chat_invites"></a>
+#### 278. `ctx.chat_invites`
+
+- **MTProto RPC:** `messages.getExportedChatInvites`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getExportedChatInvites`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getExportedChatInvites`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.chat_invites(*, revoked=None, peer=CURRENT_PEER, admin_id, offset_date=None, offset_link=None, limit=50)
+```
+
+**Порядок positional slots:** `peer, admin_id, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `revoked` | `flags.3?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `admin_id` | `InputUser` | да | — |
+| `offset_date` | `flags.2?int` | нет | поле пропускается |
+| `offset_link` | `flags.2?string` | нет | поле пропускается |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-chat_invite_details"></a>
+#### 279. `ctx.chat_invite_details`
+
+- **MTProto RPC:** `messages.getExportedChatInvite`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getExportedChatInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getExportedChatInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.chat_invite_details(*, peer=CURRENT_PEER, link)
+```
+
+**Порядок positional slots:** `peer, link`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `link` | `string` | да | — |
+
+<a id="ctx-edit_chat_invite"></a>
+#### 280. `ctx.edit_chat_invite`
+
+- **MTProto RPC:** `messages.editExportedChatInvite`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.editExportedChatInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.editExportedChatInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.edit_chat_invite(*, revoked=None, peer=CURRENT_PEER, link, expire_date=None, usage_limit=None, request_needed=None, title=None)
+```
+
+**Порядок positional slots:** `peer, link`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `revoked` | `flags.2?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `link` | `string` | да | — |
+| `expire_date` | `flags.0?int` | нет | поле пропускается |
+| `usage_limit` | `flags.1?int` | нет | поле пропускается |
+| `request_needed` | `flags.3?Bool` | нет | поле пропускается |
+| `title` | `flags.4?string` | нет | поле пропускается |
+
+<a id="ctx-purge_revoked_chat_invites"></a>
+#### 281. `ctx.purge_revoked_chat_invites`
+
+- **MTProto RPC:** `messages.deleteRevokedExportedChatInvites`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteRevokedExportedChatInvites`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteRevokedExportedChatInvites`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.purge_revoked_chat_invites(*, peer=CURRENT_PEER, admin_id)
+```
+
+**Порядок positional slots:** `peer, admin_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `admin_id` | `InputUser` | да | — |
+
+<a id="ctx-remove_chat_invite"></a>
+#### 282. `ctx.remove_chat_invite`
+
+- **MTProto RPC:** `messages.deleteExportedChatInvite`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.deleteExportedChatInvite`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.deleteExportedChatInvite`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.remove_chat_invite(*, peer=CURRENT_PEER, link)
+```
+
+**Порядок positional slots:** `peer, link`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `link` | `string` | да | — |
+
+<a id="ctx-invite_admins"></a>
+#### 283. `ctx.invite_admins`
+
+- **MTProto RPC:** `messages.getAdminsWithInvites`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getAdminsWithInvites`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getAdminsWithInvites`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.invite_admins(*, peer=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+
+<a id="ctx-invite_joiners"></a>
+#### 284. `ctx.invite_joiners`
+
+- **MTProto RPC:** `messages.getChatInviteImporters`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.getChatInviteImporters`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.getChatInviteImporters`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.invite_joiners(*, requested=None, subscription_expired=None, peer=CURRENT_PEER, link=None, q=None, offset_date=0, offset_user={'_': 'inputUserEmpty'}, limit=50)
+```
+
+**Порядок positional slots:** `peer, offset_date, offset_user, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `requested` | `flags.0?true` | нет | поле пропускается |
+| `subscription_expired` | `flags.3?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `link` | `flags.1?string` | нет | поле пропускается |
+| `q` | `flags.2?string` | нет | поле пропускается |
+| `offset_date` | `int` | нет | `0` |
+| `offset_user` | `InputUser` | нет | `{'_': 'inputUserEmpty'}` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-resolve_join_request"></a>
+#### 285. `ctx.resolve_join_request`
+
+- **MTProto RPC:** `messages.hideChatJoinRequest`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.hideChatJoinRequest`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.hideChatJoinRequest`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.resolve_join_request(*, approved=None, peer=CURRENT_PEER, user_id)
+```
+
+**Порядок positional slots:** `peer, user_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `approved` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `user_id` | `InputUser` | да | — |
+
+<a id="ctx-resolve_all_join_requests"></a>
+#### 286. `ctx.resolve_all_join_requests`
+
+- **MTProto RPC:** `messages.hideAllChatJoinRequests`
+- **Namespace:** `messages`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `messages.hideAllChatJoinRequests`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `messages.hideAllChatJoinRequests`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.resolve_all_join_requests(*, approved=None, peer=CURRENT_PEER, link=None)
+```
+
+**Порядок positional slots:** `peer`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `approved` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `link` | `flags.1?string` | нет | поле пропускается |
+
+<a id="ctx-channel_statistics"></a>
+#### 287. `ctx.channel_statistics`
+
+- **MTProto RPC:** `stats.getBroadcastStats`
+- **Namespace:** `stats`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stats.getBroadcastStats`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stats.getBroadcastStats`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.channel_statistics(*, dark=None, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `dark` | `flags.0?true` | нет | поле пропускается |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-supergroup_statistics"></a>
+#### 288. `ctx.supergroup_statistics`
+
+- **MTProto RPC:** `stats.getMegagroupStats`
+- **Namespace:** `stats`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stats.getMegagroupStats`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stats.getMegagroupStats`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.supergroup_statistics(*, dark=None, channel=CURRENT_PEER)
+```
+
+**Порядок positional slots:** `channel`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `dark` | `flags.0?true` | нет | поле пропускается |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+
+<a id="ctx-message_statistics"></a>
+#### 289. `ctx.message_statistics`
+
+- **MTProto RPC:** `stats.getMessageStats`
+- **Namespace:** `stats`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stats.getMessageStats`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stats.getMessageStats`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.message_statistics(*, dark=None, channel=CURRENT_PEER, msg_id)
+```
+
+**Порядок positional slots:** `channel, msg_id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `dark` | `flags.0?true` | нет | поле пропускается |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | да | — |
+
+<a id="ctx-message_public_forwards"></a>
+#### 290. `ctx.message_public_forwards`
+
+- **MTProto RPC:** `stats.getMessagePublicForwards`
+- **Namespace:** `stats`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stats.getMessagePublicForwards`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stats.getMessagePublicForwards`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.message_public_forwards(*, channel=CURRENT_PEER, msg_id, offset='', limit=50)
+```
+
+**Порядок positional slots:** `channel, msg_id, offset, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `channel` | `InputChannel` | нет | `CURRENT_PEER` |
+| `msg_id` | `int` | да | — |
+| `offset` | `string` | нет | `''` |
+| `limit` | `int` | нет | `50` |
+
+<a id="ctx-story_statistics"></a>
+#### 291. `ctx.story_statistics`
+
+- **MTProto RPC:** `stats.getStoryStats`
+- **Namespace:** `stats`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stats.getStoryStats`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stats.getStoryStats`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_statistics(*, dark=None, peer=CURRENT_PEER, id=CURRENT_MESSAGE)
+```
+
+**Порядок positional slots:** `peer, id`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `dark` | `flags.0?true` | нет | поле пропускается |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `id` | `int` | нет | `CURRENT_MESSAGE` |
+
+<a id="ctx-story_public_forwards"></a>
+#### 292. `ctx.story_public_forwards`
+
+- **MTProto RPC:** `stats.getStoryPublicForwards`
+- **Namespace:** `stats`
+- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.
+- **Описание (RU):** Вызывает `stats.getStoryPublicForwards`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.
+- **Description (EN):** Calls `stats.getStoryPublicForwards`, converts contextual parameters and returns the host-processed RPC response body.
+- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.
+
+**Справочная сигнатура (keywords):**
+
+```text
+ctx.story_public_forwards(*, peer=CURRENT_PEER, id=CURRENT_MESSAGE, offset='', limit=50)
+```
+
+**Порядок positional slots:** `peer, id, offset, limit`.
+
+| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |
+| --- | --- | --- | --- |
+| `peer` | `InputPeer` | нет | `CURRENT_PEER` |
+| `id` | `int` | нет | `CURRENT_MESSAGE` |
+| `offset` | `string` | нет | `''` |
+| `limit` | `int` | нет | `50` |
+
+<a id="api-inspector"></a>
+## Приложение D. Самостоятельный проверочный скрипт
+
+Код ниже полностью включён в этот SKILL.md. **Для работы скилла сохранять скрипт
+не требуется.** Только для сверки API по конкретным исходникам можно скопировать
+этот блок во временный `inspect_api.py` и запустить:
+
+```text
+python inspect_api.py <Hotaru> --section catalog
+python inspect_api.py <Hotaru> --section tools
+python inspect_api.py <Hotaru> --section helpers
+python inspect_api.py <Hotaru> --section catalog --format markdown --output catalog.md
+```
+
+Это не установка и не запуск Hotaru: скрипт читает AST четырёх исходных файлов,
+вычисляет SHA-256 и печатает JSON либо Markdown. Без `--output` файлы не записывает.
+Он не импортирует ядро, не ставит пакеты, не подключается к Telegram и не выполняет
+код проверяемых модулей. Запускай Python без `-O`, если используешь проверки assert
+из других примеров документа. Сгенерированные карточки — документация, а не доказательство
+успешного live RPC. Не сохраняй secrets в аргументах или выходном файле.
+
 ```python
-HOTARU = {
-    "id": "todo_list",
-    "version": "1.0.0",
-    "commands": {
-        "todo": "todo_cmd",
-        "done": "done_cmd",
-        "todos": "todos_cmd",
-        "cleartodo": "clear_todo_cmd",
-    },
-    "capabilities": ["state"],
-}
+from __future__ import annotations
 
-async def todo_cmd(ctx):
-    item = ctx.raw_args.strip()
-    if not item:
-        await ctx.respond("Usage: .todo <task description>")
-        return
-    items = await ctx.state.get("tasks", [])
-    items.append({"text": item, "done": False})
-    await ctx.state.set("tasks", items)
-    await ctx.respond(f"Added task #{len(items)}: <b>{item}</b>")
+"""Render source-derived Hotaru inventory as Markdown method cards."""
 
-async def done_cmd(ctx):
-    if not ctx.args:
-        await ctx.respond("Usage: .done <task_number>")
-        return
-    try:
-        idx = int(ctx.args[0]) - 1
-        items = await ctx.state.get("tasks", [])
-        if 0 <= idx < len(items):
-            items[idx]['done'] = True
-            await ctx.state.set("tasks", items)
-            await ctx.respond(f"Marked task #{idx + 1} as completed!")
+
+from typing import Any
+
+
+def cell(value: str) -> str:
+    return value.replace("|", "&#124;").replace("\n", " ")
+
+
+def default_repr(value: Any) -> str:
+    placeholders = {"$peer": "CURRENT_PEER", "$message": "CURRENT_MESSAGE", "$random": "RANDOM_ID"}
+    return placeholders.get(value, repr(value)) if isinstance(value, str) else repr(value)
+
+
+def call_signature(record: dict[str, Any]) -> str:
+    parameters = []
+    for name in record["field_types"]:
+        if name in record["forbidden"]:
+            continue
+        if name in record["defaults"]:
+            parameters.append(name + "=" + default_repr(record["defaults"][name]))
+        elif name not in record["positional_order"]:
+            parameters.append(name + "=None")
         else:
-            await ctx.respond("Task index out of range.")
-    except ValueError:
-        await ctx.respond("Please provide a valid integer.")
+            parameters.append(name)
+    return (
+        "ctx." + record["name"] + "(" + ("*, " if parameters else "") + ", ".join(parameters) + ")"
+    )
 
-async def todos_cmd(ctx):
-    items = await ctx.state.get("tasks", [])
-    if not items:
-        await ctx.respond("Your todo list is empty!")
-        return
-    lines = ["<b>Your Todo Checklist:</b>\n"]
-    for i, it in enumerate(items, 1):
-        mark = '✅' if it['done'] else '⬜'
-        strike_start = "<s>" if it['done'] else ""
-        strike_end = "</s>" if it['done'] else ""
-        lines.append(f"{mark} #{i}: {strike_start}{it['text']}{strike_end}")
-    await ctx.respond("\n".join(lines))
 
-async def clear_todo_cmd(ctx):
-    items = await ctx.state.get("tasks", [])
-    active_items = [it for it in items if not it['done']]
-    await ctx.state.set("tasks", active_items)
-    await ctx.respond("Cleaned up all completed tasks.")
-```
-
-### Blueprint 7: Link Unshortener & Redirect Safety Checker (`link_check.hmod`)
-Demonstrates resolving HTTP 301/302 redirects without executing client scripts (requires only `net`):
-```python
-HOTARU = {
-    "id": "link_check",
-    "version": "1.0.0",
-    "commands": {
-        "unshort": "unshort_cmd",
-    },
-    "capabilities": ["net"],
-}
-
-async def unshort_cmd(ctx):
-    target_url = ctx.raw_args.strip()
-    if not target_url and ctx.reply_to and ctx.reply_to.text:
-        target_url = ctx.reply_to.text.strip()
-    if not target_url:
-        await ctx.respond("Usage: .unshort <url>")
-        return
-    if not target_url.startswith(("http://", "https://")):
-        target_url = "https://" + target_url
-
-    await ctx.respond("Tracing redirect hops...")
-    try:
-        res = await ctx.net(target_url, timeout=12)
-        final_url = res.headers.get("Location") or target_url
-        status = res.status_code
-        body = (
-            f"<b>Link Inspection Result</b>\n\n"
-            f"• <b>Initial URL</b>: <code>{target_url}</code>\n"
-            f"• <b>Final Destination</b>: <code>{final_url}</code>\n"
-            f"• <b>HTTP Status</b>: <code>{status}</code>"
-        )
-        await ctx.respond(body)
-    except Exception as err:
-        await ctx.respond(f"Failed to inspect link: <code>{err}</code>")
-```
-
-### Blueprint 8: GitHub Repository Release & Issue Watcher (`github_watch.hmod`)
-Demonstrates background supervised tasks polling public APIs (requires `net` and `state`):
-```python
-HOTARU = {
-    "id": "github_watch",
-    "version": "1.0.0",
-    "commands": {
-        "ghrepo": "set_repo_cmd",
-        "ghstatus": "status_cmd",
-    },
-    "capabilities": ["net", "state"],
-    "tasks": {
-        "poll_releases": "release_checker_task",
-    },
-}
-
-import asyncio
-import json
-
-async def set_repo_cmd(ctx):
-    repo = ctx.raw_args.strip()
-    if not repo:
-        await ctx.respond("Usage: .ghrepo <owner/repo>")
-        return
-    await ctx.state.set("target_repo", repo)
-    await ctx.respond(f"Monitoring GitHub repository: <b>{repo}</b>")
-
-async def status_cmd(ctx):
-    repo = await ctx.state.get("target_repo", "HotaruProject/Hotaru")
-    last_tag = await ctx.state.get("last_release", "None")
-    await ctx.respond(f"Repo: <code>{repo}</code>\nLast Release: <b>{last_tag}</b>")
-
-async def release_checker_task(ctx):
-    while not ctx.is_stopping:
-        try:
-            repo = await ctx.state.get("target_repo", "HotaruProject/Hotaru")
-            url = f"https://api.github.com/repos/{repo}/releases/latest"
-            headers = {"User-Agent": "Hotaru-Userbot"}
-            res = await ctx.net(url, headers=headers, timeout=15)
-            if res.status_code == 200:
-                data = json.loads(res.text)
-                tag = data.get('tag_name')
-                last_tag = await ctx.state.get("last_release")
-                if last_tag and tag != last_tag:
-                    await ctx.save() # Notify in Saved Messages
-                await ctx.state.set("last_release", tag)
-        except Exception:
-            pass
-        for _ in range(300):
-            if ctx.is_stopping:
-                break
-            await asyncio.sleep(1)
-```
-
-### Blueprint 9: AI Language Model Chat Assistant (`ai_chat.hmod`)
-Demonstrates integrating external LLM endpoints (requires `net` and `state`):
-```python
-HOTARU = {
-    "id": "ai_chat",
-    "version": "1.0.0",
-    "commands": {
-        "ai": "ai_cmd",
-        "ask": "ai_cmd",
-    },
-    "capabilities": ["net", "state"],
-    "config_schema": {
-        "api_key": {
-            "type": "string",
-            "default": "",
-            "description": "API Key for AI provider",
-        },
-        "endpoint": {
-            "type": "string",
-            "default": "https://api.openai.com/v1/chat/completions",
-            "description": "OpenAI-compatible API endpoint",
-        },
-    },
-}
-
-import json
-
-async def ai_cmd(ctx):
-    prompt = ctx.raw_args.strip()
-    if not prompt and ctx.reply_to and ctx.reply_to.text:
-        prompt = ctx.reply_to.text.strip()
-    if not prompt:
-        await ctx.respond("Usage: .ai <prompt> or reply to message")
-        return
-
-    await ctx.respond("Thinking...")
-    api_key = await ctx.state.get("api_key", "")
-    endpoint = await ctx.state.get("endpoint", "https://api.openai.com/v1/chat/completions")
-
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 1000,
-    }
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}" if api_key else "",
-    }
-    try:
-        res = await ctx.net(endpoint, method='POST', headers=headers, json=payload, timeout=30)
-        if res.status_code == 200:
-            data = json.loads(res.text)
-            reply_text = data['choices'][0]['message']['content']
-            await ctx.respond(f"<b>AI Response:</b>\n\n{reply_text}")
+def render_catalog(inventory: dict[str, Any]) -> str:
+    records = inventory["catalog"]
+    lines = [
+        "# Hotaru: полные карточки контекстных методов",
+        "",
+        f"{len(records)} карточки, сформированные из AST исходников Hotaru; без импорта ядра и Telegram RPC.",
+        "Базовый снимок скилла: `8cab560e2b9dbc009aab4670c8a78a9a790e2d1a`, 2026-11-09.",
+        "При регенерации по другой версии актуальность определяют SHA-256 ниже, а не эта отметка.",
+        "",
+        "## Как читать карточки",
+        "",
+        "- Это справочные сигнатуры в стиле Python, не исполняемые вызовы: `*` означает",
+        "  рекомендуемые keyword-аргументы; реальные positional slots указаны отдельно.",
+        "- Все операции асинхронные: в handler используй `await ctx.<name>(...)`.",
+        "- `CURRENT_PEER`, `CURRENT_MESSAGE`, `RANDOM_ID` обозначают defaults ядра,",
+        "  а не имена, которые нужно объявлять в модуле. Обычно соответствующий keyword пропускают.",
+        "- TL `flags.N?T` — optional поле; `Vector<T>` — последовательность; типы сохраняют",
+        "  запись исходной TL-схемы и не являются готовыми Python-аннотациями.",
+        "- «Обязательный» означает: вызывающий обязан передать значение, поскольку ядро",
+        "  не подставляет default. Наличие обязательного TL-поля не исключает default ядра.",
+        "- Optional `None` в справочной сигнатуре означает пропуск поля, не обязательную",
+        "  отправку None в Telegram. Keyword со статусом «запрещён» передавать нельзя.",
+        "- **Результат: `Any`, зависит от RPC.** CTX_CATALOG не хранит тип результата,",
+        "  а host распаковывает/фильтрует response. Непроверенные returns сайта не копируются.",
+        "  Для конкретного результата сверяй TL result schema используемого GoyGram и host adapter.",
+        "- «Без raw mt» не отменяет ACL Telegram, denylist, Premium, media/assets, net,",
+        "  state и другие ограничения всей операции. Подробности: [контракт текущего SKILL.md](#context-contract).",
+        "",
+        "## Контроль источников",
+        "",
+        "| Файл | SHA-256 содержимого |",
+        "| --- | --- |",
+    ]
+    for path, digest in inventory["source_sha256"].items():
+        lines.append(f"| `{path}` | `{digest}` |")
+    lines += ["", "## Навигация по namespace", ""]
+    namespaces = dict.fromkeys(record["rpc"].split(".", 1)[0] for record in records)
+    for namespace in namespaces:
+        subset = [record for record in records if record["rpc"].startswith(namespace + ".")]
+        links = ", ".join(f"[{record['name']}](#ctx-{record['name']})" for record in subset)
+        lines.append(f"- **{namespace} ({len(subset)}):** {links}")
+    lines += ["", "## Карточки методов", ""]
+    for number, record in enumerate(records, 1):
+        name = record["name"]
+        rpc = record["rpc"]
+        namespace = rpc.split(".", 1)[0]
+        lines += [
+            f'<a id="ctx-{name}"></a>',
+            f"### {number}. `ctx.{name}`",
+            "",
+            f"- **MTProto RPC:** `{rpc}`",
+            f"- **Namespace:** `{namespace}`",
+            "- **Результат:** `Any` — форма зависит от RPC и распаковки host; точный тип не подтверждён этим каталогом.",
+            "- **Описание (RU):** Вызывает `" + rpc + "`, преобразует контекстные параметры и возвращает обработанное ядром тело ответа.",
+            "- **Description (EN):** Calls `" + rpc + "`, converts contextual parameters and returns the host-processed RPC response body.",
+        ]
+        if record["policy_blocked"]:
+            lines.append("- **Политика:** **BLOCKED** в проверенном CapabilityHost. Присутствует в каталоге, но не разрешён; raw `mt` запрет не снимает.")
         else:
-            await ctx.respond(f"AI API error (HTTP {res.status_code}): {res.text[:200]}")
-    except Exception as err:
-        await ctx.respond(f"Connection failed: {err}")
+            lines.append("- **Capabilities:** контекстный маршрут не требует raw `mt`; дополнительные права/ограничения см. выше.")
+        positional = ", ".join(record["positional_order"])
+        lines += [
+            "",
+            "**Справочная сигнатура (keywords):**",
+            "",
+            "```text",
+            call_signature(record),
+            "```",
+            "",
+            "**Порядок positional slots:** " + (f"`{positional}`." if positional else "нет, только keyword-поля при наличии."),
+            "",
+            "| Параметр | TL-тип | Обязательный для вызова | Default ядра / статус |",
+            "| --- | --- | --- | --- |",
+        ]
+        for parameter, kind in record["field_types"].items():
+            if parameter in record["forbidden"]:
+                required, default = "нельзя передавать", "запрещён helper-политикой"
+            elif parameter in record["defaults"]:
+                required, default = "нет", "`" + default_repr(record["defaults"][parameter]) + "`"
+            elif parameter in record["positional_order"]:
+                required, default = "да", "—"
+            else:
+                required, default = "нет", "поле пропускается"
+            lines.append(f"| `{parameter}` | `{cell(kind)}` | {required} | {cell(default)} |")
+        if not record["field_types"]:
+            lines.append("| — | — | — | Аргументов нет |")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+"""Read-only inventory of Hotaru API from source AST; never imports Hotaru."""
+
+
+import argparse
+import ast
+import copy
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+
+def source_tree(root: Path, relative: str) -> tuple[str, ast.Module]:
+    source = (root / relative).read_text(encoding="utf-8")
+    return source, ast.parse(source, filename=relative)
+
+
+def assignment(tree: ast.Module, name: str) -> ast.expr:
+    for node in tree.body:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if node.target.id == name and node.value is not None:
+                return node.value
+        if isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
+                return node.value
+    raise ValueError(f"No top-level assignment for {name}")
+
+
+def signature(node: ast.FunctionDef | ast.AsyncFunctionDef, drop_self: bool = False) -> str:
+    args = copy.deepcopy(node.args)
+    if drop_self:
+        positional = args.posonlyargs if args.posonlyargs else args.args
+        if not positional or positional[0].arg != "self":
+            raise ValueError("Expected self as the first method argument")
+        positional.pop(0)
+    result = f"{node.name}({ast.unparse(args)})"
+    if node.returns is not None:
+        result += " -> " + ast.unparse(node.returns)
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", type=Path)
+    parser.add_argument("--section", choices=("catalog", "tools", "helpers", "all"), default="all")
+    parser.add_argument("--format", choices=("json", "markdown"), default="json")
+    parser.add_argument("--output", type=Path, help="Explicit destination for a generated reference")
+    options = parser.parse_args()
+    if options.format == "markdown" and options.section != "catalog":
+        parser.error("Markdown cards require --section catalog")
+    root = options.root.resolve()
+    paths = ("relay/context.py", "relay/toolkit.py", "relay/sandbox.py", "relay/caps.py")
+    sources = {path: source_tree(root, path) for path in paths}
+    output: dict[str, object] = {
+        "source_sha256": {
+            path: hashlib.sha256(source.encode("utf-8")).hexdigest()
+            for path, (source, _) in sources.items()
+        }
+    }
+    if options.section in ("catalog", "all"):
+        catalog = ast.literal_eval(assignment(sources["relay/context.py"][1], "CTX_CATALOG"))
+        caps = sources["relay/caps.py"][1]
+        blocked = set(ast.literal_eval(assignment(caps, "MT_BLOCKED").args[0]))
+        prefixes = ("auth.", "phone.", *ast.literal_eval(assignment(caps, "MT_BLOCKED_PREFIXES")))
+        output["catalog_count"] = len(catalog)
+        output["catalog"] = [
+            {
+                "name": name,
+                "rpc": rpc,
+                "positional_order": required,
+                "field_types": fields,
+                "defaults": defaults,
+                "forbidden": forbidden,
+                "policy_blocked": rpc.lower() in blocked or rpc.lower().startswith(prefixes),
+            }
+            for name, (rpc, required, fields, defaults, forbidden) in catalog.items()
+        ]
+    if options.section in ("tools", "all"):
+        tree = sources["relay/toolkit.py"][1]
+        functions = {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        exports = assignment(tree, "TOOLKIT_FUNCS")
+        if not isinstance(exports, ast.Dict):
+            raise ValueError("TOOLKIT_FUNCS is not a literal dictionary")
+        records = []
+        for key, value in zip(exports.keys, exports.values):
+            if not isinstance(value, ast.Name):
+                raise ValueError("Non-name TOOLKIT_FUNCS entry; inspect manually")
+            function = functions[value.id]
+            records.append({"name": ast.literal_eval(key), "signature": signature(function), "async": isinstance(function, ast.AsyncFunctionDef), "line": function.lineno})
+        output["tools_count"] = len(records)
+        output["tools"] = records
+    if options.section in ("helpers", "all"):
+        worker = ast.parse(ast.literal_eval(assignment(sources["relay/sandbox.py"][1], "WORKER_SOURCE")))
+        records = []
+        for label, tree in (("shared", sources["relay/context.py"][1]), ("worker", worker)):
+            for node in tree.body:
+                if isinstance(node, ast.ClassDef) and node.name in {"MessageOperations", "ContextOperations", "SandboxContext", "_HtmlHelper", "_StateProxy", "_AssetsProxy", "_UiProxy", "_ScreensProxy"}:
+                    for function in node.body:
+                        if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)) and not function.name.startswith("_"):
+                            positional = function.args.posonlyargs + function.args.args
+                            records.append({"origin": label, "class": node.name, "signature": signature(function, bool(positional and positional[0].arg == "self")), "async": isinstance(function, ast.AsyncFunctionDef), "decorators": [ast.unparse(item) for item in function.decorator_list]})
+        output["helpers"] = records
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if options.format == "markdown":
+        rendered = render_catalog(output)
+    else:
+        rendered = json.dumps(output, ensure_ascii=False, indent=2)
+    if options.output is not None:
+        options.output.write_text(rendered + "\n", encoding="utf-8")
+    else:
+        print(rendered)
+
+
+if __name__ == "__main__":
+    main()
 ```
-
-### Blueprint 10: Auto-Translation Group Watcher (`group_translator.hmod`)
-Demonstrates automatic language translation of non-native messages in foreign groups (requires only `state`):
-```python
-HOTARU = {
-    "id": "group_translator",
-    "version": "1.0.0",
-    "commands": {
-        "autotr": "toggle_autotr_cmd",
-    },
-    "capabilities": ["state"],
-    "watchers": ["translate_watcher"],
-}
-
-async def toggle_autotr_cmd(ctx):
-    enabled = await ctx.state.get("enabled", False)
-    await ctx.state.set("enabled", not enabled)
-    status = "ON" if not enabled else "OFF"
-    await ctx.respond(f"Group Auto-Translator is now <b>{status}</b>.")
-
-async def translate_watcher(ctx):
-    if ctx.out:
-        return
-    enabled = await ctx.state.get("enabled", False)
-    if not enabled:
-        return
-    text = ctx.message.text or ""
-    # If message is short or contains no latin/cyrillic, skip
-    if len(text) < 5 or text.startswith('.'):
-        return
-    try:
-        # Call Hotaru's internal translation RPC
-        tr_res = await ctx.call_rpc("translate_text", text=text, target="ru")
-        if tr_res and tr_res.get('translated') and tr_res['translated'] != text:
-            await ctx.reply(f"🌐 <i>{tr_res['translated']}</i>")
-    except Exception:
-        pass
-```
-
-### Blueprint 11: Telegram Story Auto-Archiver (`story_archiver.hmod`)
-Demonstrates story enumeration and media downloading (zero capabilities needed for standard download and photo reply):
-```python
-HOTARU = {
-    "id": "story_archiver",
-    "version": "1.0.0",
-    "commands": {
-        "savestory": "save_story_cmd",
-    },
-    "capabilities": [],
-}
-
-async def save_story_cmd(ctx):
-    if not ctx.args:
-        await ctx.respond("Usage: .savestory <username_or_user_id>")
-        return
-    target = ctx.args[0]
-    await ctx.respond(f"Querying active stories for <code>{target}</code>...")
-    try:
-        # Extended MTProto method for story retrieval
-        stories = await ctx.call_rpc('get_peer_stories', peer=target)
-        if not stories or not stories.get('stories'):
-            await ctx.respond("No active stories found for this user.")
-            return
-        for story in stories['stories'][:3]:
-            media = story.get('media')
-            if media:
-                data = await ctx.download(media)
-                caption = f"Saved story from @{target} (ID: {story.get('id')})"
-                await ctx.reply_photo(data, caption=caption)
-    except Exception as err:
-        await ctx.respond(f"Story archive error: {err}")
-```
-
-### Blueprint 12: Interactive Poll Maker with CSV Export (`poll_wizard.hmod`)
-Demonstrates creating native polls using `ctx.send_poll` (one of the 292 methods, zero capabilities needed):
-```python
-HOTARU = {
-    "id": "poll_wizard",
-    "version": "1.0.0",
-    "commands": {
-        "poll": "create_poll_cmd",
-    },
-    "capabilities": [],
-}
-
-async def create_poll_cmd(ctx):
-    args = ctx.raw_args.split('|')
-    if len(args) < 3:
-        await ctx.respond("Usage: .poll Question | Option A | Option B | [Option C]")
-        return
-    question = args[0].strip()
-    options = [opt.strip() for opt in args[1:] if opt.strip()]
-    if len(options) < 2:
-        await ctx.respond("Please provide at least two valid poll options.")
-        return
-    try:
-        await ctx.send_poll(question=question, options=options, multiple_choice=False)
-        await ctx.delete()
-    except Exception as err:
-        await ctx.respond(f"Failed to publish poll: {err}")
-```
-
-### Blueprint 13: Raw MTProto Inspector (`raw_mtproto.hmod`)
-Demonstrates when the `'mt'` capability **IS** actually required: making direct, raw MTProto RPC calls via `ctx.tg.call`:
-```python
-HOTARU = {
-    "id": "raw_mtproto",
-    "version": "1.0.0",
-    "commands": {
-        "dc": "get_dc_cmd",
-    },
-    "capabilities": ["mt"],  # Required ONLY because ctx.tg.call is invoked directly
-    "lexicon": {
-        "en": {
-            "dc_info": "<b>Telegram Data Center Info (Raw MTProto):</b>\n• Country: <code>{country}</code>\n• Current DC: <code>DC{this_dc}</code>\n• Nearest DC: <code>DC{nearest_dc}</code>",
-        },
-        "ru": {
-            "dc_info": "<b>Дата-центр Telegram (Сырой MTProto):</b>\n• Страна: <code>{country}</code>\n• Текущий ДЦ: <code>DC{this_dc}</code>\n• Ближайший ДЦ: <code>DC{nearest_dc}</code>",
-        },
-    },
-}
-
-async def get_dc_cmd(ctx):
-    # Direct raw MTProto call using ctx.tg.call (requires mt capability in HOTARU["capabilities"])
-    res = await ctx.tg.call("help.getNearestDc")
-    country = res.get("country", "Unknown")
-    this_dc = res.get("this_dc", 0)
-    nearest_dc = res.get("nearest_dc", 0)
-    await ctx.respond(ctx.t("dc_info", country=country, this_dc=this_dc, nearest_dc=nearest_dc))
-```
-
-## 9. Security Audit Checklist & Development Best Practices
-
-When authoring `.hmod` modules for production deployment or sharing with the Hotaru community, ensure strict adherence to the following security guidelines:
-
-1. **First-Statement Validation**:
-   Never place comments, imports, or variable assignments before `HOTARU = { ... }`. The manifest dictionary must be line 1.
-
-2. **Principle of Least Privilege**:
-   Declare only the exact capabilities your module requires. Never request `mt` unless invoking raw `ctx.tg.call(...)` (the 292 contextual methods on `ctx` do NOT require `mt`!). Never request `net` if your module only computes numbers locally. Never request `files` if `state` suffices.
-
-3. **Sandboxed File Paths**:
-   When using `capabilities: ['files']`, always write to `/tmp/sandbox/` or temporary files generated by Python's `tempfile` module. Never attempt to traverse into host paths like `/etc` or `/home`.
-
-4. **Safe Credential Handling**:
-   Never hardcode bot tokens, API keys, or Telegram authorization hashes directly in source code. Utilize `config_schema` or `ctx.state` so users can configure secrets securely via `.config`.
-
-5. **Non-Blocking Watchers & Tasks**:
-   Always yield control back to the event loop. In long-running background tasks, insert cooperative sleeps (`await asyncio.sleep(1)`). In watchers, handle exceptions quietly without blocking the dispatch loop.
-
-6. **Destructive MTProto Calls Prohibited**:
-   Never attempt to invoke destructive account-level RPCs (`account.deleteAccount`, `auth.resetAuthorizations`, `messages.deleteAllHistory`). The Hotaru relay firewall will intercept and terminate the offending module immediately.
-
