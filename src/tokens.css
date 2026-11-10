@@ -13,6 +13,8 @@
   --color-rule: oklch(28% 0.004 270); --color-rule-2: oklch(40% 0.004 270);
   --color-accent: oklch(96% 0.002 270); --color-accent-ink: oklch(12% 0.003 270); --color-focus: oklch(96% 0.002 270);
   --color-scrim: oklch(12% 0.003 270 / 0.82);
+  --color-signal: oklch(85% 0.1 215);
+  --color-signal-dim: oklch(85% 0.1 215 / 0.22);
   --font-display: "Tektur", "Onest", ui-sans-serif, sans-serif; --font-body: "Onest", ui-sans-serif, system-ui, sans-serif; --font-outlier: "JetBrains Mono", ui-monospace, monospace;
   --text-poster: clamp(4.5rem, 10vw, 9rem);
   --radius-card: 6px; --radius-input: 6px; --radius-pill: 999px; --rule-hair: 1px; --shadow-card: none;
