@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { SectionHeader } from './SectionHeader';
-import { Capabilities } from './Capabilities.jsx';
 import { Reveal } from './Reveal.jsx';
 
-export function Jail({ content, lang, onPickModule }) {
+export function Jail({ content }) {
   const t = content.jail;
   const d = t.diagram;
   const [active, setActive] = useState('kernel');
@@ -20,8 +19,8 @@ export function Jail({ content, lang, onPickModule }) {
           <SectionHeader kicker={t.kicker} title={t.title} note={t.subtitle} />
         </Reveal>
 
-        <div className="mt-[var(--space-2xl)] grid grid-cols-1 lg:grid-cols-12 gap-x-[var(--gap-columns)] gap-y-[var(--space-2xl)]">
-          <Reveal className="lg:col-span-7">
+        <div className="mt-[var(--space-2xl)]">
+          <Reveal>
             <div className="jail">
               <div className="jail__flow">
                 <button
@@ -86,29 +85,8 @@ export function Jail({ content, lang, onPickModule }) {
             <p className="jail__detail" key={active}>
               {d.details[active]}
             </p>
+            <p className="jail__gates">{t.gates}</p>
           </Reveal>
-
-          <Reveal className="lg:col-span-5" delay={80}>
-            <dl className="jail__facts">
-              {t.points.map((p) => (
-                <div key={p.title} className="jail__fact">
-                  <dt className="jail__fact-title">{p.title}</dt>
-                  <dd className="jail__fact-desc">{p.desc}</dd>
-                </div>
-              ))}
-            </dl>
-          </Reveal>
-        </div>
-
-        <div className="mt-[var(--section-gap-l)]">
-          <Reveal>
-            <h3 className="text-title text-ink">{content.capabilities.title}</h3>
-            <p className="mt-[var(--space-xs)] text-ink-2 max-w-[60ch]">{content.capabilities.subtitle}</p>
-          </Reveal>
-          <div className="mt-[var(--space-lg)]">
-            <Capabilities content={content} lang={lang} onPickModule={onPickModule} />
-          </div>
-          <p className="jail__aside">{content.capabilities.aside}</p>
         </div>
       </div>
     </section>

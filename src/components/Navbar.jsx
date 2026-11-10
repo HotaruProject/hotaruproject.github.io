@@ -60,7 +60,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   }, [mobileOpen]);
 
   useEffect(() => {
-    const ids = ['architecture', 'modules', 'run', 'documentation'];
+    const ids = ['architecture', 'modules', 'run', 'documentation', 'skill'];
     const nodes = ids.map((id) => document.getElementById(id)).filter(Boolean);
     if (!nodes.length || typeof IntersectionObserver === 'undefined') return undefined;
     const observer = new IntersectionObserver(
