@@ -153,12 +153,7 @@ export const CONTENT = {
       ctaDocs: 'Read the manual',
       ctaSkill: 'Agent guide',
       ctaGithub: 'Source code',
-      facts: [
-        { value: '292', label: 'MTProto methods' },
-        { value: '15', label: 'bundled modules' },
-        { value: '5', label: 'capability gates' },
-        { value: 'AGPL', label: '3.0 licensed' },
-      ],
+      spec: ['292 MTProto methods', '15 modules', '5 capability gates', 'AGPL-3.0'],
     },
     jail: {
       kicker: 'Isolation',
@@ -194,6 +189,12 @@ export const CONTENT = {
         vault: 'Encrypted vault',
         vaultSub: 'AES-GCM · sanctuary/hotaru.vault',
         caption: 'A module reaches the network only if its manifest asks for it.',
+        details: {
+          telegram: 'The account and its session. It never crosses into the worker.',
+          kernel: 'Python 3.13 and the GoyGram core. It holds the session keys and the vault.',
+          vault: 'AES-GCM encrypted, stored in the sanctuary. The kernel is the only reader.',
+          worker: 'A separate process with its own namespaces, its own tmpfs and no owner.',
+        },
       },
     },
     capabilities: {
@@ -207,12 +208,18 @@ export const CONTENT = {
       title: 'Fifteen constellations',
       subtitle: 'A self describing .hmod file with a manifest, its own commands and a capability list.',
       note: 'Versions from the develop branch.',
+      manifestTitle: 'manifest',
+      copyBtn: 'Copy',
+      copiedBtn: 'Copied',
+      pickLabel: 'Show the manifest of',
     },
     run: {
       kicker: 'Run it',
       title: 'Eight commands, one install line',
       subtitle: 'Commands are sent from your own account in any chat. The prefix is configurable.',
       installTitle: 'Four ways to install',
+      copyCmd: 'Copy the command',
+      copiedCmd: 'Copied',
       requirements: 'Linux x86_64 or aarch64 · Python 3.13 · API ID and API Hash from my.telegram.org · a BotFather token · uv',
     },
     docs: {
@@ -274,12 +281,7 @@ export const CONTENT = {
       ctaDocs: 'Открыть руководство',
       ctaSkill: 'Инструкция для ИИ',
       ctaGithub: 'Исходный код',
-      facts: [
-        { value: '292', label: 'методов MTProto' },
-        { value: '15', label: 'модулей в комплекте' },
-        { value: '5', label: 'властей разрешений' },
-        { value: 'AGPL', label: 'лицензия 3.0' },
-      ],
+      spec: ['292 метода MTProto', '15 модулей', '5 властей разрешений', 'AGPL-3.0'],
     },
     jail: {
       kicker: 'Изоляция',
@@ -315,6 +317,12 @@ export const CONTENT = {
         vault: 'Зашифрованное хранилище',
         vaultSub: 'AES-GCM · sanctuary/hotaru.vault',
         caption: 'Модуль выходит в сеть только если его манифест этого попросил.',
+        details: {
+          telegram: 'Аккаунт и его сессия. В воркер они не попадают никогда.',
+          kernel: 'Python 3.13 и ядро GoyGram. Держит ключи сессии и хранилище.',
+          vault: 'Шифрование AES-GCM, лежит в sanctuary. Читает его только ядро.',
+          worker: 'Отдельный процесс со своими namespace, своим tmpfs и без владельца.',
+        },
       },
     },
     capabilities: {
@@ -328,12 +336,18 @@ export const CONTENT = {
       title: 'Пятнадцать созвездий',
       subtitle: 'Самостоятельный файл .hmod с манифестом, своими командами и списком разрешений.',
       note: 'Версии из ветки develop.',
+      manifestTitle: 'манифест',
+      copyBtn: 'Копировать',
+      copiedBtn: 'Скопировано',
+      pickLabel: 'Показать манифест модуля',
     },
     run: {
       kicker: 'Запуск',
       title: 'Восемь команд, одна строка установки',
       subtitle: 'Команды отправляются от вашего аккаунта в любом чате. Префикс настраивается.',
       installTitle: 'Четыре способа установки',
+      copyCmd: 'Скопировать команду',
+      copiedCmd: 'Скопировано',
       requirements: 'Linux x86_64 или aarch64 · Python 3.13 · API ID и API Hash с my.telegram.org · токен от BotFather · uv',
     },
     docs: {

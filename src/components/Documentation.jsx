@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { BookOpen, Terminal } from 'lucide-react';
+import { Reveal } from './Reveal.jsx';
 
 const FACTS = [
   [{ en: 'License', ru: 'Лицензия' }, 'AGPLv3'],
@@ -20,20 +21,20 @@ export function Documentation({ content, lang = 'en', onOpenDocs }) {
   return (
     <section id="documentation" className="w-full bg-paper-2 py-[var(--section-gap-s)]">
       <div className="max-w-container mx-auto px-[var(--gutter)] grid grid-cols-1 lg:grid-cols-12 gap-x-[var(--gap-columns)] gap-y-[var(--space-2xl)]">
-        <div className="lg:col-span-5 min-w-0 flex flex-col">
+        <Reveal className="lg:col-span-5 min-w-0 flex flex-col">
           <h2 className="text-ink">{t.title}</h2>
-          <p className="lead mt-[var(--space-lg)] text-ink-2">{t.subtitle}</p>
+          <p className="lead mt-[var(--space-md)] text-ink-2 max-w-[40ch]">{t.subtitle}</p>
 
-          <ol className="mt-[var(--space-2xl)] p-0 list-none flex flex-col gap-[var(--space-lg)]">
-            {t.cards?.map((card) => (
-              <li key={card.title}>
-                <h3 className="text-title text-ink">{card.title}</h3>
-                <p className="mt-[var(--space-2xs)] text-ink-2">{card.desc}</p>
+          <ol className="docs-toc mt-[var(--space-xl)] m-0 p-0 list-none">
+            {t.cards?.map((card, index) => (
+              <li key={card.title} className="docs-toc__row">
+                <span className="docs-toc__num">{String(index + 1).padStart(2, '0')}</span>
+                <span className="docs-toc__title">{card.title}</span>
               </li>
             ))}
           </ol>
 
-          <dl className="mt-[var(--space-2xl)] m-0 flex flex-wrap gap-x-[var(--space-xl)] gap-y-[var(--space-sm)] pt-[var(--space-lg)] border-t border-rule">
+          <dl className="mt-[var(--space-xl)] m-0 flex flex-wrap gap-x-[var(--space-xl)] gap-y-[var(--space-sm)] pt-[var(--space-lg)] border-t border-rule">
             {FACTS.map(([k, v]) => (
               <div key={k.en}>
                 <dt className="text-sm text-muted">{k[lang] || k.en}</dt>
@@ -42,8 +43,8 @@ export function Documentation({ content, lang = 'en', onOpenDocs }) {
             ))}
           </dl>
 
-          <div className="mt-[var(--space-xl)] flex flex-wrap items-center gap-x-[var(--space-lg)] gap-y-[var(--space-xs)]">
-            <button type="button" onClick={() => onOpenDocs?.('chapters')} className="btn btn--quiet">
+          <div className="mt-[var(--space-lg)] flex flex-wrap items-center gap-x-[var(--space-lg)] gap-y-[var(--space-xs)]">
+            <button type="button" onClick={() => onOpenDocs?.('chapters')} className="btn">
               <BookOpen aria-hidden="true" className="w-4 h-4" />
               <span>{t.openDocsBtn}</span>
             </button>
@@ -52,14 +53,19 @@ export function Documentation({ content, lang = 'en', onOpenDocs }) {
               <span>{t.openCatalogBtn}</span>
             </button>
           </div>
-        </div>
+        </Reveal>
 
-        <figure className="lg:col-start-6 lg:col-span-7 m-0 min-w-0 self-start lg:sticky lg:top-28">
-          <figcaption className="text-sm text-muted mb-[var(--space-xs)] font-mono">hello_world.hmod</figcaption>
-          <pre tabIndex={0} aria-label="hello_world.hmod" className="m-0 p-[var(--space-md)] sm:p-[var(--space-lg)] rounded-card bg-paper text-ink-2 font-mono text-xs sm:text-sm leading-relaxed overflow-x-auto">
-            <code>{sample}</code>
-          </pre>
-        </figure>
+        <Reveal className="lg:col-start-6 lg:col-span-7 m-0 min-w-0 self-start lg:sticky lg:top-28" delay={80}>
+          <figure className="manifest">
+            <figcaption className="manifest__bar">
+              <span className="manifest__file">hello_world.hmod</span>
+              <span className="manifest__lang">python</span>
+            </figcaption>
+            <pre className="manifest__code manifest__code--tall" tabIndex={0} aria-label="hello_world.hmod">
+              <code>{sample}</code>
+            </pre>
+          </figure>
+        </Reveal>
       </div>
     </section>
   );

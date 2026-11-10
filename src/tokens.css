@@ -5,7 +5,7 @@
   --text-section: clamp(1.875rem, 2.2vw + 0.9rem, 3.25rem); --text-title: clamp(1.1875rem, 0.65vw + 0.85rem, 1.5rem); --text-lead: clamp(1.0625rem, 0.3vw + 1rem, 1.3125rem);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
-  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 72px; --section-gap: 104px; --section-gap-l: 132px;
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 56px; --section-gap: 72px; --section-gap-l: 96px;
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
   --color-paper: oklch(6% 0 0); --color-paper-2: oklch(10.5% 0 0); --color-paper-3: oklch(16% 0 0);
   --color-ink: oklch(98% 0 0); --color-ink-2: oklch(80% 0 0); --color-muted: oklch(60% 0 0);

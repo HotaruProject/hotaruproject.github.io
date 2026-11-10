@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BookOpen, Menu, X, Download } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
 
@@ -17,7 +17,23 @@ export function LangSwitch({ lang, setLang }) {
 
 export function Navbar({ lang, setLang, content, onOpenDocs }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
   const t = content.nav;
+
+  useEffect(() => {
+    const update = () => {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - doc.clientHeight;
+      setProgress(max > 0 ? Math.min(1, doc.scrollTop / max) : 0);
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
 
   const scrollTo = (id) => {
     setMobileOpen(false);
@@ -99,6 +115,8 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
             {mobileOpen ? <X aria-hidden="true" className="w-5 h-5" /> : <Menu aria-hidden="true" className="w-5 h-5" />}
           </button>
         </div>
+
+        <span className="nav-progress" style={{ transform: `scaleX(${progress})` }} aria-hidden="true" />
       </div>
 
       {mobileOpen && (
