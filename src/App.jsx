@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { Architecture } from './components/Architecture';
+import { Jail } from './components/Jail';
+import { Modules } from './components/Modules';
+import { Console } from './components/Console';
 import { Documentation } from './components/Documentation';
 import { Footer } from './components/Footer';
 import { FumadocsView } from './components/FumadocsView';
-import { CONTENT } from './data/content.js';
+import { CONTENT, modules, capabilities, commands, install } from './data/content.js';
 
 export function App() {
   const [lang, setLang] = useState('en');
@@ -61,7 +63,15 @@ export function App() {
       />
       <main className="flex-grow w-full">
         <Hero content={currentContent} lang={lang} onOpenDocs={openDocs} />
-        <Architecture content={currentContent} />
+        <Jail content={currentContent} capabilities={capabilities} lang={lang} />
+        <Modules content={currentContent} modules={modules} lang={lang} />
+        <Console
+          content={currentContent}
+          commands={commands}
+          install={install}
+          lang={lang}
+          copyLabels={currentContent.hero}
+        />
         <Documentation content={currentContent} lang={lang} onOpenDocs={openDocs} />
       </main>
       <Footer content={currentContent} />

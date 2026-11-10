@@ -36,6 +36,12 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
     }
   };
 
+  const links = [
+    { id: 'architecture', label: t.architecture },
+    { id: 'modules', label: t.modules },
+    { id: 'run', label: t.run },
+  ];
+
   return (
     <header className="fixed top-[var(--space-sm)] inset-x-0 z-sticky-nav px-[var(--space-sm)] pointer-events-none">
       <div className="nav-pill pointer-events-auto max-w-[64rem] mx-auto rounded-input min-h-[56px] pl-[var(--space-md)] pr-[var(--space-xs)] flex items-center justify-between gap-[var(--space-md)]">
@@ -49,9 +55,11 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
         </button>
 
         <nav className="hidden md:flex items-center gap-[var(--space-2xs)]" aria-label="Primary">
-          <button type="button" onClick={() => scrollTo('architecture')} className="tab">
-            {t.architecture}
-          </button>
+          {links.map((l) => (
+            <button key={l.id} type="button" onClick={() => scrollTo(l.id)} className="tab">
+              {l.label}
+            </button>
+          ))}
           <button type="button" onClick={handleDocsClick} className="tab inline-flex items-center gap-[var(--space-xs)]">
             <BookOpen aria-hidden="true" className="w-4 h-4" />
             <span>{t.docs}</span>
@@ -95,9 +103,11 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
 
       {mobileOpen && (
         <div className="pointer-events-auto mt-[var(--space-xs)] max-w-[64rem] mx-auto rounded-input bg-paper-2 p-[var(--space-md)] flex flex-col gap-[var(--space-2xs)]">
-          <button type="button" onClick={() => scrollTo('architecture')} className="tab text-left text-md min-h-[44px]">
-            {t.architecture}
-          </button>
+          {links.map((l) => (
+            <button key={l.id} type="button" onClick={() => scrollTo(l.id)} className="tab text-left text-md min-h-[44px]">
+              {l.label}
+            </button>
+          ))}
           <button type="button" onClick={handleDocsClick} className="tab text-left text-md min-h-[44px]">
             {t.docs}
           </button>
