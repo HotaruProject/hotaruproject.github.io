@@ -1,37 +1,29 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import React from 'react';
+import { Check, Copy, TriangleAlert } from 'lucide-react';
+import { useCopy } from '../lib/useCopy.js';
 
-export function CopyBlock({ code, label, copyLabel, copiedLabel, className = '', stacked = false }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef(0);
-
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  const copy = useCallback(() => {
-    navigator.clipboard?.writeText(code).then(
-      () => {
-        setCopied(true);
-        window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(() => setCopied(false), 2000);
-      },
-      () => {}
-    );
-  }, [code]);
+export function CopyBlock({ code, label, copyLabel, copiedLabel, failedLabel, className = '', stacked = false }) {
+  const [state, copy] = useCopy();
+  const copied = state === 'copied';
+  const failed = state === 'failed';
+  const text = copied ? copiedLabel : failed ? failedLabel : copyLabel;
 
   const button = (
     <button
       type="button"
-      onClick={copy}
-      className="copy-block__copy"
-      title={copied ? copiedLabel : copyLabel}
-      aria-label={copied ? copiedLabel : copyLabel}
+      onClick={() => copy(code)}
+      className={`copy-block__copy ${failed ? 'copy-block__copy--fail' : ''}`}
+      title={text}
+      aria-label={text}
     >
       {copied ? (
         <Check aria-hidden="true" className="w-4 h-4" />
+      ) : failed ? (
+        <TriangleAlert aria-hidden="true" className="w-4 h-4" />
       ) : (
         <Copy aria-hidden="true" className="w-4 h-4" />
       )}
-      <span className="copy-block__copy-text">{copied ? copiedLabel : copyLabel}</span>
+      <span className="copy-block__copy-text">{text}</span>
     </button>
   );
 
