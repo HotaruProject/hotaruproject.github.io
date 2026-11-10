@@ -16,7 +16,7 @@ export function Reveal({ as: Tag = 'div', className = '', delay = 0, children })
     const reveal = () => setShown(true);
     const check = () => {
       const rect = el.getBoundingClientRect();
-      if (rect.top < window.innerHeight * 0.94 && rect.bottom > 0) reveal();
+      if (rect.top < window.innerHeight * 1.04 && rect.bottom > 0) reveal();
     };
     const onScroll = () => {
       if (frame) return;
@@ -32,7 +32,7 @@ export function Reveal({ as: Tag = 'div', className = '', delay = 0, children })
           if (entry.isIntersecting) reveal();
         });
       },
-      { threshold: 0.04, rootMargin: '0px 0px -6% 0px' }
+      { threshold: 0.02, rootMargin: '0px 0px 8% 0px' }
     );
     observer.observe(el);
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -51,7 +51,7 @@ export function Reveal({ as: Tag = 'div', className = '', delay = 0, children })
   const style = delay ? { transitionDelay: `${delay}ms` } : undefined;
 
   return (
-    <Tag ref={ref} style={style} className={`reveal ${shown ? 'reveal--shown' : ''} ${className}`}>
+    <Tag ref={ref} style={style} className={`reveal keep-motion ${shown ? 'reveal--shown' : ''} ${className}`}>
       {children}
     </Tag>
   );

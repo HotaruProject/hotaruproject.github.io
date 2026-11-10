@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { BookOpen, Terminal } from 'lucide-react';
 import { SectionHeader } from './SectionHeader';
 import { Reveal } from './Reveal.jsx';
+import { CopyState } from './CopyBlock.jsx';
+import { useCopy } from '../lib/useCopy.jsx';
 import { codeText } from '../lib/codeText.jsx';
 
 const FACTS = [
@@ -18,7 +20,9 @@ function firstCodeBlock(sections) {
 
 export function Documentation({ content, lang = 'en', onOpenDocs }) {
   const t = content.docs;
+  const labels = content.modules;
   const sample = useMemo(() => firstCodeBlock(t.sections), [t.sections]);
+  const [state, copy] = useCopy();
 
   return (
     <section id="documentation" className="w-full py-[var(--section-gap)]">
@@ -63,11 +67,25 @@ export function Documentation({ content, lang = 'en', onOpenDocs }) {
             <figure className="manifest">
               <figcaption className="manifest__bar">
                 <span className="manifest__file">hello_world.hmod</span>
-                <span className="manifest__lang">python</span>
+                <span className="flex items-center gap-[var(--space-sm)]">
+                  <span className="manifest__lang">python</span>
+                  <CopyState
+                    state={state}
+                    copyLabel={labels.copyBtn}
+                    copiedLabel={labels.copiedBtn}
+                    failedLabel={labels.failedBtn}
+                  />
+                </span>
               </figcaption>
-              <pre className="manifest__code manifest__code--tall" tabIndex={0} aria-label="hello_world.hmod">
+              <button
+                type="button"
+                onClick={() => copy(sample)}
+                className={`manifest__code manifest__code--tall ${state === 'copied' ? 'manifest__code--done' : ''}`}
+                title={labels.copyBtn}
+              >
                 <code>{codeText(sample)}</code>
-              </pre>
+                <span className="visually-hidden">{labels.copyBtn}</span>
+              </button>
             </figure>
           </Reveal>
         </div>

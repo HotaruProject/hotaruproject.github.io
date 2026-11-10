@@ -2,9 +2,37 @@ import React, { useMemo } from 'react';
 import { SectionHeader } from './SectionHeader';
 import { Reveal } from './Reveal.jsx';
 import { RevealGroup } from './RevealGroup.jsx';
-import { CopyChip } from './CopyChip.jsx';
+import { CopyState } from './CopyBlock.jsx';
+import { useCopy } from '../lib/useCopy.jsx';
 import { MODULES, manifestOf } from '../data/modules.jsx';
 import { codeText } from '../lib/codeText.jsx';
+
+function ManifestPanel({ id, manifest, labels }) {
+  const [state, copy] = useCopy();
+
+  return (
+    <figure className="manifest">
+      <figcaption className="manifest__bar">
+        <span className="manifest__file">{id}.hmod</span>
+        <CopyState
+          state={state}
+          copyLabel={labels.copyBtn}
+          copiedLabel={labels.copiedBtn}
+          failedLabel={labels.failedBtn}
+        />
+      </figcaption>
+      <button
+        type="button"
+        onClick={() => copy(manifest)}
+        className={`manifest__code ${state === 'copied' ? 'manifest__code--done' : ''}`}
+        title={labels.copyBtn}
+      >
+        <code>{codeText(manifest)}</code>
+        <span className="visually-hidden">{labels.copyBtn}</span>
+      </button>
+    </figure>
+  );
+}
 
 export function Modules({ content, lang, moduleId, onPickModule }) {
   const t = content.modules;
@@ -18,7 +46,7 @@ export function Modules({ content, lang, moduleId, onPickModule }) {
           <SectionHeader kicker={t.kicker} title={t.title} note={t.subtitle} />
         </Reveal>
 
-        <RevealGroup className="mod-index mt-[var(--space-xl)]" role="tablist" aria-label={t.pickLabel}>
+        <RevealGroup className="mod-index mt-[var(--space-xl)]" delay={2} role="tablist" aria-label={t.pickLabel}>
             {MODULES.map((m, index) => {
               const selected = m.id === active.id;
               return (
@@ -41,21 +69,7 @@ export function Modules({ content, lang, moduleId, onPickModule }) {
         </RevealGroup>
 
         <Reveal className="mt-[var(--space-lg)]" delay={60}>
-          <figure className="manifest">
-            <figcaption className="manifest__bar">
-              <span className="manifest__file">{active.id}.hmod</span>
-              <CopyChip
-                value={manifest}
-                label={t.copyBtn}
-                copiedLabel={t.copiedBtn}
-                failedLabel={t.failedBtn}
-                className="chip--tight"
-              />
-            </figcaption>
-            <pre className="manifest__code" tabIndex={0} aria-label={`${active.id}.hmod`}>
-              <code>{codeText(manifest)}</code>
-            </pre>
-          </figure>
+          <ManifestPanel id={active.id} manifest={manifest} labels={t} />
         </Reveal>
       </div>
     </section>
