@@ -5,7 +5,7 @@ import { Reveal } from './Reveal.jsx';
 const FACTS = [
   [{ en: 'License', ru: 'Лицензия' }, 'AGPLv3'],
   [{ en: 'Python', ru: 'Python' }, '3.13'],
-  [{ en: 'GoyGram', ru: 'GoyGram' }, '0.8.28'],
+  [{ en: 'Modules', ru: 'Модулей' }, '15'],
 ];
 
 function firstCodeBlock(sections) {

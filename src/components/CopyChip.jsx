@@ -1,6 +1,6 @@
 import React from 'react';
 import { Check, Copy, TriangleAlert } from 'lucide-react';
-import { useCopy } from '../lib/useCopy.js';
+import { useCopy } from '../lib/useCopy.jsx';
 
 export function CopyChip({ value, label, copiedLabel, failedLabel, className = '', compact = false }) {
   const [state, copy] = useCopy();

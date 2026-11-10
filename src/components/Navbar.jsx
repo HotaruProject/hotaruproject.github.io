@@ -4,7 +4,7 @@ import { GithubIcon } from './GithubIcon';
 
 export function LangSwitch({ lang, setLang }) {
   return (
-    <div className="flex items-center" role="group" aria-label="Language">
+    <div className="lang-switch" role="group" aria-label="Language">
       <button type="button" onClick={() => setLang('ru')} aria-pressed={lang === 'ru'} className="tab">
         Рус
       </button>
@@ -144,7 +144,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
       </div>
 
       {mobileOpen && (
-        <div className="pointer-events-auto mt-[var(--space-xs)] max-w-[64rem] mx-auto rounded-input bg-paper-2 p-[var(--space-md)] flex flex-col gap-[var(--space-2xs)]">
+        <div className="nav-sheet pointer-events-auto mt-[var(--space-xs)] max-w-[64rem] mx-auto p-[var(--space-md)] flex flex-col gap-[var(--space-2xs)]">
           {links.map((l) => (
             <button
               key={l.id}

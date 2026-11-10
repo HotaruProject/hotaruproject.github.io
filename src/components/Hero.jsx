@@ -25,7 +25,7 @@ export function Hero({ content, lang, onOpenDocs }) {
 
           <CopyBlock
             stacked
-            className="mt-[var(--space-xl)]"
+            className="surface-float mt-[var(--space-xl)]"
             code={INSTALL_CMD}
             label={t.installTitle}
             copyLabel={t.copyBtn}

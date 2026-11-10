@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SectionHeader } from './SectionHeader';
 import { Reveal } from './Reveal.jsx';
 import { CopyChip } from './CopyChip.jsx';
-import { MODULES, manifestOf } from '../data/modules.js';
+import { MODULES, manifestOf } from '../data/modules.jsx';
 
 export function Modules({ content, lang, moduleId, onPickModule }) {
   const t = content.modules;

@@ -2,10 +2,10 @@ export const GATES = [
   {
     id: 'mt',
     title: 'Telegram API',
-    detail: 'Full userbot MTProto access, with account security and payment operations blocked.',
+    detail: 'Full MTProto access. Account security and payments are blocked.',
     side: 'write',
     grant: {
-      en: 'Raw MTProto calls through ctx.tg.call',
+      en: 'Raw MTProto calls via ctx.tg.call',
       ru: 'Прямые вызовы MTProto через ctx.tg.call',
     },
     enforce: {
@@ -16,15 +16,15 @@ export const GATES = [
   {
     id: 'state',
     title: 'State',
-    detail: 'Persistent key value state inside the namespace of the module that owns it.',
+    detail: 'Persistent key value state, private to the module that owns it.',
     side: 'write',
     grant: {
-      en: 'Module scoped SQLite key value storage',
-      ru: 'Собственная база SQLite в области модуля',
+      en: 'Module scoped SQLite storage',
+      ru: 'Собственная база SQLite на модуль',
     },
     enforce: {
-      en: 'One database per module, inside its own namespace.',
-      ru: 'По одной базе на модуль, внутри его namespace.',
+      en: 'One database per module.',
+      ru: 'По одной базе на модуль.',
     },
   },
   {
@@ -37,8 +37,8 @@ export const GATES = [
       ru: 'Исходящие HTTP, WebSocket и TCP',
     },
     enforce: {
-      en: 'Without net the network namespace of the kernel blocks every socket.',
-      ru: 'Без net сетевой namespace ядра блокирует любые сокеты.',
+      en: 'Without net every socket is closed.',
+      ru: 'Без net любой сокет закрыт.',
     },
   },
   {
@@ -51,8 +51,8 @@ export const GATES = [
       ru: 'Приватное временное рабочее пространство',
     },
     enforce: {
-      en: 'The worker mounts get a tmpfs, the host filesystem does not exist for it.',
-      ru: 'Воркеру монтируется tmpfs, файловой системы хоста для него не существует.',
+      en: 'The worker gets a tmpfs. The host filesystem does not exist for it.',
+      ru: 'Воркеру достаётся tmpfs, файловой системы хоста для него нет.',
     },
   },
   {
@@ -61,12 +61,12 @@ export const GATES = [
     detail: 'Run shell commands in the module workspace, with the limits of the module.',
     side: 'write',
     grant: {
-      en: 'Command execution inside the jail',
-      ru: 'Выполнение команд внутри тюрьмы',
+      en: 'Command execution in the sandbox',
+      ru: 'Выполнение команд в песочнице',
     },
     enforce: {
-      en: 'Same namespace, same uid, same limits as the module.',
-      ru: 'Тот же namespace, тот же uid, те же лимиты, что и у модуля.',
+      en: 'Same uid, same limits as the module.',
+      ru: 'Тот же uid, те же лимиты, что и у модуля.',
     },
   },
 ];

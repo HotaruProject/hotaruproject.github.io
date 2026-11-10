@@ -1,6 +1,6 @@
 import React from 'react';
 import { Check, Copy, TriangleAlert } from 'lucide-react';
-import { useCopy } from '../lib/useCopy.js';
+import { useCopy } from '../lib/useCopy.jsx';
 
 export function CopyBlock({ code, label, copyLabel, copiedLabel, failedLabel, className = '', stacked = false }) {
   const [state, copy] = useCopy();
