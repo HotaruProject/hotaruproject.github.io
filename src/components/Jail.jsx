@@ -24,23 +24,24 @@ export function Jail({ content, lang, onPickModule }) {
           <Reveal className="lg:col-span-7">
             <div className="jail">
               <div className="jail__flow">
-              <button
+                <button
                   type="button"
                   onClick={(e) => pick(e, 'telegram')}
                   aria-pressed={active === 'telegram'}
                   className={`jail__node jail__node--ghost ${active === 'telegram' ? 'jail__node--on' : ''}`}
                 >
                   <span className="jail__node-title">{d.telegram}</span>
+                  <span className="jail__node-sub">{d.telegramSub}</span>
                 </button>
 
                 <span className="jail__arrow jail__arrow--down" aria-hidden="true" />
 
-                <div className="jail__node jail__node--kernel">
+                <div className={`jail__node jail__node--kernel ${active === 'kernel' || active === 'vault' ? 'jail__node--on' : ''}`}>
                   <button
                     type="button"
                     onClick={(e) => pick(e, 'kernel')}
                     aria-pressed={active === 'kernel'}
-                    className={`jail__node-btn ${active === 'kernel' ? 'jail__node--on' : ''}`}
+                    className="jail__node-btn"
                   >
                     <span className="jail__node-title">{d.kernel}</span>
                     <span className="jail__node-sub">{d.kernelSub}</span>
@@ -49,30 +50,36 @@ export function Jail({ content, lang, onPickModule }) {
                     type="button"
                     onClick={(e) => pick(e, 'vault')}
                     aria-pressed={active === 'vault'}
-                    className={`jail__vault ${active === 'vault' ? 'jail__node--on' : ''}`}
+                    className={`jail__vault ${active === 'vault' ? 'jail__vault--on' : ''}`}
                   >
                     <span className="jail__vault-title">{d.vault}</span>
-                    <span className="jail__node-sub">{d.vaultSub}</span>
+                    <span className="jail__vault-meta">
+                      <span className="jail__tag">{d.vaultAlgo}</span>
+                      <span className="jail__path">{d.vaultPath}</span>
+                    </span>
                   </button>
                 </div>
 
-              <div className="jail__pipe" aria-hidden="true">
-                <span className="jail__pipe-label">{d.pipe}</span>
-              </div>
+                <div className="jail__pipe" aria-hidden="true">
+                  <span className="jail__pipe-label">{d.pipe}</span>
+                </div>
 
-              <button
-                type="button"
-                onClick={(e) => pick(e, 'worker')}
-                aria-pressed={active === 'worker'}
-                className={`jail__node jail__node--worker ${active === 'worker' ? 'jail__node--on' : ''}`}
-              >
-                <span className="jail__node-title">{d.worker}</span>
-                <span className="jail__node-sub">{d.workerSub}</span>
-                <span className="jail__tags">
-                  <span className="jail__tag">{d.tmpfs}</span>
-                  <span className="jail__tag">{d.uid}</span>
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={(e) => pick(e, 'worker')}
+                  aria-pressed={active === 'worker'}
+                  className={`jail__node jail__node--worker ${active === 'worker' ? 'jail__node--on' : ''}`}
+                >
+                  <span className="jail__node-title">{d.worker}</span>
+                  <span className="jail__node-sub jail__node-sub--text">{d.workerSub}</span>
+                  <span className="jail__tags">
+                    {d.ns.map((name) => (
+                      <span key={name} className="jail__tag jail__tag--ns">{name}</span>
+                    ))}
+                    <span className="jail__tag">{d.tmpfs}</span>
+                    <span className="jail__tag">{d.uid}</span>
+                  </span>
+                </button>
               </div>
             </div>
 

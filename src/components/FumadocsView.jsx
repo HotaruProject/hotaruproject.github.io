@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, ChevronDown, Copy, Check, ArrowLeft, Sparkles } from 'lucide-react';
 import { LangSwitch } from './Navbar';
 import { CATALOG_METHODS } from '../data/catalog.jsx';
+import { codeText } from '../lib/codeText.jsx';
 
 function copyText(text, setCopied) {
   navigator.clipboard?.writeText(text).then(
@@ -33,8 +34,8 @@ function CodeBlock({ code, lang = 'python' }) {
         <figcaption className="text-sm text-muted">{lang}</figcaption>
         <CopyButton copied={copied} onClick={handleCopy} />
       </div>
-      <pre className="m-0 p-[var(--space-md)] overflow-x-auto font-mono text-sm text-ink-2 leading-relaxed whitespace-pre">
-        <code>{code}</code>
+      <pre className="m-0 p-[var(--space-md)] overflow-x-auto font-mono text-sm text-ink-2 leading-relaxed whitespace-pre-wrap break-words">
+        <code>{codeText(code)}</code>
       </pre>
     </figure>
   );

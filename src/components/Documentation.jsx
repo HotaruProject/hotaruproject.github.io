@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { BookOpen, Terminal } from 'lucide-react';
 import { Reveal } from './Reveal.jsx';
+import { codeText } from '../lib/codeText.jsx';
 
 const FACTS = [
   [{ en: 'License', ru: 'Лицензия' }, 'AGPLv3'],
@@ -62,7 +63,7 @@ export function Documentation({ content, lang = 'en', onOpenDocs }) {
               <span className="manifest__lang">python</span>
             </figcaption>
             <pre className="manifest__code manifest__code--tall" tabIndex={0} aria-label="hello_world.hmod">
-              <code>{sample}</code>
+              <code>{codeText(sample)}</code>
             </pre>
           </figure>
         </Reveal>
