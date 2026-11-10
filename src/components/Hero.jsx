@@ -16,7 +16,7 @@ export function Hero({ content, lang, onOpenDocs }) {
       </div>
       <div className="hero-scrim absolute inset-0 z-base pointer-events-none" />
 
-      <div className="relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[55svh] md:pt-32 pb-28 md:pb-36 pointer-events-none">
+      <div className="relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[44svh] md:pt-32 pb-12 md:pb-16 pointer-events-none">
         <div className="max-w-[48rem] min-w-0 pointer-events-auto">
           <p className="eyebrow">{t.eyebrow}</p>
 

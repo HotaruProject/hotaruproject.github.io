@@ -79,8 +79,8 @@ vec3 backgroundStars(vec3 dir) {
     float size = 0.045 + 0.055 * fract(rnd * 137.1);
     float glow = exp(-dist * dist / (size * size * 0.20));
     float twinkle = 0.75 + 0.25 * sin(uTime * 2.5 + rnd * 60.0);
-    vec3 starCol = mix(vec3(0.95, 0.98, 1.0), vec3(0.75, 0.90, 1.0), fract(rnd * 43.1));
-    if (fract(rnd * 89.2) > 0.85) starCol = vec3(1.0, 0.92, 0.82);
+    vec3 starCol = mix(vec3(1.0), vec3(0.68, 0.68, 0.68), fract(rnd * 43.1));
+    if (fract(rnd * 89.2) > 0.85) starCol = vec3(0.86);
     col += starCol * glow * twinkle * 2.2;
   }
 
@@ -112,10 +112,10 @@ vec4 sampleDisk(vec3 hit, vec3 rayDir) {
   float dop = clamp(1.0 + 0.62 * doppler, 0.15, 2.7);
   float dopplerFactor = dop * dop * dop * sqrt(dop);
 
-  vec3 colHot = vec3(1.35, 1.40, 1.48);
-  vec3 colMid = vec3(0.96, 0.98, 1.05);
-  vec3 colWarm = vec3(0.85, 0.82, 0.78);
-  vec3 colOuter = vec3(0.55, 0.35, 0.18);
+  vec3 colHot = vec3(1.42);
+  vec3 colMid = vec3(0.99);
+  vec3 colWarm = vec3(0.78);
+  vec3 colOuter = vec3(0.34);
 
   vec3 col = mix(colOuter, colWarm, smoothstep(0.0, 0.35, density));
   col = mix(col, colMid, smoothstep(0.3, 0.7, density));
@@ -186,10 +186,16 @@ vec3 traceScene(vec2 uv) {
   if (!captured) {
     col += backgroundStars(normalize(dir)) * (1.0 - diskAccum.a);
     float ringGlow = exp(-abs(minR - photonR) * 22.0);
-    col += vec3(1.35, 1.40, 1.48) * ringGlow * 2.9;
+    col += vec3(1.0) * ringGlow * 2.9;
     float ringHalo = exp(-abs(minR - photonR) * 4.2);
-    col += vec3(0.96, 0.98, 1.05) * ringHalo * 0.45;
+    col += vec3(0.95) * ringHalo * 0.5;
+    float halo = exp(-abs(minR - photonR) * 0.85);
+    col += vec3(0.7) * halo * 0.34;
   }
+
+  float dScreen = length(uv);
+  float bloom = exp(-max(0.0, dScreen - 0.58) * 3.1);
+  col += vec3(0.62) * bloom * 0.17;
 
   return col;
 }
@@ -433,8 +439,8 @@ export function QuasarScene({ lang = 'en' }) {
       let scale;
       const minCss = Math.min(rect.width, rect.height);
       if (isMobile) {
-        center = [0.5, 0.72];
-        scale = 0.9;
+        center = [0.5, 0.8];
+        scale = 1.0;
       } else {
         const cssW = rect.width;
         const textRight = Math.max(0, (cssW - 1440) / 2) + 760;

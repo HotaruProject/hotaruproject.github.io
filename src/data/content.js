@@ -144,7 +144,7 @@ export const CONTENT = {
     hero: {
       eyebrow: 'Telegram userbot · GoyGram core · Linux namespaces',
       title: 'Hotaru',
-      subtitle: 'Third party modules run inside their own Linux namespace. Your session files, keys and network stay out of their reach.',
+      subtitle: 'Modules run in their own Linux namespace. Your session, keys and network stay out of reach.',
       installTitle: 'Install',
       copyTooltip: 'Copy command',
       copiedTooltip: 'Copied to clipboard',
@@ -163,23 +163,23 @@ export const CONTENT = {
     jail: {
       kicker: 'Isolation',
       title: 'The jail',
-      subtitle: 'Hotaru does not trust a module, it contains it. Every worker gets its own kernel namespace and nothing else.',
+      subtitle: 'Every worker gets its own kernel namespace and nothing else.',
       points: [
         {
           title: 'Four namespaces',
-          desc: 'CLONE_NEWNS, CLONE_NEWIPC, CLONE_NEWUTS and CLONE_NEWNET give every worker a private mount, IPC, hostname and network namespace.',
+          desc: 'CLONE_NEWNS, NEWIPC, NEWUTS and NEWNET give every worker a private mount, IPC, hostname and network.',
         },
         {
           title: 'Nothing to read',
-          desc: 'Each worker starts on a private tmpfs. Files outside its own directory are not in its filesystem, they are nowhere.',
+          desc: 'Each worker starts on a private tmpfs. The host filesystem does not exist for it.',
         },
         {
           title: 'nobody owns the worker',
-          desc: 'Workers drop to uid 65534. The process that holds your Telegram session stays up in the kernel.',
+          desc: 'Workers drop to uid 65534. The process that holds your Telegram session stays in the kernel.',
         },
         {
           title: 'Pipes, not sockets',
-          desc: 'Kernel and worker talk over UNIX pipes. No shared memory, no shared sockets, no side channel.',
+          desc: 'Kernel and worker talk over UNIX pipes. No shared memory, no side channel.',
         },
       ],
       diagram: {
@@ -198,14 +198,14 @@ export const CONTENT = {
     },
     capabilities: {
       title: 'Capability gates',
-      subtitle: 'A module declares what it needs in its manifest. The kernel decides what it gets, and the namespace jail enforces it.',
-      aside: 'The kernel knows ten capabilities: mt, state, net, files, shell, inline, modules, assets, logs and fetch. logs and fetch are granted to every module, the rest must be declared.',
+      subtitle: 'A module declares what it needs. The kernel decides what it gets, the jail enforces it.',
+      aside: 'The kernel knows ten capabilities. logs and fetch are granted to every module, the other eight have to be declared.',
       cols: { id: 'capability', grant: 'grants', enforce: 'enforced by' },
     },
     modules: {
       kicker: 'Modules',
       title: 'Fifteen constellations',
-      subtitle: 'Every module is a self describing .hmod file with a manifest, its own commands and a capability list.',
+      subtitle: 'A self describing .hmod file with a manifest, its own commands and a capability list.',
       note: 'Versions from the develop branch.',
     },
     run: {
@@ -217,7 +217,7 @@ export const CONTENT = {
     },
     docs: {
       title: 'Developer manual',
-      subtitle: 'Complete documentation for building, loading via .ld, and managing modules in Telegram.',
+      subtitle: 'Everything about writing a .hmod and running it in Telegram.',
       openDocsBtn: 'Open documentation',
       openCatalogBtn: 'Browse 292 methods',
       cards: [
@@ -265,7 +265,7 @@ export const CONTENT = {
     hero: {
       eyebrow: 'юзербот для Telegram · ядро GoyGram · namespace Linux',
       title: 'Hotaru',
-      subtitle: 'Сторонние модули работают в собственном namespace Linux. Файлы сессии, ключи и сеть остаются вне их досягаемости.',
+      subtitle: 'Модули живут в своём namespace Linux. Сессия, ключи и сеть остаются вне их досягаемости.',
       installTitle: 'Установка',
       copyTooltip: 'Скопировать команду',
       copiedTooltip: 'Скопировано в буфер',
@@ -284,15 +284,15 @@ export const CONTENT = {
     jail: {
       kicker: 'Изоляция',
       title: 'Тюрьма',
-      subtitle: 'Hotaru не доверяет модулю, он его запирает. Каждому воркеру достаётся собственный namespace ядра и ничего больше.',
+      subtitle: 'Каждому воркеру достаётся собственный namespace ядра и ничего больше.',
       points: [
         {
           title: 'Четыре namespace',
-          desc: 'CLONE_NEWNS, CLONE_NEWIPC, CLONE_NEWUTS и CLONE_NEWNET дают воркеру личные namespace монтирования, IPC, имени хоста и сети.',
+          desc: 'CLONE_NEWNS, NEWIPC, NEWUTS и NEWNET дают воркеру личные namespace монтирования, IPC, имени хоста и сети.',
         },
         {
           title: 'Читать нечего',
-          desc: 'Воркер стартует на личной tmpfs. Файлов за пределами его каталога в его файловой системе просто нет.',
+          desc: 'Воркер стартует на личной tmpfs. Файловой системы хоста для него не существует.',
         },
         {
           title: 'Воркер принадлежит nobody',
@@ -300,7 +300,7 @@ export const CONTENT = {
         },
         {
           title: 'Трубы, а не сокеты',
-          desc: 'Ядро и воркер общаются через UNIX pipes. Ни общей памяти, ни общих сокетов, ни бокового канала.',
+          desc: 'Ядро и воркер общаются через UNIX pipes. Ни общей памяти, ни бокового канала.',
         },
       ],
       diagram: {
@@ -319,14 +319,14 @@ export const CONTENT = {
     },
     capabilities: {
       title: 'Власти разрешений',
-      subtitle: 'Модуль запрашивает права в манифесте. Ядро решает, что дать, а тюрьма принуждает.',
-      aside: 'Ядро знает десять возможностей: mt, state, net, files, shell, inline, modules, assets, logs и fetch. logs и fetch выдаются каждому модулю, остальные нужно объявить в манифесте.',
+      subtitle: 'Модуль запрашивает права. Ядро решает, что дать, тюрьма принуждает.',
+      aside: 'Ядро знает десять возможностей. logs и fetch выдаются каждому модулю, остальные восемь нужно объявить.',
       cols: { id: 'возможность', grant: 'что даёт', enforce: 'чем принуждается' },
     },
     modules: {
       kicker: 'Модули',
       title: 'Пятнадцать созвездий',
-      subtitle: 'Каждый модуль это самодостаточный файл .hmod с манифестом, своими командами и списком разрешений.',
+      subtitle: 'Самостоятельный файл .hmod с манифестом, своими командами и списком разрешений.',
       note: 'Версии из ветки develop.',
     },
     run: {
@@ -338,7 +338,7 @@ export const CONTENT = {
     },
     docs: {
       title: 'Руководство по разработке',
-      subtitle: 'Полная документация по созданию, быстрой загрузке через .ld и управлению модулями.',
+      subtitle: 'Всё о том, как написать .hmod и запустить его в Telegram.',
       openDocsBtn: 'Открыть документацию',
       openCatalogBtn: 'Все 292 метода API',
       cards: [
