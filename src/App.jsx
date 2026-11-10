@@ -7,7 +7,7 @@ import { Console } from './components/Console';
 import { Documentation } from './components/Documentation';
 import { Footer } from './components/Footer';
 import { FumadocsView } from './components/FumadocsView';
-import { CONTENT, commands, install } from './data/content.js';
+import { CONTENT, commands, install } from './data/content.jsx';
 
 export function App() {
   const [lang, setLang] = useState('en');

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { GATES } from '../data/gates.js';
-import { MODULES } from '../data/modules.js';
+import { GATES } from '../data/gates.jsx';
+import { MODULES } from '../data/modules.jsx';
 import { Reveal } from './Reveal.jsx';
 
 export function Capabilities({ content, lang, onPickModule }) {

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, ChevronDown, Copy, Check, ArrowLeft, Sparkles } from 'lucide-react';
 import { LangSwitch } from './Navbar';
-import { CATALOG_METHODS } from '../data/catalog.js';
+import { CATALOG_METHODS } from '../data/catalog.jsx';
 
 function copyText(text, setCopied) {
   navigator.clipboard?.writeText(text).then(

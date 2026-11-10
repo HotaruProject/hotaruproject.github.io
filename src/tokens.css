@@ -15,6 +15,12 @@
   --color-signal: oklch(98% 0 0);
   --color-signal-dim: oklch(98% 0 0 / 0.22);
   --color-glow: oklch(100% 0 0 / 0.16); --color-glow-soft: oklch(100% 0 0 / 0.07); --color-glow-hard: oklch(100% 0 0 / 0.34);
+  --glow-xs: 0 0 10px oklch(100% 0 0 / 0.09);
+  --glow-sm: 0 0 16px oklch(100% 0 0 / 0.14);
+  --glow-md: 0 0 26px oklch(100% 0 0 / 0.20), 0 0 6px oklch(100% 0 0 / 0.12);
+  --glow-lg: 0 0 44px oklch(100% 0 0 / 0.26), 0 0 10px oklch(100% 0 0 / 0.16);
+  --glow-edge: inset 0 1px 0 oklch(100% 0 0 / 0.12);
+  --glow-text: 0 0 18px oklch(100% 0 0 / 0.32);
   --font-display: "Tektur", "Onest", ui-sans-serif, sans-serif; --font-body: "Onest", ui-sans-serif, system-ui, sans-serif; --font-outlier: "JetBrains Mono", ui-monospace, monospace;
   --text-poster: clamp(4rem, 9vw, 8.5rem);
   --radius-card: 6px; --radius-input: 6px; --radius-pill: 999px; --rule-hair: 1px; --shadow-card: none;
