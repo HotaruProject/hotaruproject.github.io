@@ -19,7 +19,7 @@ function fallbackCopy(text) {
   return done;
 }
 
-export function useCopy(timeout = 1800) {
+export function useCopy(timeout = 2400) {
   const [state, setState] = useState('idle');
   const timer = useRef(0);
 

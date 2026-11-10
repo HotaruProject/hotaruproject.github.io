@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CopyBlock } from './CopyBlock';
-import { CopyChip } from './CopyChip.jsx';
+import { CopyRow } from './CopyRow.jsx';
 import { SectionHeader } from './SectionHeader';
 import { Reveal } from './Reveal.jsx';
 import { RevealGroup } from './RevealGroup.jsx';
@@ -49,18 +49,18 @@ export function Console({ content, commands, install, lang, copyLabels }) {
           />
         </Reveal>
 
-        <RevealGroup as="ul" className="cmd-grid mt-[var(--space-xl)]">
+        <RevealGroup as="ul" className="cmd-grid mt-[var(--space-xl)]" delay={2}>
             {cmdList.map((cmd, index) => (
-              <li key={cmd} className="cmd-grid__row" style={{ '--i': index }}>
-                <code className="cmd-grid__cmd">{cmd}</code>
-                <CopyChip
+              <li key={cmd} style={{ '--i': index }}>
+                <CopyRow
                   value={cmd}
                   label={t.copyCmd}
                   copiedLabel={t.copiedCmd}
                   failedLabel={t.failedCmd}
-                  className="chip--tight"
-                  compact
-                />
+                  className="cmd-grid__row"
+                >
+                  <code className="cmd-grid__cmd">{cmd}</code>
+                </CopyRow>
               </li>
             ))}
         </RevealGroup>

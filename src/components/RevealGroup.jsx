@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export function RevealGroup({ as: Tag = 'div', className = '', children }) {
+export function RevealGroup({ as: Tag = 'div', className = '', delay = 0, children }) {
   const ref = useRef(null);
   const [shown, setShown] = useState(false);
 
@@ -21,7 +21,7 @@ export function RevealGroup({ as: Tag = 'div', className = '', children }) {
     };
     const check = () => {
       const rect = el.getBoundingClientRect();
-      if (rect.top < window.innerHeight * 0.94 && rect.bottom > 0) reveal();
+      if (rect.top < window.innerHeight * 1.04 && rect.bottom > 0) reveal();
     };
     const onScroll = () => {
       if (frame) return;
@@ -37,7 +37,7 @@ export function RevealGroup({ as: Tag = 'div', className = '', children }) {
           if (entry.isIntersecting) reveal();
         });
       },
-      { threshold: 0.04, rootMargin: '0px 0px -6% 0px' }
+      { threshold: 0.02, rootMargin: '0px 0px 8% 0px' }
     );
     observer.observe(el);
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -53,9 +53,19 @@ export function RevealGroup({ as: Tag = 'div', className = '', children }) {
     };
   }, []);
 
+  const items = React.Children.map(children, (child) => {
+    if (!React.isValidElement(child)) return child;
+    const cls = child.props.className ? `${child.props.className} keep-motion` : 'keep-motion';
+    return React.cloneElement(child, { className: cls });
+  });
+
   return (
-    <Tag ref={ref} className={`reveal-group ${shown ? 'reveal-group--shown' : ''} ${className}`}>
-      {children}
+    <Tag
+      ref={ref}
+      style={delay ? { '--base': delay } : undefined}
+      className={`reveal-group ${shown ? 'reveal-group--shown' : ''} ${className}`}
+    >
+      {items}
     </Tag>
   );
 }
