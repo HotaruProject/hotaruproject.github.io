@@ -15,7 +15,7 @@ export function Hero({ content, lang, onOpenDocs }) {
       </div>
       <div className="hero-scrim absolute inset-0 z-base pointer-events-none" />
 
-      <div className="relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[44svh] md:pt-32 pb-12 md:pb-16 pointer-events-none">
+      <div className="hero__body relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[44svh] md:pt-32 pb-12 md:pb-16 pointer-events-none">
         <div className="max-w-[46rem] min-w-0 pointer-events-auto">
           <p className="eyebrow">{t.eyebrow}</p>
 
@@ -39,15 +39,6 @@ export function Hero({ content, lang, onOpenDocs }) {
             </button>
             <a href="./skill/SKILL.md" download="HOTARU_AGENT_SKILL.md" className="link-arrow">
               <span>{t.ctaSkill}</span>
-              <ArrowUpRight aria-hidden="true" className="w-4 h-4 link-arrow__icon" />
-            </a>
-            <a
-              href="https://github.com/HotaruProject/Hotaru"
-              target="_blank"
-              rel="noreferrer"
-              className="link-arrow"
-            >
-              <span>{t.ctaGithub}</span>
               <ArrowUpRight aria-hidden="true" className="w-4 h-4 link-arrow__icon" />
             </a>
           </div>

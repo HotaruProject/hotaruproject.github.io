@@ -6,9 +6,9 @@ export function Footer({ content }) {
   const t = content.footer;
 
   return (
-    <footer className="w-full border-t border-rule pt-[var(--space-3xl)] pb-[var(--space-2xl)]">
+    <footer className="w-full border-t border-rule pt-[var(--space-2xl)] pb-[var(--space-xl)]">
       <div className="max-w-container mx-auto px-[var(--gutter)]">
-        <p className="font-display text-poster uppercase text-muted select-none" aria-hidden="true">
+        <p className="font-display text-title uppercase text-muted select-none" aria-hidden="true">
           Hotaru
         </p>
 

@@ -3,8 +3,9 @@ import { CopyBlock } from './CopyBlock';
 import { CopyChip } from './CopyChip.jsx';
 import { SectionHeader } from './SectionHeader';
 import { Reveal } from './Reveal.jsx';
+import { RevealGroup } from './RevealGroup.jsx';
 
-export function Console({ content, commands, install, lang, copyLabels, onPickModule }) {
+export function Console({ content, commands, install, lang, copyLabels }) {
   const t = content.run;
   const list = install[lang] || install.en;
   const cmdList = commands[lang] || commands.en;
@@ -12,7 +13,7 @@ export function Console({ content, commands, install, lang, copyLabels, onPickMo
   const tabsRef = useRef(null);
   const [marker, setMarker] = useState({ left: 0, width: 0 });
 
-  const active = useMemo(() => list.find((i) => i.id === activeId) || list[0], [list, activeId]);
+  const active = useMemo(() => list.find((i) => i.id === activeId) || list[0], [activeId, list]);
 
   useEffect(() => {
     const root = tabsRef.current;
@@ -25,7 +26,7 @@ export function Console({ content, commands, install, lang, copyLabels, onPickMo
   }, [activeId, list]);
 
   const onKeyDown = (event) => {
-    const index = list.findIndex((i) => i.id === activeId);
+    const index = list.findIndex((i) => i.id === active.id);
     let next = null;
     if (event.key === 'ArrowRight') next = (index + 1) % list.length;
     if (event.key === 'ArrowLeft') next = (index - 1 + list.length) % list.length;
@@ -40,36 +41,31 @@ export function Console({ content, commands, install, lang, copyLabels, onPickMo
     <section id="run" className="w-full py-[var(--section-gap)]">
       <div className="max-w-container mx-auto px-[var(--gutter)]">
         <Reveal>
-          <SectionHeader kicker={t.kicker} title={t.title} note={t.subtitle} aside={<p className="text-sm text-muted max-w-[52ch]">{t.requirements}</p>} />
+          <SectionHeader
+            kicker={t.kicker}
+            title={t.title}
+            note={t.subtitle}
+            aside={<p className="text-sm text-muted max-w-[52ch]">{t.requirements}</p>}
+          />
         </Reveal>
 
-        <Reveal className="mt-[var(--space-xl)]">
-          <ul className="cmd-list m-0 p-0 list-none">
-            {cmdList.map((c) => (
-              <li key={c.cmd} className="cmd-list__row">
-                <code className="cmd-list__cmd">{c.cmd}</code>
-                <button
-                  type="button"
-                  onClick={() => onPickModule?.(c.module)}
-                  className="chip chip--tiny chip--link cmd-list__owner"
-                >
-                  {c.module}
-                </button>
-                <span className="cmd-list__desc">{c.desc}</span>
+        <RevealGroup as="ul" className="cmd-grid mt-[var(--space-xl)]">
+            {cmdList.map((cmd, index) => (
+              <li key={cmd} className="cmd-grid__row" style={{ '--i': index }}>
+                <code className="cmd-grid__cmd">{cmd}</code>
                 <CopyChip
-                  value={c.cmd}
+                  value={cmd}
                   label={t.copyCmd}
                   copiedLabel={t.copiedCmd}
                   failedLabel={t.failedCmd}
-                  className="cmd-list__copy chip--tight"
+                  className="chip--tight"
                   compact
                 />
               </li>
             ))}
-          </ul>
-        </Reveal>
+        </RevealGroup>
 
-        <Reveal className="mt-[var(--section-gap-l)]" delay={60}>
+        <Reveal className="mt-[var(--section-gap)]" delay={60}>
           <h3 className="text-title text-ink">{t.installTitle}</h3>
 
           <div className="mt-[var(--space-lg)]">
