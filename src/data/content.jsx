@@ -1,87 +1,10 @@
 import { DOCS_EN, DOCS_RU } from './docs.jsx';
 
-const COMMANDS_EN = [
-  '.help',
-  '.ping',
-  '.dash',
-  '.addaccount',
-  '.shield',
-  '.config',
-  '.backup',
-  '.restart',
-];
-
-const COMMANDS_RU = [
-  '.help',
-  '.ping',
-  '.dash',
-  '.addaccount',
-  '.shield',
-  '.config',
-  '.backup',
-  '.restart',
-];
-
-const INSTALL_EN = [
-  {
-    id: 'script',
-    label: 'Installer',
-    note: 'Setup wizard: packages, credentials, deployment.',
-    code: 'curl -fsSL https://raw.githubusercontent.com/HotaruProject/Hotaru/main/install.sh | bash',
-  },
-  {
-    id: 'compose',
-    label: 'Docker Compose',
-    note: 'The sandbox is already wired into the manifests.',
-    code: 'git clone -b develop https://github.com/HotaruProject/Hotaru.git\ncd Hotaru\ndocker compose run --rm hotaru\ndocker compose up -d',
-  },
-  {
-    id: 'lxc',
-    label: 'Proxmox LXC',
-    note: 'A container with unconfined nesting.',
-    code: 'git clone -b develop https://github.com/HotaruProject/Hotaru.git\ncd Hotaru\nbash lxc/create.sh',
-  },
-  {
-    id: 'manual',
-    label: 'Manual with uv',
-    note: 'Clone, sync, run the wizard.',
-    code: 'git clone -b develop https://github.com/HotaruProject/Hotaru.git\ncd Hotaru\nuv sync\nuv run python -m hotaru',
-  },
-];
-
-const INSTALL_RU = [
-  {
-    id: 'script',
-    label: 'Установщик',
-    note: 'Мастер: пакеты, данные Telegram, развёртывание.',
-    code: 'curl -fsSL https://raw.githubusercontent.com/HotaruProject/Hotaru/main/install.sh | bash',
-  },
-  {
-    id: 'compose',
-    label: 'Docker Compose',
-    note: 'Песочница уже встроена в манифесты.',
-    code: 'git clone -b develop https://github.com/HotaruProject/Hotaru.git\ncd Hotaru\ndocker compose run --rm hotaru\ndocker compose up -d',
-  },
-  {
-    id: 'lxc',
-    label: 'Proxmox LXC',
-    note: 'Контейнер с unconfined nesting.',
-    code: 'git clone -b develop https://github.com/HotaruProject/Hotaru.git\ncd Hotaru\nbash lxc/create.sh',
-  },
-  {
-    id: 'manual',
-    label: 'Вручную через uv',
-    note: 'Клонировать, собрать окружение, запустить мастер.',
-    code: 'git clone -b develop https://github.com/HotaruProject/Hotaru.git\ncd Hotaru\nuv sync\nuv run python -m hotaru',
-  },
-];
-
 export const CONTENT = {
   en: {
     nav: {
       architecture: 'Sandbox',
       modules: 'Modules',
-      run: 'Run',
       docs: 'Manual',
       skill: 'Agent guide',
       downloadSkill: 'Download guide',
@@ -134,16 +57,6 @@ export const CONTENT = {
       failedBtn: 'Copy failed',
       pickLabel: 'Show the manifest of',
     },
-    run: {
-      kicker: 'Run',
-      title: 'Commands and install',
-      subtitle: 'Eight commands. Four ways to install.',
-      installTitle: 'Install',
-      copyCmd: 'Copy the command',
-      copiedCmd: 'Copied',
-      failedCmd: 'Copy failed',
-      requirements: 'Linux x86_64 or aarch64 · Python 3.13 · uv',
-    },
     docs: {
       title: 'Developer manual',
       subtitle: 'How to write a .hmod and run it in Telegram.',
@@ -178,7 +91,6 @@ export const CONTENT = {
     nav: {
       architecture: 'Песочница',
       modules: 'Модули',
-      run: 'Запуск',
       docs: 'Руководство',
       skill: 'Инструкция для ИИ',
       downloadSkill: 'Скачать инструкцию',
@@ -231,16 +143,6 @@ export const CONTENT = {
       failedBtn: 'Не скопировано',
       pickLabel: 'Показать манифест',
     },
-    run: {
-      kicker: 'Запуск',
-      title: 'Команды и установка',
-      subtitle: 'Восемь команд. Четыре способа установки.',
-      installTitle: 'Установка',
-      copyCmd: 'Скопировать команду',
-      copiedCmd: 'Скопировано',
-      failedCmd: 'Не скопировано',
-      requirements: 'Linux x86_64 или aarch64 · Python 3.13 · uv',
-    },
     docs: {
       title: 'Руководство разработчика',
       subtitle: 'Как написать .hmod и запустить его в Telegram.',
@@ -273,5 +175,3 @@ export const CONTENT = {
   },
 };
 
-export const commands = { en: COMMANDS_EN, ru: COMMANDS_RU };
-export const install = { en: INSTALL_EN, ru: INSTALL_RU };

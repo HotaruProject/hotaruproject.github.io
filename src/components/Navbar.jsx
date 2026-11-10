@@ -26,7 +26,6 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   const links = [
     { id: 'architecture', label: t.architecture },
     { id: 'modules', label: t.modules },
-    { id: 'run', label: t.run },
   ];
 
   useEffect(() => {
@@ -60,7 +59,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   }, [mobileOpen]);
 
   useEffect(() => {
-    const ids = ['architecture', 'modules', 'run', 'documentation', 'skill'];
+    const ids = ['architecture', 'modules', 'documentation', 'skill'];
     const nodes = ids.map((id) => document.getElementById(id)).filter(Boolean);
     if (!nodes.length || typeof IntersectionObserver === 'undefined') return undefined;
     const observer = new IntersectionObserver(
