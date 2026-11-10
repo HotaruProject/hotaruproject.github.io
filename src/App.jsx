@@ -3,12 +3,11 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { Jail } from './components/Jail';
 import { Modules } from './components/Modules';
-import { Console } from './components/Console';
 import { Documentation } from './components/Documentation';
 import { Skill } from './components/Skill';
 import { Footer } from './components/Footer';
 import { FumadocsView } from './components/FumadocsView';
-import { CONTENT, commands, install } from './data/content.jsx';
+import { CONTENT } from './data/content.jsx';
 
 export function App() {
   const [lang, setLang] = useState('en');
@@ -67,13 +66,6 @@ export function App() {
         <Hero content={currentContent} lang={lang} onOpenDocs={openDocs} />
         <Jail content={currentContent} />
         <Modules content={currentContent} lang={lang} moduleId={moduleId} onPickModule={setModuleId} />
-        <Console
-          content={currentContent}
-          commands={commands}
-          install={install}
-          lang={lang}
-          copyLabels={currentContent.hero}
-        />
         <Documentation content={currentContent} lang={lang} onOpenDocs={openDocs} />
         <Skill content={currentContent} copyLabels={currentContent.hero} />
       </main>
