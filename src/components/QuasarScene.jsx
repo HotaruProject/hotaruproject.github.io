@@ -109,7 +109,8 @@ vec4 sampleDisk(vec3 hit, vec3 rayDir) {
 
   vec3 diskVelocity = normalize(vec3(-hit.z, 0.0, hit.x));
   float doppler = dot(diskVelocity, -rayDir);
-  float dopplerFactor = pow(clamp(1.0 + 0.62 * doppler, 0.15, 2.7), 3.5);
+  float dop = clamp(1.0 + 0.62 * doppler, 0.15, 2.7);
+  float dopplerFactor = dop * dop * dop * sqrt(dop);
 
   vec3 colHot = vec3(1.35, 1.40, 1.48);
   vec3 colMid = vec3(0.96, 0.98, 1.05);
@@ -147,14 +148,14 @@ vec3 traceScene(vec2 uv) {
   float minR = 1000.0;
   int diskCrossings = 0;
 
-  for (int i = 0; i < 360; i++) {
+  for (int i = 0; i < 300; i++) {
     vec3 prevPos = pos;
     float r = length(pos);
     minR = min(minR, r);
 
     float dt = clamp(r * 0.042, 0.005, 0.85);
     float r2safe = max(dot(pos, pos), 0.55);
-    vec3 acc = -1.65 * h2 * pos / pow(r2safe, 2.5);
+    vec3 acc = -1.65 * h2 * pos / (r2safe * r2safe * sqrt(r2safe));
     dir = normalize(dir + acc * dt);
     pos += dir * dt;
 
@@ -294,7 +295,7 @@ function defaultFrame() {
   return { right, up, back };
 }
 
-const QUALITY = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8];
+const QUALITY = [0.8, 0.9, 1.0];
 
 const LABELS = {
   en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
@@ -357,8 +358,7 @@ export function QuasarScene({ lang = 'en' }) {
     });
     const sceneT = makeTarget(gl);
 
-    const coarse = window.matchMedia('(pointer: coarse)').matches;
-    let quality = coarse ? 1 : 2;
+    let quality = QUALITY.length - 1;
     let frameSum = 0;
     let frameCount = 0;
     let lastDraw = 0;
@@ -394,9 +394,8 @@ export function QuasarScene({ lang = 'en' }) {
         frameCount++;
         if (frameCount === 20) {
           const avg = frameSum / frameCount;
-          if (avg > 34 && quality > 0) quality--;
-          else if (avg > 21 && quality > 1) quality--;
-          else if (avg < 17.5 && quality < QUALITY.length - 1) quality++;
+          if (avg > 45 && quality > 0) quality--;
+          else if (avg < 26 && quality < QUALITY.length - 1) quality++;
           frameSum = 0;
           frameCount = 0;
         }
@@ -405,9 +404,9 @@ export function QuasarScene({ lang = 'en' }) {
 
       const rect = canvas.getBoundingClientRect();
       const isMobile = rect.width < 768;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const outW = Math.max(1, Math.round(rect.width * Math.min(dpr, 1.5)));
-      const outH = Math.max(1, Math.round(rect.height * Math.min(dpr, 1.5)));
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const outW = Math.max(1, Math.round(rect.width * dpr));
+      const outH = Math.max(1, Math.round(rect.height * dpr));
       const sw = Math.max(1, Math.round(rect.width * dpr * QUALITY[quality]));
       const sh = Math.max(1, Math.round(rect.height * dpr * QUALITY[quality]));
 
