@@ -1,23 +1,36 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CopyBlock } from './CopyBlock';
+import { CopyChip } from './CopyChip.jsx';
 import { SectionHeader } from './SectionHeader';
+import { Reveal } from './Reveal.jsx';
 
-export function Console({ content, commands, install, lang, copyLabels }) {
+export function Console({ content, commands, install, lang, copyLabels, onPickModule }) {
   const t = content.run;
   const list = install[lang] || install.en;
   const cmdList = commands[lang] || commands.en;
   const [activeId, setActiveId] = useState(list[0].id);
   const tabsRef = useRef(null);
+  const [marker, setMarker] = useState({ left: 0, width: 0 });
 
   const active = useMemo(() => list.find((i) => i.id === activeId) || list[0], [list, activeId]);
 
-  const onKeyDown = (e) => {
+  useEffect(() => {
+    const root = tabsRef.current;
+    const button = root?.querySelector('[aria-selected="true"]');
+    if (!root || !button) return undefined;
+    const update = () => setMarker({ left: button.offsetLeft, width: button.offsetWidth });
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [activeId, list]);
+
+  const onKeyDown = (event) => {
     const index = list.findIndex((i) => i.id === activeId);
     let next = null;
-    if (e.key === 'ArrowRight') next = (index + 1) % list.length;
-    if (e.key === 'ArrowLeft') next = (index - 1 + list.length) % list.length;
+    if (event.key === 'ArrowRight') next = (index + 1) % list.length;
+    if (event.key === 'ArrowLeft') next = (index - 1 + list.length) % list.length;
     if (next === null) return;
-    e.preventDefault();
+    event.preventDefault();
     setActiveId(list[next].id);
     const buttons = tabsRef.current?.querySelectorAll('[role="tab"]');
     buttons?.[next]?.focus();
@@ -26,22 +39,46 @@ export function Console({ content, commands, install, lang, copyLabels }) {
   return (
     <section id="run" className="w-full py-[var(--section-gap)]">
       <div className="max-w-container mx-auto px-[var(--gutter)]">
-        <SectionHeader kicker={t.kicker} title={t.title} note={t.subtitle} aside={<p className="text-sm text-muted max-w-[52ch]">{t.requirements}</p>} />
+        <Reveal>
+          <SectionHeader kicker={t.kicker} title={t.title} note={t.subtitle} aside={<p className="text-sm text-muted max-w-[52ch]">{t.requirements}</p>} />
+        </Reveal>
 
-        <ul className="cmd-list mt-[var(--space-2xl)] m-0 p-0 list-none">
-          {cmdList.map((c) => (
-            <li key={c.cmd} className="cmd-list__row">
-              <code className="cmd-list__cmd">{c.cmd}</code>
-              <span className="cmd-list__desc">{c.desc}</span>
-            </li>
-          ))}
-        </ul>
+        <Reveal className="mt-[var(--space-xl)]">
+          <ul className="cmd-list m-0 p-0 list-none">
+            {cmdList.map((c) => (
+              <li key={c.cmd} className="cmd-list__row">
+                <code className="cmd-list__cmd">{c.cmd}</code>
+                <button
+                  type="button"
+                  onClick={() => onPickModule?.(c.module)}
+                  className="chip chip--tiny chip--link cmd-list__owner"
+                >
+                  {c.module}
+                </button>
+                <span className="cmd-list__desc">{c.desc}</span>
+                <CopyChip
+                  value={c.cmd}
+                  label={t.copyCmd}
+                  copiedLabel={t.copiedCmd}
+                  failedLabel={t.failedCmd}
+                  className="cmd-list__copy chip--tight"
+                  compact
+                />
+              </li>
+            ))}
+          </ul>
+        </Reveal>
 
-        <div className="mt-[var(--section-gap-l)]">
+        <Reveal className="mt-[var(--section-gap-l)]" delay={60}>
           <h3 className="text-title text-ink">{t.installTitle}</h3>
 
           <div className="mt-[var(--space-lg)]">
             <div className="install-tabs" role="tablist" aria-label={t.installTitle} ref={tabsRef} onKeyDown={onKeyDown}>
+              <span
+                className="install-tabs__marker"
+                style={{ transform: `translateX(${marker.left}px)`, width: `${marker.width}px` }}
+                aria-hidden="true"
+              />
               {list.map((item) => (
                 <button
                   key={item.id}
@@ -65,6 +102,7 @@ export function Console({ content, commands, install, lang, copyLabels }) {
               id={`install-panel-${active.id}`}
               aria-labelledby={`install-tab-${active.id}`}
               tabIndex={0}
+              key={active.id}
             >
               <p className="install-panel__note">{active.note}</p>
               <CopyBlock
@@ -74,7 +112,7 @@ export function Console({ content, commands, install, lang, copyLabels }) {
               />
             </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

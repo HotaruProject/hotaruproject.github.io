@@ -7,10 +7,11 @@ import { Console } from './components/Console';
 import { Documentation } from './components/Documentation';
 import { Footer } from './components/Footer';
 import { FumadocsView } from './components/FumadocsView';
-import { CONTENT, modules, capabilities, commands, install } from './data/content.js';
+import { CONTENT, commands, install } from './data/content.js';
 
 export function App() {
   const [lang, setLang] = useState('en');
+  const [moduleId, setModuleId] = useState('info');
   const [view, setView] = useState(() => (window.location.hash.startsWith('#docs') ? 'docs' : 'home'));
   const currentContent = CONTENT[lang] || CONTENT.en;
 
@@ -29,6 +30,12 @@ export function App() {
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
+
+  const pickModule = (id) => {
+    setModuleId(id);
+    const target = document.getElementById('modules');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const openDocs = (target) => {
     window.location.hash = target === 'catalog' ? '#docs-catalog' : '#docs';
@@ -63,14 +70,15 @@ export function App() {
       />
       <main className="flex-grow w-full">
         <Hero content={currentContent} lang={lang} onOpenDocs={openDocs} />
-        <Jail content={currentContent} capabilities={capabilities} lang={lang} />
-        <Modules content={currentContent} modules={modules} lang={lang} />
+        <Jail content={currentContent} lang={lang} onPickModule={pickModule} />
+        <Modules content={currentContent} lang={lang} moduleId={moduleId} onPickModule={setModuleId} />
         <Console
           content={currentContent}
           commands={commands}
           install={install}
           lang={lang}
           copyLabels={currentContent.hero}
+          onPickModule={pickModule}
         />
         <Documentation content={currentContent} lang={lang} onOpenDocs={openDocs} />
       </main>

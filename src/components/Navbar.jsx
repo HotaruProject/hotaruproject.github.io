@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BookOpen, Menu, X, Download } from 'lucide-react';
 import { GithubIcon } from './GithubIcon';
 
@@ -17,7 +17,41 @@ export function LangSwitch({ lang, setLang }) {
 
 export function Navbar({ lang, setLang, content, onOpenDocs }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [section, setSection] = useState('');
   const t = content.nav;
+
+  useEffect(() => {
+    const ids = ['architecture', 'modules', 'run', 'documentation'];
+    const nodes = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    if (!nodes.length || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) setSection(visible.target.id);
+      },
+      { rootMargin: '-45% 0px -45% 0px', threshold: [0, 0.2, 0.6, 1] }
+    );
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - doc.clientHeight;
+      setProgress(max > 0 ? Math.min(1, doc.scrollTop / max) : 0);
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
 
   const scrollTo = (id) => {
     setMobileOpen(false);
@@ -56,7 +90,13 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
 
         <nav className="hidden md:flex items-center gap-[var(--space-2xs)]" aria-label="Primary">
           {links.map((l) => (
-            <button key={l.id} type="button" onClick={() => scrollTo(l.id)} className="tab">
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => scrollTo(l.id)}
+              aria-current={section === l.id ? 'true' : undefined}
+              className="tab"
+            >
               {l.label}
             </button>
           ))}
@@ -99,12 +139,20 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
             {mobileOpen ? <X aria-hidden="true" className="w-5 h-5" /> : <Menu aria-hidden="true" className="w-5 h-5" />}
           </button>
         </div>
+
+        <span className="nav-progress" style={{ transform: `scaleX(${progress})` }} aria-hidden="true" />
       </div>
 
       {mobileOpen && (
         <div className="pointer-events-auto mt-[var(--space-xs)] max-w-[64rem] mx-auto rounded-input bg-paper-2 p-[var(--space-md)] flex flex-col gap-[var(--space-2xs)]">
           {links.map((l) => (
-            <button key={l.id} type="button" onClick={() => scrollTo(l.id)} className="tab text-left text-md min-h-[44px]">
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => scrollTo(l.id)}
+              aria-current={section === l.id ? 'true' : undefined}
+              className="tab text-left text-md min-h-[44px]"
+            >
               {l.label}
             </button>
           ))}

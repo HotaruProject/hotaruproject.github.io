@@ -53,25 +53,25 @@ const CAPABILITIES_RU = [
 ];
 
 const COMMANDS_EN = [
-  { cmd: '.help', desc: 'Open the interactive module catalog and help cards' },
-  { cmd: '.ping', desc: 'Check MTProto gateway latency and connection health' },
-  { cmd: '.dash', desc: 'Generate the Singularity panel link and launch the Telegram Mini App' },
-  { cmd: '.addaccount', desc: 'Add another Telegram account to the supervisor pool' },
-  { cmd: '.shield', desc: 'View API call rates and adjust FloodWait protection' },
-  { cmd: '.config', desc: 'Open the interactive runtime settings editor' },
-  { cmd: '.backup', desc: 'Create an encrypted backup archive of state and sessions' },
-  { cmd: '.restart', desc: 'Reload kernel processes and active modules' },
+  { cmd: '.help', module: 'help', desc: 'Open the interactive module catalog and help cards' },
+  { cmd: '.ping', module: 'info', desc: 'Check MTProto gateway latency and connection health' },
+  { cmd: '.dash', module: 'singularity', desc: 'Generate the Singularity panel link and launch the Telegram Mini App' },
+  { cmd: '.addaccount', module: 'accounts', desc: 'Add another Telegram account to the supervisor pool' },
+  { cmd: '.shield', module: 'shield', desc: 'View API call rates and adjust FloodWait protection' },
+  { cmd: '.config', module: 'settings', desc: 'Open the interactive runtime settings editor' },
+  { cmd: '.backup', module: 'backups', desc: 'Create an encrypted backup archive of state and sessions' },
+  { cmd: '.restart', module: 'power', desc: 'Reload kernel processes and active modules' },
 ];
 
 const COMMANDS_RU = [
-  { cmd: '.help', desc: 'Открыть интерактивный каталог модулей и карточки команд' },
-  { cmd: '.ping', desc: 'Проверить задержку шлюза MTProto и состояние соединения' },
-  { cmd: '.dash', desc: 'Собрать ссылку на панель Singularity и открыть Mini App' },
-  { cmd: '.addaccount', desc: 'Добавить ещё один аккаунт Telegram в пул супервизора' },
-  { cmd: '.shield', desc: 'Посмотреть частоту вызовов API и настроить защиту от флуда' },
-  { cmd: '.config', desc: 'Открыть интерактивный редактор настроек рантайма' },
-  { cmd: '.backup', desc: 'Создать зашифрованный архив состояния и сессий' },
-  { cmd: '.restart', desc: 'Перезапустить процессы ядра и активные модули' },
+  { cmd: '.help', module: 'help', desc: 'Открыть интерактивный каталог модулей и карточки команд' },
+  { cmd: '.ping', module: 'info', desc: 'Проверить задержку шлюза MTProto и состояние соединения' },
+  { cmd: '.dash', module: 'singularity', desc: 'Собрать ссылку на панель Singularity и открыть Mini App' },
+  { cmd: '.addaccount', module: 'accounts', desc: 'Добавить ещё один аккаунт Telegram в пул супервизора' },
+  { cmd: '.shield', module: 'shield', desc: 'Посмотреть частоту вызовов API и настроить защиту от флуда' },
+  { cmd: '.config', module: 'settings', desc: 'Открыть интерактивный редактор настроек рантайма' },
+  { cmd: '.backup', module: 'backups', desc: 'Создать зашифрованный архив состояния и сессий' },
+  { cmd: '.restart', module: 'power', desc: 'Перезапустить процессы ядра и активные модули' },
 ];
 
 const INSTALL_EN = [
@@ -153,12 +153,7 @@ export const CONTENT = {
       ctaDocs: 'Read the manual',
       ctaSkill: 'Agent guide',
       ctaGithub: 'Source code',
-      facts: [
-        { value: '292', label: 'MTProto methods' },
-        { value: '15', label: 'bundled modules' },
-        { value: '5', label: 'capability gates' },
-        { value: 'AGPL', label: '3.0 licensed' },
-      ],
+      spec: ['292 MTProto methods', '15 modules', '5 capability gates', 'AGPL-3.0'],
     },
     jail: {
       kicker: 'Isolation',
@@ -194,6 +189,12 @@ export const CONTENT = {
         vault: 'Encrypted vault',
         vaultSub: 'AES-GCM · sanctuary/hotaru.vault',
         caption: 'A module reaches the network only if its manifest asks for it.',
+        details: {
+          telegram: 'The account and its session. It never crosses into the worker.',
+          kernel: 'Python 3.13 and the GoyGram core. It holds the session keys and the vault.',
+          vault: 'AES-GCM encrypted, stored in the sanctuary. The kernel is the only reader.',
+          worker: 'A separate process with its own namespaces, its own tmpfs and no owner.',
+        },
       },
     },
     capabilities: {
@@ -201,18 +202,27 @@ export const CONTENT = {
       subtitle: 'A module declares what it needs. The kernel decides what it gets, the jail enforces it.',
       aside: 'The kernel knows ten capabilities. logs and fetch are granted to every module, the other eight have to be declared.',
       cols: { id: 'capability', grant: 'grants', enforce: 'enforced by' },
+      usedBy: 'declared by',
     },
     modules: {
       kicker: 'Modules',
       title: 'Fifteen constellations',
       subtitle: 'A self describing .hmod file with a manifest, its own commands and a capability list.',
       note: 'Versions from the develop branch.',
+      manifestTitle: 'manifest',
+      copyBtn: 'Copy',
+      copiedBtn: 'Copied',
+      failedBtn: 'Copy failed',
+      pickLabel: 'Show the manifest of',
     },
     run: {
       kicker: 'Run it',
       title: 'Eight commands, one install line',
       subtitle: 'Commands are sent from your own account in any chat. The prefix is configurable.',
       installTitle: 'Four ways to install',
+      copyCmd: 'Copy the command',
+      copiedCmd: 'Copied',
+      failedCmd: 'Copy failed',
       requirements: 'Linux x86_64 or aarch64 · Python 3.13 · API ID and API Hash from my.telegram.org · a BotFather token · uv',
     },
     docs: {
@@ -274,12 +284,7 @@ export const CONTENT = {
       ctaDocs: 'Открыть руководство',
       ctaSkill: 'Инструкция для ИИ',
       ctaGithub: 'Исходный код',
-      facts: [
-        { value: '292', label: 'методов MTProto' },
-        { value: '15', label: 'модулей в комплекте' },
-        { value: '5', label: 'властей разрешений' },
-        { value: 'AGPL', label: 'лицензия 3.0' },
-      ],
+      spec: ['292 метода MTProto', '15 модулей', '5 властей разрешений', 'AGPL-3.0'],
     },
     jail: {
       kicker: 'Изоляция',
@@ -315,6 +320,12 @@ export const CONTENT = {
         vault: 'Зашифрованное хранилище',
         vaultSub: 'AES-GCM · sanctuary/hotaru.vault',
         caption: 'Модуль выходит в сеть только если его манифест этого попросил.',
+        details: {
+          telegram: 'Аккаунт и его сессия. В воркер они не попадают никогда.',
+          kernel: 'Python 3.13 и ядро GoyGram. Держит ключи сессии и хранилище.',
+          vault: 'Шифрование AES-GCM, лежит в sanctuary. Читает его только ядро.',
+          worker: 'Отдельный процесс со своими namespace, своим tmpfs и без владельца.',
+        },
       },
     },
     capabilities: {
@@ -322,18 +333,27 @@ export const CONTENT = {
       subtitle: 'Модуль запрашивает права. Ядро решает, что дать, тюрьма принуждает.',
       aside: 'Ядро знает десять возможностей. logs и fetch выдаются каждому модулю, остальные восемь нужно объявить.',
       cols: { id: 'возможность', grant: 'что даёт', enforce: 'чем принуждается' },
+      usedBy: 'объявляют',
     },
     modules: {
       kicker: 'Модули',
       title: 'Пятнадцать созвездий',
       subtitle: 'Самостоятельный файл .hmod с манифестом, своими командами и списком разрешений.',
       note: 'Версии из ветки develop.',
+      manifestTitle: 'манифест',
+      copyBtn: 'Копировать',
+      copiedBtn: 'Скопировано',
+      failedBtn: 'Не удалось скопировать',
+      pickLabel: 'Показать манифест модуля',
     },
     run: {
       kicker: 'Запуск',
       title: 'Восемь команд, одна строка установки',
       subtitle: 'Команды отправляются от вашего аккаунта в любом чате. Префикс настраивается.',
       installTitle: 'Четыре способа установки',
+      copyCmd: 'Скопировать команду',
+      copiedCmd: 'Скопировано',
+      failedCmd: 'Не удалось скопировать',
       requirements: 'Linux x86_64 или aarch64 · Python 3.13 · API ID и API Hash с my.telegram.org · токен от BotFather · uv',
     },
     docs: {
