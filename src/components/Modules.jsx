@@ -3,6 +3,7 @@ import { SectionHeader } from './SectionHeader';
 import { Reveal } from './Reveal.jsx';
 import { CopyChip } from './CopyChip.jsx';
 import { MODULES, manifestOf } from '../data/modules.jsx';
+import { codeText } from '../lib/codeText.jsx';
 
 export function Modules({ content, lang, moduleId, onPickModule }) {
   const t = content.modules;
@@ -114,7 +115,7 @@ export function Modules({ content, lang, moduleId, onPickModule }) {
               />
             </figcaption>
             <pre className="manifest__code" tabIndex={0}>
-              <code>{manifest}</code>
+              <code>{codeText(manifest)}</code>
             </pre>
           </figure>
         </Reveal>
