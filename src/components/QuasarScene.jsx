@@ -302,15 +302,24 @@ function defaultFrame() {
 }
 
 const QUALITY = [0.8, 0.9, 1.0];
+const COMPACT_HEIGHT = 560;
+const FIT_H = 0.4836;
+const FIT_W = 0.7077;
+const TILT_BASE = 0.3986;
+const TILT_GROW = 0.4111;
+const PITCH_MIN = -0.62;
+const PITCH_MAX = 0.62;
 
 const LABELS = {
   en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
   ru: { hint: 'Тяните, чтобы повернуть в любую сторону, щипок или Ctrl и колесо для зума', reset: 'Сбросить вид' },
 };
 
-export function QuasarScene({ lang = 'en' }) {
+export function QuasarScene({ lang = 'en', copyRef = null }) {
   const labels = LABELS[lang] || LABELS.en;
   const canvasRef = useRef(null);
+  const layoutRef = useRef({ ready: false, scale: 1, eyeY: 0, room: 1, compact: false });
+  const rectRef = useRef({ width: 0, height: 0, top: 0, left: 0 });
   const stateRef = useRef({
     ...defaultFrame(),
     dist: DEFAULT_DIST,
@@ -319,8 +328,73 @@ export function QuasarScene({ lang = 'en' }) {
     lastY: 0,
     velX: 0,
     velY: 0,
+    fit: 1,
     hole: { x: 0, y: 0, r: 0 },
   });
+
+  useEffect(() => {
+    const measure = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const canvasW = canvasRect.width;
+      const canvasH = canvasRect.height;
+      rectRef.current = {
+        width: canvasW,
+        height: canvasH,
+        top: canvasRect.top,
+        left: canvasRect.left,
+      };
+      const compact = window.innerHeight < COMPACT_HEIGHT;
+      if (canvasW >= 768 && !compact) {
+        layoutRef.current = { ready: false, scale: 1, eyeY: 0, room: 1, compact: false };
+        return;
+      }
+      const scrollY = window.scrollY;
+      const canvasDocTop = canvasRect.top + scrollY;
+      const navHead = document.querySelector('.nav-head');
+      const pill = document.querySelector('.nav-pill');
+      let plateBottom = 68;
+      if (navHead && pill) {
+        const headTop = parseFloat(getComputedStyle(navHead).top);
+        const pillH = pill.getBoundingClientRect().height;
+        plateBottom = (Number.isFinite(headTop) ? headTop : 0) + pillH;
+      }
+      const copy = copyRef ? copyRef.current : null;
+      const copyDocTop = copy
+        ? copy.getBoundingClientRect().top + scrollY
+        : canvasDocTop + canvasH * 0.44;
+      const band = Math.max(60, copyDocTop - plateBottom);
+      const gap = compact ? 16 : 26;
+      const room = Math.max(46, band - gap * 2);
+      const minCss = Math.min(canvasW, canvasH);
+      let scale = (FIT_H * minCss) / room;
+      const widthLimit = (FIT_W * minCss) / Math.max(1, canvasW - 48);
+      if (scale < widthLimit) scale = widthLimit;
+      if (scale < 0.9) scale = 0.9;
+      if (scale > 3.4) scale = 3.4;
+      layoutRef.current = {
+        ready: true,
+        scale,
+        room,
+        eyeY: plateBottom + band / 2 - canvasDocTop,
+        compact,
+      };
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (observer) {
+      if (canvasRef.current) observer.observe(canvasRef.current);
+      if (copyRef && copyRef.current) observer.observe(copyRef.current);
+    }
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      if (observer) observer.disconnect();
+    };
+  }, [copyRef]);
 
   const resetCamera = useCallback(() => {
     Object.assign(stateRef.current, defaultFrame(), { dist: DEFAULT_DIST, velX: 0, velY: 0 });
@@ -408,7 +482,7 @@ export function QuasarScene({ lang = 'en' }) {
       }
       lastDraw = now;
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = rectRef.current.width > 0 ? rectRef.current : canvas.getBoundingClientRect();
       const isMobile = rect.width < 768;
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
       const outW = Math.max(1, Math.round(rect.width * dpr));
@@ -438,15 +512,33 @@ export function QuasarScene({ lang = 'en' }) {
       let center;
       let scale;
       const minCss = Math.min(rect.width, rect.height);
-      if (isMobile) {
-        center = [0.5, 0.8];
-        scale = 1.0;
+      const layout = layoutRef.current;
+      if (isMobile || layout.compact) {
+        if (layout.ready) {
+          scale = layout.scale;
+          center = [0.5, 1 - layout.eyeY / rect.height];
+        } else {
+          center = [0.5, 0.7];
+          scale = 1.0;
+        }
       } else {
         const cssW = rect.width;
-        const textRight = Math.max(0, (cssW - 1440) / 2) + 760;
-        const free = Math.max(cssW - textRight, 240);
+        let textRight = 760;
+        if (cssW >= 1440) textRight = (cssW - 1440) / 2 + 760;
+        else if (cssW < 1280) textRight = Math.min(760, cssW * 0.58);
+        const free = Math.max(cssW - textRight, 200);
         scale = Math.max(0.9, Math.min(1.8, (0.95 * minCss) / free));
         center = [(textRight + free / 2) / cssW, 0.5];
+      }
+      if ((isMobile || layout.compact) && layout.ready) {
+        const pitch = Math.asin(Math.max(-1, Math.min(1, st.back[1])));
+        const tilt = Math.abs(Math.sin(pitch));
+        const need = ((TILT_BASE + TILT_GROW * tilt) * minCss) / layout.room;
+        const target = Math.max(1, need / layout.scale);
+        st.fit += (target - st.fit) * Math.min(1, dt * 8);
+        scale *= st.fit;
+      } else {
+        st.fit = 1;
       }
       scale *= st.dist / DEFAULT_DIST;
 
@@ -491,6 +583,14 @@ export function QuasarScene({ lang = 'en' }) {
       back = norm(back);
       right = norm(cross(up, back));
       up = cross(back, right);
+      const pitch = Math.asin(Math.max(-1, Math.min(1, back[1])));
+      if (pitch > PITCH_MAX || pitch < PITCH_MIN) {
+        const target = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch));
+        back = norm(rotate(back, right, target - pitch));
+        right = norm(cross(up, back));
+        up = cross(back, right);
+        st.velY = 0;
+      }
       Object.assign(st, { right, up, back });
     };
 

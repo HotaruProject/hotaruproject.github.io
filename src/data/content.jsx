@@ -11,7 +11,7 @@ export const CONTENT = {
     },
     hero: {
       title: 'Hotaru',
-      subtitle: 'The manual for the Hotaru runtime and SKILL.md for agents that write modules.',
+      subtitle: 'The manual for the Hotaru runtime.',
       installTitle: 'Install',
       copiedTooltip: 'Copied to clipboard',
       copyBtn: 'Tap to copy',
@@ -97,7 +97,7 @@ export const CONTENT = {
     },
     hero: {
       title: 'Hotaru',
-      subtitle: 'Руководство по рантайму Hotaru и SKILL.md для агентов, которые пишут модули.',
+      subtitle: 'Руководство по рантайму Hotaru.',
       installTitle: 'Установка',
       copiedTooltip: 'Скопировано в буфер',
       copyBtn: 'Нажмите для копирования',
