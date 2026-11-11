@@ -368,7 +368,7 @@ section[id] {
 }
 
 .hero__body {
-  animation: fade-up 700ms var(--ease-out) backwards;
+  animation: fade-up 900ms var(--ease-reveal) backwards;
 }
 .hero__actions {
   display: flex;
@@ -459,10 +459,34 @@ section[id] {
   position: relative;
   z-index: 1;
 }
+@property --press {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
 @keyframes press-light {
-  0% { opacity: 0; animation-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1); }
-  6% { opacity: 1; animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
-  100% { opacity: 0; }
+  0% { --press: 0; animation-timing-function: cubic-bezier(0.12, 0.9, 0.24, 1); }
+  4% { --press: 1; animation-timing-function: cubic-bezier(0.5, 0, 0.7, 1); }
+  18% { --press: 0.52; animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+  46% { --press: 0.3; }
+  74% { --press: 0.15; }
+  100% { --press: 0; }
+}
+@keyframes press-ink {
+  0% { text-shadow: 0 0 12px oklch(100% 0 0 / 0), 0 0 26px oklch(100% 0 0 / 0); }
+  4% { text-shadow: 0 0 13px oklch(100% 0 0 / 0.50), 0 0 30px oklch(100% 0 0 / 0.32); }
+  18% { text-shadow: 0 0 11px oklch(100% 0 0 / 0.26), 0 0 26px oklch(100% 0 0 / 0.17); }
+  46% { text-shadow: 0 0 9px oklch(100% 0 0 / 0.15), 0 0 22px oklch(100% 0 0 / 0.10); }
+  74% { text-shadow: 0 0 8px oklch(100% 0 0 / 0.07), 0 0 18px oklch(100% 0 0 / 0.05); }
+  100% { text-shadow: 0 0 6px oklch(100% 0 0 / 0), 0 0 14px oklch(100% 0 0 / 0); }
+}
+@keyframes press-ink-dim {
+  0% { text-shadow: 0 0 10px oklch(100% 0 0 / 0), 0 0 22px oklch(100% 0 0 / 0); }
+  4% { text-shadow: 0 0 11px oklch(100% 0 0 / 0.38), 0 0 26px oklch(100% 0 0 / 0.22); }
+  18% { text-shadow: 0 0 10px oklch(100% 0 0 / 0.20), 0 0 22px oklch(100% 0 0 / 0.12); }
+  46% { text-shadow: 0 0 8px oklch(100% 0 0 / 0.11), 0 0 18px oklch(100% 0 0 / 0.07); }
+  74% { text-shadow: 0 0 7px oklch(100% 0 0 / 0.05), 0 0 15px oklch(100% 0 0 / 0.03); }
+  100% { text-shadow: 0 0 6px oklch(100% 0 0 / 0), 0 0 12px oklch(100% 0 0 / 0); }
 }
 :is(
   .btn,
@@ -476,12 +500,12 @@ section[id] {
   .toc-item,
   .pager,
   .mod-index__item,
-  .jail__node,
+  .jail__node:is(button),
   .jail__node-btn,
   .jail__vault,
   .copy-block__code,
-  .manifest,
-  .doc-code-block,
+  .doc-code,
+  .manifest__code,
   .doc-method__name
 ) {
   position: relative;
@@ -499,29 +523,22 @@ section[id] {
   .toc-item,
   .pager,
   .mod-index__item,
-  .jail__node,
+  .jail__node:is(button),
   .jail__node-btn,
   .jail__vault,
   .copy-block__code,
-  .manifest,
-  .doc-code-block,
+  .doc-code,
+  .manifest__code,
   .doc-method__name
 )::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: oklch(100% 0 0 / 0.075);
-  box-shadow:
-    0 0 18px 2px oklch(100% 0 0 / 0.22),
-    0 0 52px 10px oklch(100% 0 0 / 0.10),
-    inset 0 0 30px oklch(100% 0 0 / 0.05);
-  opacity: 0;
   pointer-events: none;
   z-index: -1;
-  transition: opacity 420ms var(--ease-out);
 }
-.is-lit:is(
+:is(
   .btn,
   .link,
   .link-arrow,
@@ -533,59 +550,129 @@ section[id] {
   .toc-item,
   .pager,
   .mod-index__item,
-  .jail__node,
+  .jail__node:is(button),
+  .jail__node-btn,
+  .jail__vault
+)::after {
+  background: oklch(100% 0 0 / calc(var(--press) * 0.26));
+  box-shadow:
+    0 0 24px 3px oklch(100% 0 0 / calc(var(--press) * 0.46)),
+    0 0 72px 18px oklch(100% 0 0 / calc(var(--press) * 0.2)),
+    inset 0 0 12px 1px oklch(100% 0 0 / calc(var(--press) * 0.28)),
+    inset 0 0 22px 2px oklch(100% 0 0 / calc(var(--press) * 0.18));
+}
+:is(
+  .copy-block__code,
+  .doc-code,
+  .manifest__code,
+  .doc-method__name
+)::after {
+  background: oklch(100% 0 0 / calc(var(--press) * 0.14));
+  box-shadow:
+    0 0 16px 2px oklch(100% 0 0 / calc(var(--press) * 0.24)),
+    0 0 46px 10px oklch(100% 0 0 / calc(var(--press) * 0.10)),
+    inset 0 0 10px 1px oklch(100% 0 0 / calc(var(--press) * 0.16));
+}
+[data-lit]:is(
+  .btn,
+  .link,
+  .link-arrow,
+  .tab,
+  .doc-seg__btn,
+  .doc-chip,
+  .doc-ghost,
+  .doc-select,
+  .toc-item,
+  .pager,
+  .mod-index__item,
+  .jail__node:is(button),
+  .jail__node-btn,
+  .jail__vault
+) {
+  animation: press-light 1500ms linear forwards, press-ink 1500ms linear forwards;
+  border-color: oklch(100% 0 0 / 0.55);
+}
+[data-lit]:is(
+  .copy-block__code,
+  .doc-code,
+  .manifest__code,
+  .doc-method__name
+) {
+  animation: press-light 1500ms linear forwards, press-ink-dim 1500ms linear forwards;
+  border-color: oklch(100% 0 0 / 0.38);
+}
+.surface-float,
+.doc-code-block,
+.manifest {
+  transition: border-color var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+}
+.surface-float:has([data-lit]) {
+  border-color: oklch(100% 0 0 / 0.44);
+  box-shadow:
+    0 26px 52px -32px oklch(0% 0 0 / 0.95),
+    0 0 36px 3px oklch(100% 0 0 / 0.24),
+    inset 0 1px 0 oklch(100% 0 0 / 0.16);
+}
+.doc-code-block:has([data-lit]),
+.manifest:has([data-lit]) {
+  border-color: oklch(100% 0 0 / 0.40);
+  box-shadow:
+    0 0 28px 2px oklch(100% 0 0 / 0.20),
+    inset 0 0 60px oklch(100% 0 0 / 0.05);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-lit]:is(
+  .btn,
+  .link,
+  .link-arrow,
+  .tab,
+  .doc-seg__btn,
+  .doc-chip,
+  .doc-ghost,
+  .doc-select,
+  .toc-item,
+  .pager,
+  .mod-index__item,
+  .jail__node:is(button),
   .jail__node-btn,
   .jail__vault,
   .copy-block__code,
-  .manifest,
-  .doc-code-block,
+  .doc-code,
+  .manifest__code,
   .doc-method__name
-)::after {
-  animation: press-light 1500ms linear forwards;
-}
-@media (prefers-reduced-motion: reduce) {
-  :is(
-    .btn,
-    .link-arrow,
-    .tab,
-    .doc-seg__btn,
-    .doc-chip,
-    .doc-ghost,
-    .doc-select,
-    .toc-item,
-    .pager,
-    .mod-index__item,
-    .jail__node,
-    .jail__node-btn,
-    .jail__vault,
-    .copy-block__code,
-    .manifest,
-    .doc-code-block,
-    .doc-method__name
-  )::after {
+  ) {
     animation: none !important;
-    transition: opacity 420ms var(--ease-out);
+    --press: 1;
   }
-  .is-lit:is(
-    .btn,
-    .link-arrow,
-    .tab,
-    .doc-seg__btn,
-    .doc-chip,
-    .doc-ghost,
-    .doc-select,
-    .toc-item,
-    .pager,
-    .mod-index__item,
-    .jail__node,
-    .jail__node-btn,
-    .jail__vault,
-    .copy-block__code,
-    .manifest,
-    .doc-code-block,
-    .doc-method__name
-  )::after {
-    opacity: 1;
+  [data-lit]:is(
+  .btn,
+  .link,
+  .link-arrow,
+  .tab,
+  .doc-seg__btn,
+  .doc-chip,
+  .doc-ghost,
+  .doc-select,
+  .toc-item,
+  .pager,
+  .mod-index__item,
+  .jail__node:is(button),
+  .jail__node-btn,
+  .jail__vault
+  ) {
+    text-shadow:
+      0 0 13px oklch(100% 0 0 / 0.50),
+      0 0 30px oklch(100% 0 0 / 0.32);
+  }
+  [data-lit]:is(
+  .copy-block__code,
+  .doc-code,
+  .manifest__code,
+  .doc-method__name
+  ) {
+    text-shadow:
+      0 0 11px oklch(100% 0 0 / 0.38),
+      0 0 26px oklch(100% 0 0 / 0.22);
   }
 }
 .copy-block--stacked .copy-block__head {
@@ -991,8 +1078,8 @@ main > section:not(:first-child) {
 
 .reveal {
   opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 1100ms var(--ease-reveal), transform 1100ms var(--ease-reveal);
+  transform: translateY(38px);
+  transition: opacity 1400ms var(--ease-reveal), transform 1400ms var(--ease-reveal);
   will-change: opacity, transform;
 }
 .reveal--shown {
@@ -1002,18 +1089,18 @@ main > section:not(:first-child) {
 }
 .reveal-group > * {
   opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 860ms var(--ease-reveal), transform 860ms var(--ease-reveal);
+  transform: translateY(22px);
+  transition: opacity 1000ms var(--ease-reveal), transform 1000ms var(--ease-reveal);
 }
 .reveal-group--shown > * {
   opacity: 1;
   transform: none;
-  transition-delay: calc((var(--i, 0) + var(--base, 0)) * 70ms);
+  transition-delay: calc((var(--i, 0) + var(--base, 0)) * 90ms);
 }
 
 .mod-card {
-  animation: card-in 620ms var(--ease-reveal) backwards;
-  animation-delay: calc(var(--index, 0) * 45ms);
+  animation: card-in 760ms var(--ease-reveal) backwards;
+  animation-delay: calc(var(--index, 0) * 60ms);
 }
 @keyframes card-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -1094,18 +1181,30 @@ main > section:not(:first-child) {
   to { opacity: 1; transform: none; }
 }
 .nav-sheet {
-  background: linear-gradient(180deg, oklch(16% 0 0), oklch(8% 0 0));
-  box-shadow: 0 0 90px oklch(0% 0 0 / 0.9);
-  animation: sheet-in 320ms var(--ease-out) backwards;
+  background: linear-gradient(180deg, oklch(19% 0 0), oklch(10% 0 0));
+  border: 1px solid oklch(100% 0 0 / 0.10);
+  box-shadow:
+    0 22px 44px -18px oklch(0% 0 0 / 0.92),
+    0 0 26px oklch(100% 0 0 / 0.06),
+    inset 0 1px 0 oklch(100% 0 0 / 0.08);
+  transform-origin: top right;
+  animation: sheet-in 280ms var(--ease-out) backwards;
 }
 @keyframes sheet-in {
-  from { opacity: 0; transform: translateY(-10px); }
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
   to { opacity: 1; transform: none; }
 }
+.nav-sheet--closing {
+  animation: sheet-out 200ms var(--ease-in) forwards;
+}
+@keyframes sheet-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-8px) scale(0.96); }
+}
 .nav-sheet .tab {
-  min-height: 52px;
-  border-bottom: 1px solid var(--color-rule);
-  border-radius: 0;
+  min-height: 42px;
+  border-bottom: 0;
+  border-radius: var(--radius-input);
 }
 .surface-float {
   padding: var(--space-md);

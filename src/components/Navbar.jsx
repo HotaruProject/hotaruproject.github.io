@@ -17,16 +17,35 @@ export function LangSwitch({ lang, setLang }) {
 
 export function Navbar({ lang, setLang, content, onOpenDocs }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileClosing, setMobileClosing] = useState(false);
   const [section, setSection] = useState('');
   const headRef = useRef(null);
   const progressRef = useRef(null);
   const menuOpen = useRef(false);
+  const closeTimer = useRef(0);
   const t = content.nav;
 
   const links = [
     { id: 'architecture', label: t.architecture },
     { id: 'modules', label: t.modules },
   ];
+
+  const openMenu = () => {
+    window.clearTimeout(closeTimer.current);
+    setMobileClosing(false);
+    setMobileOpen(true);
+  };
+
+  const closeMenu = () => {
+    setMobileClosing(true);
+    window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => {
+      setMobileOpen(false);
+      setMobileClosing(false);
+    }, 200);
+  };
+
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
     const head = headRef.current;
@@ -41,6 +60,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
       const delta = y - last;
       if (Math.abs(delta) < 6) return;
       last = y;
+      if (menuOpen.current) closeMenu();
       const narrow = window.innerWidth < 768;
       const next = narrow && y >= 96 && delta > 0;
       if (next === hidden) return;
@@ -76,7 +96,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   }, []);
 
   const scrollTo = (id) => {
-    setMobileOpen(false);
+    closeMenu();
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -84,7 +104,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   };
 
   const handleDocsClick = () => {
-    setMobileOpen(false);
+    closeMenu();
     if (onOpenDocs) {
       onOpenDocs();
     } else {
@@ -151,7 +171,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
 
             <button
               type="button"
-              onClick={() => setMobileOpen(!mobileOpen)}
+              onClick={() => (mobileOpen ? closeMenu() : openMenu())}
               className="md:hidden tab min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
               aria-label="Toggle menu"
               aria-expanded={mobileOpen}
@@ -165,41 +185,43 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
       </header>
 
       {mobileOpen && (
-        <div className="nav-sheet fixed inset-0 z-sticky px-[var(--gutter)] pt-[calc(var(--space-sm)+72px)] pb-[var(--space-xl)] flex flex-col gap-[var(--space-2xs)] overflow-y-auto">
+        <div
+          className={`nav-sheet fixed right-[var(--space-sm)] top-[calc(var(--space-sm)+64px)] z-sticky-nav w-[min(16.5rem,calc(100vw-2*var(--space-sm)))] rounded-input p-[var(--space-2xs)] flex flex-col gap-[2px] ${mobileClosing ? 'nav-sheet--closing' : ''}`}
+        >
           {links.map((l) => (
             <button
               key={l.id}
               type="button"
               onClick={() => scrollTo(l.id)}
               aria-current={section === l.id ? 'true' : undefined}
-              className="tab text-left text-md min-h-[52px]"
+              className="tab text-left min-h-[42px] px-[var(--space-sm)]"
             >
               {l.label}
             </button>
           ))}
-          <button type="button" onClick={handleDocsClick} className="tab text-left text-md min-h-[52px]">
+          <button type="button" onClick={handleDocsClick} className="tab text-left min-h-[42px] px-[var(--space-sm)]">
             {t.docs}
           </button>
           <a
             href="https://github.com/HotaruProject/Hotaru"
             target="_blank"
             rel="noreferrer"
-            className="tab text-md min-h-[52px] inline-flex items-center gap-[var(--space-xs)]"
+            className="tab min-h-[42px] px-[var(--space-sm)] inline-flex items-center gap-[var(--space-xs)]"
           >
             <GithubIcon className="w-4 h-4" />
             <span>GitHub</span>
           </a>
-          <div className="sm:hidden pt-[var(--space-xs)]">
+          <div className="sm:hidden flex items-center justify-between gap-[var(--space-xs)] mt-[var(--space-2xs)] pt-[var(--space-2xs)] border-t border-rule">
             <LangSwitch lang={lang} setLang={setLang} />
+            <a
+              href="./skill/SKILL.md"
+              download="HOTARU_AGENT_SKILL.md"
+              className="tab min-h-[34px] px-[var(--space-xs)] inline-flex items-center gap-[var(--space-2xs)]"
+            >
+              <Download aria-hidden="true" className="w-4 h-4" />
+              <span className="text-xs">{t.downloadSkill}</span>
+            </a>
           </div>
-          <a
-            href="./skill/SKILL.md"
-            download="HOTARU_AGENT_SKILL.md"
-            className="btn btn--quiet mt-[var(--space-xs)] w-full"
-          >
-            <Download aria-hidden="true" className="w-4 h-4" />
-            <span>{t.downloadSkill}</span>
-          </a>
         </div>
       )}
     </>

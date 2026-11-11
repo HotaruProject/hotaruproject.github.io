@@ -32,23 +32,33 @@ export function App() {
       '.toc-item',
       '.pager',
       '.mod-index__item',
-      '.jail__node',
+      '.jail__node:is(button)',
       '.jail__node-btn',
       '.jail__vault',
       '.copy-block__code',
-      '.manifest',
-      '.doc-code-block',
+      '.doc-code',
+      '.manifest__code',
       '.doc-method__name',
     ].join(', ');
     const ignite = (event) => {
       const el = event.target.closest(selector);
       if (!el) return;
-      el.classList.remove('is-lit');
+      const token = (el.pressToken || 0) + 1;
+      el.pressToken = token;
+      el.removeAttribute('data-lit');
       void el.offsetWidth;
-      el.classList.add('is-lit');
-      const clear = () => el.classList.remove('is-lit');
-      el.addEventListener('animationend', clear, { once: true });
-      window.setTimeout(clear, 1800);
+      el.setAttribute('data-lit', '');
+      const clear = () => {
+        if (el.pressToken !== token) return;
+        el.removeEventListener('animationend', onEnd);
+        el.removeAttribute('data-lit');
+      };
+      const onEnd = (animEvent) => {
+        if (animEvent.target !== el || animEvent.animationName !== 'press-light') return;
+        clear();
+      };
+      el.addEventListener('animationend', onEnd);
+      window.setTimeout(clear, 2000);
     };
     const onKey = (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
