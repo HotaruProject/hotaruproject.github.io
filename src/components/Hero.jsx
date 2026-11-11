@@ -17,8 +17,8 @@ export function Hero({ content, lang, onOpenDocs }) {
       <div className="hero-scrim absolute inset-0 z-base pointer-events-none" />
 
       <div className="hero__body relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[44svh] md:pt-32 pb-12 md:pb-16 pointer-events-none">
-        <div className="max-w-[46rem] min-w-0 pointer-events-auto">
-          <h1 ref={copyRef} className="font-display text-poster uppercase text-ink">{t.title}</h1>
+        <div ref={copyRef} className="max-w-[46rem] min-w-0 pointer-events-auto">
+          <h1 className="font-display text-poster uppercase text-ink">{t.title}</h1>
 
           <p className="lead mt-[var(--space-md)] text-ink-2 max-w-[42ch]">{t.subtitle}</p>
 
