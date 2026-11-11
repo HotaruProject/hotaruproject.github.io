@@ -1,65 +1,81 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronDown, Copy, Check, ArrowLeft, Sparkles } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useId } from 'react';
+import { Search, ChevronDown, Check, TriangleAlert, ArrowLeft, Sparkles } from 'lucide-react';
 import { LangSwitch } from './Navbar';
 import { CATALOG_METHODS } from '../data/catalog.jsx';
 import { codeText } from '../lib/codeText.jsx';
+import { useCopy } from '../lib/useCopy.jsx';
 
-function copyText(text, setCopied) {
-  navigator.clipboard?.writeText(text).then(
-    () => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    },
-    () => {}
+function DocState({ state, copiedLabel, failedLabel }) {
+  return (
+    <span className={`doc-state ${state !== 'idle' ? 'doc-state--on' : ''}`} aria-live="polite">
+      {state === 'copied' ? (
+        <>
+          <Check aria-hidden="true" className="w-3.5 h-3.5" />
+          <span>{copiedLabel}</span>
+        </>
+      ) : state === 'failed' ? (
+        <>
+          <TriangleAlert aria-hidden="true" className="w-3.5 h-3.5" />
+          <span>{failedLabel}</span>
+        </>
+      ) : null}
+    </span>
   );
 }
 
-function CopyButton({ copied, onClick, label = 'Copy code snippet' }) {
-  return (
-    <button type="button" onClick={onClick} aria-label={label} className="tab inline-flex items-center gap-[var(--space-xs)] flex-shrink-0">
-      {copied ? <Check aria-hidden="true" className="w-4 h-4 text-success" /> : <Copy aria-hidden="true" className="w-4 h-4" />}
-      <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
-    </button>
-  );
-}
-
-function CodeBlock({ code, lang = 'python' }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => copyText(code, setCopied);
+function CodeBlock({ code, lang = 'python', copyLabel, copiedLabel, failedLabel }) {
+  const [state, copy] = useCopy();
+  const hintId = useId();
 
   return (
-    <figure className="m-0 my-[var(--space-lg)] rounded-card bg-paper-2 overflow-hidden w-full max-w-full">
-      <div className="flex items-center justify-between gap-[var(--space-xs)] pl-[var(--space-md)] pr-[var(--space-2xs)] py-[var(--space-2xs)] border-b border-rule">
-        <figcaption className="text-sm text-muted">{lang}</figcaption>
-        <CopyButton copied={copied} onClick={handleCopy} />
+    <figure className="doc-code-block">
+      <div className="doc-code-block__head">
+        <figcaption className="doc-code-block__lang">{lang}</figcaption>
+        <DocState state={state} copiedLabel={copiedLabel} failedLabel={failedLabel} />
       </div>
-      <pre className="m-0 p-[var(--space-md)] overflow-x-auto font-mono text-sm text-ink-2 leading-relaxed whitespace-pre-wrap break-words">
+      <pre
+        className={`doc-code ${state === 'copied' ? 'doc-code--done' : ''}`}
+        role="button"
+        tabIndex={0}
+        title={copyLabel}
+        aria-describedby={hintId}
+        onClick={() => copy(code)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          copy(code);
+        }}
+      >
         <code>{codeText(code)}</code>
       </pre>
+      <span id={hintId} className="visually-hidden">{copyLabel}</span>
     </figure>
   );
 }
 
-function MethodCard({ method, lang }) {
-  const [copied, setCopied] = useState(false);
-
-  const copyCall = () => copyText(method.signature, setCopied);
+function MethodCard({ method, lang, copyLabel, copiedLabel, failedLabel }) {
+  const [state, copy] = useCopy();
+  const copied = state === 'copied';
 
   return (
     <article className="py-[var(--space-xl)] border-b border-rule">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-[var(--space-xs)]">
-        <div className="min-w-0">
-          <h3 className="font-mono text-lg text-ink font-normal tracking-normal break-all">ctx.{method.name}</h3>
-          <p className="mt-[var(--space-2xs)] text-sm text-muted">
-            <span className="font-mono">{method.rpc}</span>
-            <span className="mx-[var(--space-xs)]" aria-hidden="true">/</span>
-            <span>{lang === 'ru' ? 'возвращает' : 'returns'} </span>
-            <span className="font-mono text-ink-2">{method.returns}</span>
-          </p>
-        </div>
-        <CopyButton copied={copied} onClick={copyCall} label="Copy method signature" />
-      </div>
+      <h3 className="font-mono text-lg text-ink font-normal tracking-normal break-all">
+        <button
+          type="button"
+          className={`doc-method__name ${copied ? 'doc-method__name--done' : ''}`}
+          onClick={() => copy(method.signature)}
+          title={copyLabel}
+        >
+          ctx.{method.name}
+        </button>
+      </h3>
+      <p className="mt-[var(--space-2xs)] text-sm text-muted">
+        <span className="font-mono">{method.rpc}</span>
+        <span className="mx-[var(--space-xs)]" aria-hidden="true">/</span>
+        <span>{lang === 'ru' ? 'возвращает' : 'returns'} </span>
+        <span className="font-mono text-ink-2">{method.returns}</span>
+        <DocState state={state} copiedLabel={copiedLabel} failedLabel={failedLabel} />
+      </p>
 
       <p className="mt-[var(--space-sm)] text-ink-2">
         {lang === 'ru' ? method.desc_ru : method.desc_en}
@@ -95,7 +111,7 @@ function MethodCard({ method, lang }) {
   );
 }
 
-function FormattedContent({ rawContent }) {
+function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
   const elements = useMemo(() => {
     if (!rawContent) return null;
     const parts = [];
@@ -132,7 +148,16 @@ function FormattedContent({ rawContent }) {
     <div className="w-full max-w-[72ch] min-w-0">
       {elements?.map((part, index) => {
         if (part.type === 'code') {
-          return <CodeBlock key={index} code={part.content} lang={part.lang} />;
+          return (
+            <CodeBlock
+              key={index}
+              code={part.content}
+              lang={part.lang}
+              copyLabel={copyLabel}
+              copiedLabel={copiedLabel}
+              failedLabel={failedLabel}
+            />
+          );
         }
 
         const paragraphs = part.content.split('\n\n');
@@ -232,8 +257,8 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
     filteredSections[activeSection] || filteredSections[0] || t.sections[0];
 
   const L = lang === 'ru'
-    ? { home: 'На главную', manual: 'Руководство', methods: 'Методы', chapters: 'Разделы', namespaces: 'Пространства имён', filter: 'Фильтр по разделам и методам', current: 'Текущий раздел', pick: 'Выберите раздел', catalogTitle: 'Каталог методов MTProto', showing: (n, total) => `Показано ${n} из ${total}`, prev: 'Назад', next: 'Дальше', empty: 'Ничего не найдено. Измените запрос.' }
-    : { home: 'Home', manual: 'Manual', methods: 'Methods', chapters: 'Chapters', namespaces: 'Namespaces', filter: 'Filter docs and methods', current: 'Current chapter', pick: 'Select chapter', catalogTitle: 'Extended MTProto API catalog', showing: (n, total) => `Showing ${n} of ${total}`, prev: 'Previous', next: 'Next', empty: 'Nothing matches. Change the query.' };
+    ? { home: 'На главную', manual: 'Руководство', methods: 'Методы', chapters: 'Разделы', namespaces: 'Пространства имён', filter: 'Фильтр по разделам и методам', current: 'Текущий раздел', pick: 'Выберите раздел', catalogTitle: 'Каталог методов MTProto', showing: (n, total) => `Показано ${n} из ${total}`, prev: 'Назад', next: 'Дальше', empty: 'Ничего не найдено. Измените запрос.', copyCode: 'Скопировать код', copyMethod: 'Скопировать сигнатуру метода', copied: 'Скопировано', failed: 'Не удалось скопировать' }
+    : { home: 'Home', manual: 'Manual', methods: 'Methods', chapters: 'Chapters', namespaces: 'Namespaces', filter: 'Filter docs and methods', current: 'Current chapter', pick: 'Select chapter', catalogTitle: 'Extended MTProto API catalog', showing: (n, total) => `Showing ${n} of ${total}`, prev: 'Previous', next: 'Next', empty: 'Nothing matches. Change the query.', copyCode: 'Copy code', copyMethod: 'Copy method signature', copied: 'Copied', failed: 'Copy failed' };
 
   const shortTitle = (title) => title.split(':')[0];
 
@@ -253,12 +278,12 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
   );
 
   const tabSwitch = (
-    <div className="flex items-center gap-[var(--space-2xs)]" role="group" aria-label="Docs view">
-      <button type="button" onClick={() => setActiveTab('chapters')} aria-pressed={activeTab === 'chapters'} className="tab">
-        {L.manual} <span className="num text-muted">{filteredSections.length}</span>
+    <div className="doc-seg" role="group" aria-label="Docs view">
+      <button type="button" onClick={() => setActiveTab('chapters')} aria-pressed={activeTab === 'chapters'} className="doc-seg__btn">
+        {L.manual} <span className="doc-seg__num">{filteredSections.length}</span>
       </button>
-      <button type="button" onClick={() => setActiveTab('catalog')} aria-pressed={activeTab === 'catalog'} className="tab">
-        {L.methods} <span className="num text-muted">{CATALOG_METHODS.length}</span>
+      <button type="button" onClick={() => setActiveTab('catalog')} aria-pressed={activeTab === 'catalog'} className="doc-seg__btn">
+        {L.methods} <span className="doc-seg__num">{CATALOG_METHODS.length}</span>
       </button>
     </div>
   );
@@ -268,7 +293,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
       <header className="sticky top-0 z-sticky-nav nav-pill">
         <div className="max-w-container mx-auto px-[var(--gutter)] min-h-[56px] flex items-center justify-between gap-[var(--space-md)]">
           <div className="flex items-center gap-[var(--space-md)] min-w-0">
-            <button type="button" onClick={onBackToHome} className="tab inline-flex items-center gap-[var(--space-xs)] min-h-[44px]" aria-label={L.home}>
+            <button type="button" onClick={onBackToHome} className="doc-ghost" aria-label={L.home}>
               <ArrowLeft aria-hidden="true" className="w-4 h-4" />
               <span className="hidden sm:inline">{L.home}</span>
             </button>
@@ -344,7 +369,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                   type="button"
                   onClick={() => setChapterDropdownOpen(!chapterDropdownOpen)}
                   aria-expanded={chapterDropdownOpen}
-                  className="w-full min-h-[48px] px-[var(--space-md)] rounded-input bg-paper-2 text-ink text-left flex items-center justify-between gap-[var(--space-xs)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                  className="doc-select"
                 >
                   <span className="truncate">{currentSection?.title || L.pick}</span>
                   <ChevronDown aria-hidden="true" className={`w-4 h-4 text-muted flex-shrink-0 transition-transform duration-short ease-out ${chapterDropdownOpen ? 'rotate-180' : ''}`} />
@@ -353,7 +378,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                 {chapterDropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-dropdown" onClick={() => setChapterDropdownOpen(false)} />
-                    <ol className="absolute top-full mt-[var(--space-2xs)] inset-x-0 z-dropdown m-0 p-[var(--space-2xs)] list-none rounded-input bg-paper-3 max-h-72 overflow-y-auto">
+                    <ol className="doc-menu absolute top-full mt-[var(--space-2xs)] inset-x-0 z-dropdown m-0 p-[var(--space-2xs)] list-none max-h-72 overflow-y-auto">
                       {filteredSections.map((sec, idx) => (
                         <li key={sec.id}>
                           <button
@@ -385,7 +410,12 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                 <p className="lead mt-[var(--space-md)] text-ink-2">{currentSection.summary}</p>
 
                 <div className="mt-[var(--space-xl)] pt-[var(--space-xs)] border-t border-rule">
-                  <FormattedContent rawContent={currentSection.content} />
+                  <FormattedContent
+                    rawContent={currentSection.content}
+                    copyLabel={L.copyCode}
+                    copiedLabel={L.copied}
+                    failedLabel={L.failed}
+                  />
                 </div>
 
                 <nav className="mt-[var(--space-3xl)] pt-[var(--space-lg)] border-t border-rule grid grid-cols-2 gap-[var(--space-md)]" aria-label={L.chapters}>
@@ -427,9 +457,9 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                 {L.showing(filteredCatalog.length, CATALOG_METHODS.length)}
               </p>
 
-              <div className="lg:hidden mt-[var(--space-lg)] flex gap-[var(--space-2xs)] overflow-x-auto no-scrollbar -mx-[var(--gutter)] px-[var(--gutter)]">
+              <div className="doc-chips lg:hidden mt-[var(--space-lg)]">
                 {namespaces.map((ns) => (
-                  <button key={ns} type="button" onClick={() => setSelectedNamespace(ns)} aria-pressed={selectedNamespace === ns} className="tab">
+                  <button key={ns} type="button" onClick={() => setSelectedNamespace(ns)} aria-pressed={selectedNamespace === ns} className="doc-chip">
                     {ns}
                   </button>
                 ))}
@@ -437,7 +467,16 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
 
               <div className="mt-[var(--space-lg)] border-t border-rule">
                 {filteredCatalog.length > 0
-                  ? filteredCatalog.map((method) => <MethodCard key={method.name} method={method} lang={lang} />)
+                  ? filteredCatalog.map((method) => (
+                      <MethodCard
+                        key={method.name}
+                        method={method}
+                        lang={lang}
+                        copyLabel={L.copyMethod}
+                        copiedLabel={L.copied}
+                        failedLabel={L.failed}
+                      />
+                    ))
                   : <p className="py-[var(--space-xl)] text-ink-2">{L.empty}</p>}
               </div>
             </section>

@@ -20,7 +20,7 @@ export function App() {
   }, [lang]);
 
   useEffect(() => {
-    const selector = '.btn, .copy-block__code, .manifest__code';
+    const selector = '.btn, .copy-block__code, .manifest__code, .doc-code-block, .doc-method__name';
     const ignite = (event) => {
       const el = event.target.closest(selector);
       if (!el) return;
