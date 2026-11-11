@@ -309,6 +309,12 @@ const TILT_BASE = 0.3986;
 const TILT_GROW = 0.4111;
 const PITCH_MIN = -0.62;
 const PITCH_MAX = 0.62;
+const SENS = 0.0036;
+const FOLLOW_TAU = 0.075;
+const VEL_TAU = 0.09;
+const GLIDE = 2.0;
+const MAX_RATE = 3.0;
+const DRIFT = 0.055;
 
 const LABELS = {
   en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
@@ -326,8 +332,11 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     isDragging: false,
     lastX: 0,
     lastY: 0,
+    lastT: 0,
     velX: 0,
     velY: 0,
+    pendingX: 0,
+    pendingY: 0,
     fit: 1,
     hole: { x: 0, y: 0, r: 0 },
   });
@@ -397,7 +406,13 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
   }, [copyRef]);
 
   const resetCamera = useCallback(() => {
-    Object.assign(stateRef.current, defaultFrame(), { dist: DEFAULT_DIST, velX: 0, velY: 0 });
+    Object.assign(stateRef.current, defaultFrame(), {
+      dist: DEFAULT_DIST,
+      velX: 0,
+      velY: 0,
+      pendingX: 0,
+      pendingY: 0,
+    });
     stateRef.current.wake?.();
   }, []);
 
@@ -497,13 +512,23 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       sceneT.size(sw, sh);
 
       const st = stateRef.current;
-      if (!st.isDragging) {
-        const damp = Math.pow(0.93, dt * 60);
+      const follow = 1 - Math.exp(-dt / FOLLOW_TAU);
+      const takeX = st.pendingX * follow;
+      const takeY = st.pendingY * follow;
+      st.pendingX -= takeX;
+      st.pendingY -= takeY;
+      if (import.meta.env.DEV) {
+        st.applied = (st.applied || 0) + takeX;
+        st.appliedGlide = (st.appliedGlide || 0) + (st.isDragging ? 0 : st.velX * dt);
+      }
+      if (st.isDragging) {
+        turn(takeX, takeY);
+      } else {
+        const damp = Math.exp(-GLIDE * dt);
         st.velX *= damp;
         st.velY *= damp;
-        let yawRate = st.velX;
-        if (!reduceMotion.matches) yawRate += 0.06;
-        turn(yawRate * dt, st.velY * dt);
+        const yawRate = st.velX + (reduceMotion.matches ? 0 : DRIFT);
+        turn(takeX + yawRate * dt, takeY + st.velY * dt);
       }
 
       const pos = st.back.map((v) => v * st.dist);
@@ -561,7 +586,11 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       bindTex(0, sceneT.tex, loc.blit.uTex);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-      const moving = st.isDragging || Math.abs(st.velX) > 0.002 || Math.abs(st.velY) > 0.002;
+      const moving = st.isDragging
+        || Math.abs(st.velX) > 0.002
+        || Math.abs(st.velY) > 0.002
+        || Math.abs(st.pendingX) > 0.0001
+        || Math.abs(st.pendingY) > 0.0001;
       if (visible && (!reduceMotion.matches || moving)) {
         animId = requestAnimationFrame(render);
       } else {
@@ -590,6 +619,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         right = norm(cross(up, back));
         up = cross(back, right);
         st.velY = 0;
+        st.pendingY = 0;
       }
       Object.assign(st, { right, up, back });
     };
@@ -623,22 +653,41 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       visible = false;
     };
     canvas.addEventListener('webglcontextlost', onContextLost);
+    if (import.meta.env.DEV) window.__hotaru = stateRef.current;
     start();
 
-    const SENS = 0.006;
     const dragTo = (x, y) => {
       const st = stateRef.current;
+      const now = performance.now();
       const dx = x - st.lastX;
       const dy = y - st.lastY;
+      const dt = Math.min(0.2, Math.max(0.005, (now - st.lastT) / 1000));
       st.lastX = x;
       st.lastY = y;
-      turn(-dx * SENS, dy * SENS);
-      st.velX = -dx * SENS * 40;
-      st.velY = dy * SENS * 40;
+      st.lastT = now;
+      st.pendingX += -dx * SENS;
+      st.pendingY += dy * SENS;
+      const k = 1 - Math.exp(-dt / VEL_TAU);
+      st.velX += (-dx * SENS / dt - st.velX) * k;
+      st.velY += (dy * SENS / dt - st.velY) * k;
+      st.velX = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velX));
+      st.velY = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velY));
     };
     const beginDrag = (x, y) => {
-      Object.assign(stateRef.current, { isDragging: true, lastX: x, lastY: y, velX: 0, velY: 0 });
+      Object.assign(stateRef.current, {
+        isDragging: true,
+        lastX: x,
+        lastY: y,
+        lastT: performance.now(),
+        velX: 0,
+        velY: 0,
+        pendingX: 0,
+        pendingY: 0,
+      });
       start();
+    };
+    const endDrag = () => {
+      stateRef.current.isDragging = false;
     };
     const zoomBy = (k) => {
       stateRef.current.dist = Math.max(14.0, Math.min(48.0, stateRef.current.dist * k));
@@ -655,7 +704,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     };
     const onPointerUp = (e) => {
       if (e.pointerType === 'touch') return;
-      stateRef.current.isDragging = false;
+      endDrag();
     };
 
     let pinch = 0;
@@ -700,6 +749,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     canvas.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('blur', endDrag);
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
     canvas.addEventListener('touchend', onTouchEnd);
@@ -715,6 +765,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       canvas.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('blur', endDrag);
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
