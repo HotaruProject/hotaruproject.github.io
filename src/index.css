@@ -444,7 +444,7 @@ section[id] {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px oklch(100% 0 0 / 0.14), inset 0 0 26px oklch(100% 0 0 / 0.07);
+  box-shadow: inset 0 0 26px oklch(100% 0 0 / 0.07);
   opacity: 0;
   pointer-events: none;
   z-index: 0;
@@ -460,11 +460,9 @@ section[id] {
   z-index: 1;
 }
 @keyframes press-light {
-  0% { opacity: 0; transform: scale(0.88); }
-  7% { opacity: 1; transform: scale(1); }
-  30% { opacity: 0.26; transform: scale(1.03); }
-  62% { opacity: 0.12; transform: scale(1.05); }
-  100% { opacity: 0; transform: scale(1.09); }
+  0% { opacity: 0; animation-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1); }
+  6% { opacity: 1; animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  100% { opacity: 0; }
 }
 :is(
   .btn,
@@ -513,14 +511,12 @@ section[id] {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  background: oklch(100% 0 0 / 0.075);
   box-shadow:
-    0 0 0 1px oklch(100% 0 0 / 0.16),
-    0 0 16px 2px oklch(100% 0 0 / 0.32),
-    0 0 44px 6px oklch(100% 0 0 / 0.16),
-    inset 0 0 0 1px oklch(100% 0 0 / 0.10),
-    inset 0 0 22px oklch(100% 0 0 / 0.06);
+    0 0 18px 2px oklch(100% 0 0 / 0.22),
+    0 0 52px 10px oklch(100% 0 0 / 0.10),
+    inset 0 0 30px oklch(100% 0 0 / 0.05);
   opacity: 0;
-  transform: scale(0.94);
   pointer-events: none;
   z-index: -1;
   transition: opacity 420ms var(--ease-out);
@@ -545,7 +541,7 @@ section[id] {
   .doc-code-block,
   .doc-method__name
 )::after {
-  animation: press-light 1500ms var(--ease-out) forwards;
+  animation: press-light 1400ms linear forwards;
 }
 @media (prefers-reduced-motion: reduce) {
   :is(
@@ -568,7 +564,6 @@ section[id] {
     .doc-method__name
   )::after {
     animation: none !important;
-    transform: none !important;
     transition: opacity 420ms var(--ease-out);
   }
   .is-lit:is(
@@ -996,8 +991,8 @@ main > section:not(:first-child) {
 
 .reveal {
   opacity: 0;
-  transform: translateY(26px);
-  transition: opacity 700ms var(--ease-out), transform 700ms var(--ease-out);
+  transform: translateY(30px);
+  transition: opacity 1100ms var(--ease-reveal), transform 1100ms var(--ease-reveal);
   will-change: opacity, transform;
 }
 .reveal--shown {
@@ -1007,18 +1002,18 @@ main > section:not(:first-child) {
 }
 .reveal-group > * {
   opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 520ms var(--ease-out), transform 520ms var(--ease-out);
+  transform: translateY(18px);
+  transition: opacity 860ms var(--ease-reveal), transform 860ms var(--ease-reveal);
 }
 .reveal-group--shown > * {
   opacity: 1;
   transform: none;
-  transition-delay: calc((var(--i, 0) + var(--base, 0)) * 45ms);
+  transition-delay: calc((var(--i, 0) + var(--base, 0)) * 70ms);
 }
 
 .mod-card {
-  animation: card-in 420ms var(--ease-out) backwards;
-  animation-delay: calc(var(--index, 0) * 26ms);
+  animation: card-in 620ms var(--ease-reveal) backwards;
+  animation-delay: calc(var(--index, 0) * 45ms);
 }
 @keyframes card-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -1129,8 +1124,9 @@ main > section:not(:first-child) {
   box-shadow: none;
   border-radius: var(--radius-input);
 }
-.surface-float .copy-block__code:active { background: oklch(100% 0 0 / 0.06); }
-.surface-float .copy-block__code--done { background: oklch(100% 0 0 / 0.06); }
+.surface-float .copy-block__code::before { opacity: 0; }
+.surface-float .copy-block__code:active { background: transparent; }
+.surface-float .copy-block__code--done { background: transparent; }
 .lang-switch {
   display: inline-flex;
   align-items: center;
