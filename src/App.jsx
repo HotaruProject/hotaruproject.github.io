@@ -20,6 +20,28 @@ export function App() {
   }, [lang]);
 
   useEffect(() => {
+    const selector = '.btn, .copy-block__code, .manifest__code';
+    const ignite = (event) => {
+      const el = event.target.closest(selector);
+      if (!el) return;
+      el.classList.remove('is-lit');
+      void el.offsetWidth;
+      el.classList.add('is-lit');
+      el.addEventListener('animationend', () => el.classList.remove('is-lit'), { once: true });
+    };
+    const onKey = (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      ignite(event);
+    };
+    document.addEventListener('pointerdown', ignite);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', ignite);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleHash = () => {
       if (window.location.hash.startsWith('#docs')) {
         setView('docs');
