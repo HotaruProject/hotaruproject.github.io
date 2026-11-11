@@ -20,14 +20,35 @@ export function App() {
   }, [lang]);
 
   useEffect(() => {
-    const selector = '.btn, .copy-block__code, .manifest__code, .doc-code-block, .doc-method__name';
+    const selector = [
+      '.btn',
+      '.link',
+      '.link-arrow',
+      '.tab',
+      '.doc-seg__btn',
+      '.doc-chip',
+      '.doc-ghost',
+      '.doc-select',
+      '.toc-item',
+      '.pager',
+      '.mod-index__item',
+      '.jail__node',
+      '.jail__node-btn',
+      '.jail__vault',
+      '.copy-block__code',
+      '.manifest',
+      '.doc-code-block',
+      '.doc-method__name',
+    ].join(', ');
     const ignite = (event) => {
       const el = event.target.closest(selector);
       if (!el) return;
       el.classList.remove('is-lit');
       void el.offsetWidth;
       el.classList.add('is-lit');
-      el.addEventListener('animationend', () => el.classList.remove('is-lit'), { once: true });
+      const clear = () => el.classList.remove('is-lit');
+      el.addEventListener('animationend', clear, { once: true });
+      window.setTimeout(clear, 1800);
     };
     const onKey = (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
