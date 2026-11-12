@@ -315,6 +315,8 @@ const VEL_TAU = 0.09;
 const GLIDE = 2.0;
 const MAX_RATE = 3.0;
 const DRIFT = 0.055;
+// how far the camera pulls back while the hole is being spun
+const DOLLY_MAX = 0.46;
 
 const LABELS = {
   en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
@@ -338,6 +340,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     pendingX: 0,
     pendingY: 0,
     fit: 1,
+    spin: 0,
     hole: { x: 0, y: 0, r: 0 },
   });
 
@@ -379,7 +382,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       const minCss = Math.min(canvasW, canvasH);
       // the hole is the centerpiece: let it span almost the whole width and
       // sit in the middle of the band that separates the plate from the copy
-      const wanted = canvasW * (compact ? 0.74 : 1.06);
+      const wanted = canvasW * (compact ? 0.66 : 0.82);
       const byHeight = room / 0.76;
       const apparent = Math.max(120, Math.min(wanted, byHeight));
       let scale = (FIT_SPAN * minCss) / apparent;
@@ -414,6 +417,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       velY: 0,
       pendingX: 0,
       pendingY: 0,
+      spin: 0,
     });
     stateRef.current.wake?.();
   }, []);
@@ -484,7 +488,8 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         animId = requestAnimationFrame(render);
         return;
       }
-      const dt = Math.min((now - t0) * 0.001, 0.1);
+      const rawDt = (now - t0) * 0.001;
+      const dt = Math.min(rawDt, 0.1);
       t0 = now;
       if (lastDraw) {
         frameSum += now - lastDraw;
@@ -533,7 +538,16 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         turn(takeX + yawRate * dt, takeY + st.velY * dt);
       }
 
-      const pos = st.back.map((v) => v * st.dist);
+      // spinning the hole pulls the camera back, and it drifts in again
+      // once the hand lets go. the return follows the clock, not the frame
+      // rate, so a slow device recovers in the same time as a fast one
+      const spinDt = Math.min(rawDt, 0.5);
+      st.spin = st.isDragging
+        ? Math.min(1, st.spin + spinDt * 1.15)
+        : Math.max(0, st.spin - spinDt * 0.55);
+      const dolly = 1 + DOLLY_MAX * st.spin;
+
+      const pos = st.back.map((v) => v * st.dist * dolly);
       const fwd = st.back.map((v) => -v);
 
       let center;
@@ -674,6 +688,8 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       st.velY += (dy * SENS / dt - st.velY) * k;
       st.velX = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velX));
       st.velY = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velY));
+      const effort = Math.min(0.14, (Math.abs(dx) + Math.abs(dy)) * SENS * 26);
+      st.spin = Math.min(1, st.spin + effort);
     };
     const beginDrag = (x, y) => {
       Object.assign(stateRef.current, {
