@@ -110,6 +110,49 @@
 
   /* ── hero ────────────────────────────────────────────────────────────── */
   .hero__body { position: relative; z-index: var(--z-raised); }
+
+  /* the wordmark carries the glow on its own: a soft halo plus a slow
+     highlight that travels across the glyphs */
+  .wordmark {
+    position: relative;
+    display: inline-block;
+    text-shadow:
+      0 0 18px oklch(100% 0 0 / 0.30),
+      0 0 44px oklch(100% 0 0 / 0.16),
+      0 0 90px oklch(100% 0 0 / 0.08);
+  }
+  .wordmark::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    background: linear-gradient(
+      102deg,
+      transparent 18%,
+      oklch(100% 0 0 / 0.92) 46%,
+      oklch(100% 0 0 / 0.55) 56%,
+      transparent 82%
+    );
+    background-size: 320% 100%;
+    background-position: 150% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    opacity: 0;
+    animation: wordmark-sweep 7.5s var(--ease-out) infinite;
+  }
+  @keyframes wordmark-sweep {
+    0% { background-position: 150% 0; opacity: 0; }
+    6% { opacity: 1; }
+    38% { background-position: -60% 0; opacity: 1; }
+    46%, 100% { background-position: -60% 0; opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wordmark::after { animation: none; opacity: 0; }
+  }
+
   .hero__actions {
     display: flex;
     flex-wrap: wrap;
@@ -162,13 +205,15 @@
   .nav-pill {
     position: relative;
     overflow: hidden;
-    border: 1px solid oklch(100% 0 0 / 0.10);
+    border: 1px solid oklch(100% 0 0 / 0.12);
     border-radius: var(--radius-panel);
-    background: linear-gradient(180deg, oklch(22% 0 0), oklch(12% 0 0));
+    background: linear-gradient(180deg, oklch(100% 0 0 / 0.07), oklch(100% 0 0 / 0.015));
+    backdrop-filter: blur(16px) saturate(115%);
+    -webkit-backdrop-filter: blur(16px) saturate(115%);
     box-shadow:
       0 26px 52px -32px oklch(0% 0 0 / 0.95),
-      0 0 30px oklch(100% 0 0 / 0.08),
-      inset 0 1px 0 oklch(100% 0 0 / 0.12);
+      0 0 30px oklch(100% 0 0 / 0.06),
+      inset 0 1px 0 oklch(100% 0 0 / 0.14);
     contain: paint;
     transform: translateZ(0);
     animation: nav-in 520ms var(--ease-out) backwards;
@@ -277,20 +322,12 @@
     font-family: var(--font-display);
     letter-spacing: 0.02em;
   }
-  .doc-header__mark {
-    width: 12px;
-    height: 12px;
-    flex: none;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, oklch(100% 0 0 / 0.95), oklch(100% 0 0 / 0.12) 58%, transparent 72%);
-    box-shadow: 0 0 18px oklch(100% 0 0 / 0.55), 0 0 44px oklch(100% 0 0 / 0.22);
-  }
   .doc-header__title {
     flex: none;
     font-size: var(--text-md);
     text-transform: uppercase;
     color: var(--color-ink);
-    text-shadow: 0 0 18px oklch(100% 0 0 / 0.28);
+    text-shadow: 0 0 18px oklch(100% 0 0 / 0.30), 0 0 44px oklch(100% 0 0 / 0.16);
   }
   .doc-header__sep {
     width: 1px;
@@ -808,6 +845,7 @@
     font-size: var(--text-md);
     font-weight: 600;
     color: var(--color-ink);
+    text-shadow: 0 0 20px oklch(100% 0 0 / 0.12);
   }
   .doc-list {
     margin: 0;
@@ -841,19 +879,6 @@
     width: 100%;
     max-width: 7rem;
     margin-inline: auto;
-  }
-  .doc-figure--mark .doc-figure__caption {
-    border-top: 0;
-    padding: var(--space-xs) 0 0;
-    text-align: center;
-  }
-  .doc-figure__caption {
-    padding: var(--space-xs) var(--space-sm);
-    border-top: 1px solid oklch(100% 0 0 / 0.07);
-    font-family: var(--font-outlier);
-    font-size: var(--text-xs);
-    line-height: 1.5;
-    color: var(--color-muted);
   }
 
   .doc-table-wrap, .doc-method__table-wrap { overflow-x: auto; }.doc-table, .doc-method__table {

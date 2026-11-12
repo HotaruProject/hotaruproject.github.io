@@ -303,8 +303,8 @@ function defaultFrame() {
 
 const QUALITY = [0.8, 0.9, 1.0];
 const COMPACT_HEIGHT = 560;
-const FIT_H = 0.4836;
-const FIT_W = 0.7077;
+// the apparent width of the hole in css pixels, for a given camera scale
+const FIT_SPAN = 0.674;
 const TILT_BASE = 0.3986;
 const TILT_GROW = 0.4111;
 const PITCH_MIN = -0.62;
@@ -377,16 +377,18 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       const gap = compact ? 16 : 26;
       const room = Math.max(46, band - gap * 2);
       const minCss = Math.min(canvasW, canvasH);
-      let scale = (FIT_H * minCss) / room;
-      const widthLimit = (FIT_W * minCss) / Math.max(1, canvasW - 48);
-      if (scale < widthLimit) scale = widthLimit;
-      if (scale < 0.9) scale = 0.9;
+      // the hole is the centerpiece: let it span almost the whole width and
+      // sit in the middle of the band that separates the plate from the copy
+      const wanted = canvasW * (compact ? 0.74 : 1.06);
+      const byHeight = room / 0.76;
+      const apparent = Math.max(120, Math.min(wanted, byHeight));
+      let scale = (FIT_SPAN * minCss) / apparent;
       if (scale > 3.4) scale = 3.4;
       layoutRef.current = {
         ready: true,
         scale,
         room,
-        eyeY: plateBottom + band / 2 - canvasDocTop,
+        eyeY: plateBottom + band * 0.60 - canvasDocTop,
         compact,
       };
     };
@@ -552,8 +554,8 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         if (cssW >= 1440) textRight = (cssW - 1440) / 2 + 760;
         else if (cssW < 1280) textRight = Math.min(760, cssW * 0.58);
         const free = Math.max(cssW - textRight, 200);
-        scale = Math.max(0.9, Math.min(1.8, (0.95 * minCss) / free));
-        center = [(textRight + free / 2) / cssW, 0.5];
+        scale = Math.max(0.9, Math.min(1.8, (0.86 * minCss) / free));
+        center = [(textRight + free / 2) / cssW, 0.46];
       }
       if ((isMobile || layout.compact) && layout.ready) {
         const pitch = Math.asin(Math.max(-1, Math.min(1, st.back[1])));

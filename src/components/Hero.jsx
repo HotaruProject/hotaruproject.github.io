@@ -1,20 +1,21 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { BookOpen, Download } from 'lucide-react';
 import { QuasarScene } from './QuasarScene';
 
 export function Hero({ content, lang, onOpenDocs }) {
   const t = content.hero;
+  const copyRef = useRef(null);
 
   return (
     <section className="relative min-h-dvh flex flex-col justify-end w-full">
       <div className="absolute inset-0">
-        <QuasarScene lang={lang} />
+        <QuasarScene lang={lang} copyRef={copyRef} />
       </div>
       <div className="hero-scrim absolute inset-0 z-base pointer-events-none" />
 
-      <div className="hero__body relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[44svh] md:pt-32 pb-12 md:pb-16 pointer-events-none">
-        <div className="max-w-[46rem] min-w-0 pointer-events-auto">
-          <h1 className="font-display text-poster uppercase text-ink">{t.title}</h1>
+      <div className="hero__body relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[44svh] md:pt-32 pb-24 md:pb-16 pointer-events-none">
+        <div className="max-w-[46rem] min-w-0 pointer-events-auto" ref={copyRef}>
+          <h1 className="wordmark font-display text-poster uppercase text-ink" data-text={t.title}>{t.title}</h1>
 
           <p className="lead mt-[var(--space-md)] text-ink-2 max-w-[42ch]">{t.subtitle}</p>
 
