@@ -122,12 +122,11 @@ function Inline({ text }) {
   });
 }
 
-function Figure({ src, alt, caption }) {
+function Figure({ src, alt }) {
   const mark = src.endsWith('-mark.png');
   return (
     <figure className={`doc-figure${mark ? ' doc-figure--mark' : ''}`}>
-      <img src={src} alt={alt || caption || ''} loading="lazy" decoding="async" />
-      {caption ? <figcaption className="doc-figure__caption">{caption}</figcaption> : null}
+      <img src={src} alt={alt || ''} loading="lazy" decoding="async" />
     </figure>
   );
 }
@@ -195,7 +194,6 @@ function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
                     key={bIdx}
                     src={figure[2]}
                     alt={figure[1]}
-                    caption={figure[1]}
                   />
                 );
               }
@@ -507,8 +505,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
           </div>
 
           <div className="doc-header__brand">
-            <span className="doc-header__mark" aria-hidden="true" />
-            <span className="doc-header__title">Hotaru</span>
+            <span className="doc-header__title wordmark" data-text="Hotaru">Hotaru</span>
             <span className="doc-header__sep" aria-hidden="true" />
             <span className="doc-header__crumb">
               {activeTab === 'chapters' ? (currentSection?.title || t.title) : L.catalogTitle}

@@ -94,7 +94,8 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
           <button
             type="button"
             onClick={scrollToTop}
-            className="font-display uppercase text-lg text-ink min-h-[44px] rounded-input focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            className="wordmark font-display uppercase text-lg text-ink min-h-[44px] rounded-input focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            data-text="Hotaru"
             aria-label="Hotaru, back to top"
           >
             Hotaru

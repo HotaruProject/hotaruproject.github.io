@@ -8,11 +8,7 @@ export function Footer({ content }) {
   return (
     <footer className="w-full border-t border-rule pt-[var(--space-2xl)] pb-[var(--space-xl)]">
       <div className="max-w-container mx-auto px-[var(--gutter)]">
-        <p className="font-display text-title uppercase text-muted select-none" aria-hidden="true">
-          Hotaru
-        </p>
-
-        <div className="mt-[var(--space-xl)] flex flex-col md:flex-row md:items-end justify-between gap-[var(--space-lg)]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-[var(--space-lg)]">
           <p className="text-sm text-muted max-w-[48ch]">{t.copyright}</p>
 
           <ul className="m-0 p-0 list-none flex flex-wrap gap-x-[var(--space-lg)]">
