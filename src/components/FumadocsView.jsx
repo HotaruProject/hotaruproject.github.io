@@ -1,5 +1,17 @@
-import React, { useState, useMemo, useEffect, useId } from 'react';
-import { Search, ChevronDown, Check, TriangleAlert, ArrowLeft, Sparkles } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useId, useRef, useCallback } from 'react';
+import {
+  Search,
+  ChevronDown,
+  Check,
+  TriangleAlert,
+  ArrowLeft,
+  Download,
+  BookOpen,
+  Boxes,
+  Hash,
+  X,
+  CornerDownLeft,
+} from 'lucide-react';
 import { LangSwitch } from './Navbar';
 import { CATALOG_METHODS } from '../data/catalog.jsx';
 import { codeText } from '../lib/codeText.jsx';
@@ -53,54 +65,40 @@ function CodeBlock({ code, lang = 'python', copyLabel, copiedLabel, failedLabel 
   );
 }
 
-function MethodCard({ method, lang, copyLabel, copiedLabel, failedLabel }) {
-  const [state, copy] = useCopy();
-  const copied = state === 'copied';
+function MethodCard({ method, lang }) {
+  const description = lang === 'ru' ? method.desc_ru : method.desc_en;
 
   return (
-    <article className="py-[var(--space-xl)] border-b border-rule">
-      <h3 className="font-mono text-lg text-ink font-normal tracking-normal break-all">
-        <button
-          type="button"
-          className={`doc-method__name ${copied ? 'doc-method__name--done' : ''}`}
-          onClick={() => copy(method.signature)}
-          title={copyLabel}
-        >
-          ctx.{method.name}
-        </button>
+    <article className="doc-method">
+      <h3 className="doc-method__title">
+        <span className="doc-method__prefix" aria-hidden="true">ctx.</span>
+        <span className="doc-method__name">{method.name}</span>
       </h3>
-      <p className="mt-[var(--space-2xs)] text-sm text-muted">
-        <span className="font-mono">{method.rpc}</span>
-        <span className="mx-[var(--space-xs)]" aria-hidden="true">/</span>
-        <span>{lang === 'ru' ? 'возвращает' : 'returns'} </span>
-        <span className="font-mono text-ink-2">{method.returns}</span>
-        <DocState state={state} copiedLabel={copiedLabel} failedLabel={failedLabel} />
-      </p>
 
-      <p className="mt-[var(--space-sm)] text-ink-2">
-        {lang === 'ru' ? method.desc_ru : method.desc_en}
-      </p>
+      <p className="doc-method__rpc">{method.rpc}</p>
+
+      <p className="doc-method__desc">{description}</p>
 
       {method.params && method.params.length > 0 && (
-        <div className="mt-[var(--space-md)] overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
+        <div className="doc-method__table-wrap">
+          <table className="doc-method__table">
             <thead>
-              <tr className="text-muted border-b border-rule">
-                <th className="font-normal py-[var(--space-xs)] pr-[var(--space-md)]">{lang === 'ru' ? 'Параметр' : 'Parameter'}</th>
-                <th className="font-normal py-[var(--space-xs)] pr-[var(--space-md)]">{lang === 'ru' ? 'Тип' : 'Type'}</th>
-                <th className="font-normal py-[var(--space-xs)] pr-[var(--space-md)]">{lang === 'ru' ? 'Обязательный' : 'Required'}</th>
-                <th className="font-normal py-[var(--space-xs)]">{lang === 'ru' ? 'По умолчанию' : 'Default'}</th>
+              <tr>
+                <th>{lang === 'ru' ? 'Параметр' : 'Parameter'}</th>
+                <th>{lang === 'ru' ? 'Тип' : 'Type'}</th>
+                <th>{lang === 'ru' ? 'Обязателен' : 'Required'}</th>
+                <th>{lang === 'ru' ? 'По умолчанию' : 'Default'}</th>
               </tr>
             </thead>
             <tbody>
               {method.params.map((p) => (
-                <tr key={p.name} className="border-b border-rule last:border-b-0">
-                  <td className="py-[var(--space-xs)] pr-[var(--space-md)] font-mono text-ink">{p.name}</td>
-                  <td className="py-[var(--space-xs)] pr-[var(--space-md)] font-mono text-ink-2">{p.type}</td>
-                  <td className="py-[var(--space-xs)] pr-[var(--space-md)] text-ink-2">
+                <tr key={p.name}>
+                  <td className="doc-method__param">{p.name}</td>
+                  <td className="doc-method__type">{p.type}</td>
+                  <td className={p.required ? 'doc-method__req' : 'doc-method__opt'}>
                     {p.required ? (lang === 'ru' ? 'да' : 'yes') : (lang === 'ru' ? 'нет' : 'no')}
                   </td>
-                  <td className="py-[var(--space-xs)] font-mono text-muted">{p.default || '-'}</td>
+                  <td className="doc-method__default">{p.default || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -108,6 +106,29 @@ function MethodCard({ method, lang, copyLabel, copiedLabel, failedLabel }) {
         </div>
       )}
     </article>
+  );
+}
+
+function Inline({ text }) {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  return parts.map((chunk, i) => {
+    if (chunk.startsWith('`') && chunk.endsWith('`') && chunk.length > 2) {
+      return <code key={i} className="code-inline">{chunk.slice(1, -1)}</code>;
+    }
+    if (chunk.startsWith('**') && chunk.endsWith('**') && chunk.length > 4) {
+      return <strong key={i} className="doc-strong">{chunk.slice(2, -2)}</strong>;
+    }
+    return chunk;
+  });
+}
+
+function Figure({ src, alt, caption }) {
+  const mark = src.endsWith('-mark.png');
+  return (
+    <figure className={`doc-figure${mark ? ' doc-figure--mark' : ''}`}>
+      <img src={src} alt={alt || caption || ''} loading="lazy" decoding="async" />
+      {caption ? <figcaption className="doc-figure__caption">{caption}</figcaption> : null}
+    </figure>
   );
 }
 
@@ -121,10 +142,7 @@ function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
 
     while ((match = codeBlockRegex.exec(rawContent)) !== null) {
       if (match.index > lastIndex) {
-        parts.push({
-          type: 'text',
-          content: rawContent.slice(lastIndex, match.index),
-        });
+        parts.push({ type: 'text', content: rawContent.slice(lastIndex, match.index) });
       }
       parts.push({
         type: 'code',
@@ -135,17 +153,14 @@ function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
     }
 
     if (lastIndex < rawContent.length) {
-      parts.push({
-        type: 'text',
-        content: rawContent.slice(lastIndex),
-      });
+      parts.push({ type: 'text', content: rawContent.slice(lastIndex) });
     }
 
     return parts;
   }, [rawContent]);
 
   return (
-    <div className="w-full max-w-[72ch] min-w-0">
+    <div className="doc-prose">
       {elements?.map((part, index) => {
         if (part.type === 'code') {
           return (
@@ -160,31 +175,88 @@ function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
           );
         }
 
-        const paragraphs = part.content.split('\n\n');
+        const blocks = part.content.split(/\n{2,}/);
         return (
           <React.Fragment key={index}>
-            {paragraphs.map((p, pIdx) => {
-              const trimmed = p.trim();
+            {blocks.map((raw, bIdx) => {
+              const trimmed = raw.trim();
               if (!trimmed) return null;
 
               if (trimmed.startsWith('### ')) {
                 return (
-                  <h3 key={pIdx} className="mt-[var(--space-2xl)] mb-[var(--space-sm)] text-title text-ink">
-                    {trimmed.replace('### ', '')}
-                  </h3>
+                  <h3 key={bIdx} className="doc-h3">{trimmed.replace('### ', '')}</h3>
+                );
+              }
+
+              const figure = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+              if (figure) {
+                return (
+                  <Figure
+                    key={bIdx}
+                    src={figure[2]}
+                    alt={figure[1]}
+                    caption={figure[1]}
+                  />
                 );
               }
 
               if (trimmed.startsWith('## ')) {
                 return (
-                  <h2 key={pIdx} className="mt-[var(--space-3xl)] mb-[var(--space-md)] text-[length:var(--text-2xl)] text-ink">
-                    {trimmed.replace('## ', '')}
-                  </h2>
+                  <h2 key={bIdx} className="doc-h2">{trimmed.replace('## ', '')}</h2>
+                );
+              }
+
+              if (trimmed.startsWith('| ')) {
+                const rows = trimmed.split('\n').filter((line) => line.trim().length > 0);
+                const cells = rows.map((line) =>
+                  line
+                    .replace(/^\|/, '')
+                    .replace(/\|$/, '')
+                    .split('|')
+                    .map((cell) => cell.trim())
+                );
+                const body = cells.filter(
+                  (row) => !row.every((cell) => /^:?-{2,}:?$/.test(cell))
+                );
+                if (body.length === 0) return null;
+                const [head, ...rest] = body;
+                return (
+                  <div key={bIdx} className="doc-table-wrap">
+                    <table className="doc-table">
+                      <thead>
+                        <tr>
+                          {head.map((cell, cIdx) => (
+                            <th key={cIdx}><Inline text={cell} /></th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rest.map((row, rIdx) => (
+                          <tr key={rIdx}>
+                            {row.map((cell, cIdx) => (
+                              <td key={cIdx}><Inline text={cell} /></td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              }
+
+              if (trimmed.startsWith('- ')) {
+                const items = trimmed.split('\n').map((line) => line.replace(/^-\s*/, ''));
+                return (
+                  <ul key={bIdx} className="doc-list">
+                    {items.map((item, iIdx) => (
+                      <li key={iIdx}><Inline text={item} /></li>
+                    ))}
+                  </ul>
                 );
               }
 
               return (
-                <p key={pIdx} className="mt-[var(--space-md)] text-ink-2 leading-[1.7] whitespace-pre-line break-words">
+                <p key={bIdx} className="doc-p">
                   <Inline text={trimmed} />
                 </p>
               );
@@ -196,19 +268,6 @@ function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
   );
 }
 
-function Inline({ text }) {
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
-  return parts.map((chunk, i) => {
-    if (chunk.startsWith('`') && chunk.endsWith('`') && chunk.length > 2) {
-      return <code key={i} className="code-inline">{chunk.slice(1, -1)}</code>;
-    }
-    if (chunk.startsWith('**') && chunk.endsWith('**') && chunk.length > 4) {
-      return <strong key={i} className="font-semibold text-ink">{chunk.slice(2, -2)}</strong>;
-    }
-    return chunk;
-  });
-}
-
 export function FumadocsView({ content, lang, setLang, onBackToHome }) {
   const [activeTab, setActiveTab] = useState(() =>
     window.location.hash.includes('catalog') ? 'catalog' : 'chapters'
@@ -217,8 +276,60 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
   const [chapterDropdownOpen, setChapterDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNamespace, setSelectedNamespace] = useState('all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef(null);
 
   const t = content.docs;
+
+  const L = lang === 'ru'
+    ? {
+        home: 'На главную',
+        guide: 'Руководство',
+        methods: 'Методы',
+        chapters: 'Главы',
+        namespaces: 'Пространства имён',
+        filter: 'Фильтр по разделам и методам',
+        current: 'Текущий раздел',
+        pick: 'Выберите раздел',
+        catalogTitle: 'Каталог контекстных методов',
+        catalogLead: 'Описания приведены по официальному справочнику методов Telegram.',
+        showing: (n, total) => `Показано ${n} из ${total}`,
+        prev: 'Назад',
+        next: 'Дальше',
+        empty: 'Ничего не найдено. Измените запрос.',
+        copyCode: 'Скопировать код',
+        copyMethod: 'Скопировать сигнатуру метода',
+        copied: 'Скопировано',
+        failed: 'Не удалось скопировать',
+        search: 'Поиск',
+        searchHint: 'Нажмите / для поиска',
+        noResults: 'Совпадений нет',
+        closeSearch: 'Закрыть поиск',
+      }
+    : {
+        home: 'Home',
+        guide: 'Guide',
+        methods: 'Methods',
+        chapters: 'Chapters',
+        namespaces: 'Namespaces',
+        filter: 'Filter docs and methods',
+        current: 'Current chapter',
+        pick: 'Select chapter',
+        catalogTitle: 'Contextual method catalog',
+        catalogLead: 'Descriptions follow the official Telegram method reference.',
+        showing: (n, total) => `Showing ${n} of ${total}`,
+        prev: 'Previous',
+        next: 'Next',
+        empty: 'Nothing matches. Change the query.',
+        copyCode: 'Copy code',
+        copyMethod: 'Copy method signature',
+        copied: 'Copied',
+        failed: 'Copy failed',
+        search: 'Search',
+        searchHint: 'Press / to search',
+        noResults: 'No matches',
+        closeSearch: 'Close search',
+      };
 
   const namespaces = useMemo(() => {
     const set = new Set(CATALOG_METHODS.map((m) => m.namespace));
@@ -236,11 +347,12 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
         (m) =>
           m.name.toLowerCase().includes(q) ||
           m.rpc.toLowerCase().includes(q) ||
-          m.signature.toLowerCase().includes(q)
+          m.signature.toLowerCase().includes(q) ||
+          (lang === 'ru' ? m.desc_ru : m.desc_en).toLowerCase().includes(q)
       );
     }
     return list;
-  }, [selectedNamespace, searchQuery]);
+  }, [selectedNamespace, searchQuery, lang]);
 
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) return t.sections;
@@ -256,97 +368,283 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
   const currentSection =
     filteredSections[activeSection] || filteredSections[0] || t.sections[0];
 
-  const L = lang === 'ru'
-    ? { home: 'На главную', manual: 'Руководство', methods: 'Методы', chapters: 'Разделы', namespaces: 'Пространства имён', filter: 'Фильтр по разделам и методам', current: 'Текущий раздел', pick: 'Выберите раздел', catalogTitle: 'Каталог методов MTProto', showing: (n, total) => `Показано ${n} из ${total}`, prev: 'Назад', next: 'Дальше', empty: 'Ничего не найдено. Измените запрос.', copyCode: 'Скопировать код', copyMethod: 'Скопировать сигнатуру метода', copied: 'Скопировано', failed: 'Не удалось скопировать' }
-    : { home: 'Home', manual: 'Manual', methods: 'Methods', chapters: 'Chapters', namespaces: 'Namespaces', filter: 'Filter docs and methods', current: 'Current chapter', pick: 'Select chapter', catalogTitle: 'Extended MTProto API catalog', showing: (n, total) => `Showing ${n} of ${total}`, prev: 'Previous', next: 'Next', empty: 'Nothing matches. Change the query.', copyCode: 'Copy code', copyMethod: 'Copy method signature', copied: 'Copied', failed: 'Copy failed' };
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return t.sections.map((s) => ({
+        kind: 'chapter',
+        id: s.id,
+        title: s.title,
+        summary: s.summary,
+      }));
+    }
+    const chapters = t.sections
+      .filter((s) =>
+        s.title.toLowerCase().includes(q) || s.summary.toLowerCase().includes(q)
+      )
+      .slice(0, 4)
+      .map((s) => ({ kind: 'chapter', id: s.id, title: s.title, summary: s.summary }));
+    const methods = CATALOG_METHODS.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.rpc.toLowerCase().includes(q) ||
+        (lang === 'ru' ? m.desc_ru : m.desc_en).toLowerCase().includes(q)
+    )
+      .slice(0, 12)
+      .map((m) => ({ kind: 'method', id: m.name, title: m.name, summary: m.rpc }));
+    return [...chapters, ...methods];
+  }, [searchQuery, t.sections, lang]);
+
+  const openSearch = useCallback(() => {
+    setSearchOpen(true);
+    window.requestAnimationFrame(() => searchRef.current?.focus());
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery('');
+  }, []);
+
+  useEffect(() => {
+    const onKey = (event) => {
+      const target = event.target;
+      const typing =
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      if (event.key === '/' && !typing) {
+        event.preventDefault();
+        openSearch();
+        return;
+      }
+      if (event.key === 'Escape' && searchOpen) {
+        closeSearch();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [searchOpen, openSearch, closeSearch]);
+
+  useEffect(() => {
+    if (activeTab === 'catalog') {
+      setActiveSection(0);
+    }
+  }, [activeTab]);
+
+  const jumpToMethod = (name) => {
+    setActiveTab('catalog');
+    setSelectedNamespace('all');
+    setSearchQuery('');
+    closeSearch();
+    window.requestAnimationFrame(() => {
+      const node = document.getElementById(`method-${name}`);
+      if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
+  const jumpToChapter = (id) => {
+    setActiveTab('chapters');
+    setSearchQuery('');
+    closeSearch();
+    const index = t.sections.findIndex((s) => s.id === id);
+    if (index >= 0) setActiveSection(index);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const shortTitle = (title) => title.split(':')[0];
 
-  const searchField = (id) => (
-    <div className="relative">
+  const searchField = (id, autoFocus) => (
+    <div className="doc-search">
+      <Search aria-hidden="true" className="doc-search__icon" />
       <label htmlFor={id} className="visually-hidden">{L.filter}</label>
-      <Search aria-hidden="true" className="absolute left-[var(--space-sm)] top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
       <input
         id={id}
+        ref={autoFocus ? searchRef : undefined}
         type="search"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder={t.searchPlaceholder}
-        className="field"
+        className="doc-search__input"
+        autoComplete="off"
+        spellCheck="false"
       />
+      {searchQuery ? (
+        <button
+          type="button"
+          className="doc-search__clear"
+          onClick={() => setSearchQuery('')}
+          aria-label={L.closeSearch}
+        >
+          <X aria-hidden="true" className="w-4 h-4" />
+        </button>
+      ) : null}
     </div>
   );
 
   const tabSwitch = (
-    <div className="doc-seg" role="group" aria-label="Docs view">
+    <div className="doc-seg" role="group" aria-label={L.guide}>
       <button type="button" onClick={() => setActiveTab('chapters')} aria-pressed={activeTab === 'chapters'} className="doc-seg__btn">
-        {L.manual} <span className="doc-seg__num">{filteredSections.length}</span>
+        <BookOpen aria-hidden="true" className="w-4 h-4" />
+        <span>{L.guide}</span>
+        <span className="doc-seg__num">{t.sections.length}</span>
       </button>
       <button type="button" onClick={() => setActiveTab('catalog')} aria-pressed={activeTab === 'catalog'} className="doc-seg__btn">
-        {L.methods} <span className="doc-seg__num">{CATALOG_METHODS.length}</span>
+        <Boxes aria-hidden="true" className="w-4 h-4" />
+        <span>{L.methods}</span>
+        <span className="doc-seg__num">{CATALOG_METHODS.length}</span>
       </button>
     </div>
   );
 
   return (
-    <div className="min-h-dvh flex flex-col w-full">
-      <header className="sticky top-0 z-sticky-nav nav-pill">
-        <div className="max-w-container mx-auto px-[var(--gutter)] min-h-[56px] flex items-center justify-between gap-[var(--space-md)]">
-          <div className="flex items-center gap-[var(--space-md)] min-w-0">
+    <div className="doc-shell min-h-dvh flex flex-col w-full">
+      <header className="doc-header">
+        <div className="doc-header__inner">
+          <div className="doc-header__side">
             <button type="button" onClick={onBackToHome} className="doc-ghost" aria-label={L.home}>
               <ArrowLeft aria-hidden="true" className="w-4 h-4" />
               <span className="hidden sm:inline">{L.home}</span>
             </button>
-            <span className="font-display uppercase text-lg text-ink">Hotaru</span>
           </div>
 
-          <div className="flex items-center gap-[var(--space-md)]">
-            <div className="hidden sm:block">{tabSwitch}</div>
+          <div className="doc-header__brand">
+            <span className="doc-header__mark" aria-hidden="true" />
+            <span className="doc-header__title">Hotaru</span>
+            <span className="doc-header__sep" aria-hidden="true" />
+            <span className="doc-header__crumb">
+              {activeTab === 'chapters' ? (currentSection?.title || t.title) : L.catalogTitle}
+            </span>
+          </div>
+
+          <div className="doc-header__side doc-header__side--end">
+            {tabSwitch}
             <LangSwitch lang={lang} setLang={setLang} />
-            <a href="./skill/SKILL.md" download="HOTARU_AGENT_SKILL.md" className="hidden md:inline-flex btn btn--quiet btn--sm">
-              <Sparkles aria-hidden="true" className="w-4 h-4" />
+            <a
+              href="./skill/SKILL.md"
+              download="HOTARU_AGENT_SKILL.md"
+              className="hidden md:inline-flex doc-btn doc-btn--sm"
+            >
+              <Download aria-hidden="true" className="w-4 h-4" />
               <span>SKILL.md</span>
             </a>
           </div>
         </div>
       </header>
 
-      <div className="flex-grow w-full max-w-container mx-auto px-[var(--gutter)] grid grid-cols-1 lg:grid-cols-12 gap-x-[var(--gap-columns)]">
-        <aside className="hidden lg:block lg:col-span-3 sticky top-[56px] self-start max-h-[calc(100dvh-56px)] overflow-y-auto py-[var(--space-xl)] pr-[var(--space-xs)]">
-          {searchField('docs-search')}
+      <div className="doc-toolbar">
+        <div className="doc-toolbar__inner">
+          <div className="doc-toolbar__search">{searchField('docs-search')}</div>
+          <button type="button" className="doc-toolbar__hint" onClick={openSearch}>
+            <span>{L.search}</span>
+            <kbd>/</kbd>
+          </button>
+        </div>
+      </div>
 
-          <h2 className="mt-[var(--space-xl)] mb-[var(--space-xs)] text-sm text-muted font-sans font-normal tracking-normal">
+      {searchOpen && (
+        <div className="doc-overlay" role="presentation" onClick={closeSearch}>
+          <div
+            className="doc-palette"
+            role="dialog"
+            aria-modal="true"
+            aria-label={L.search}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="doc-palette__head">
+              <Search aria-hidden="true" className="doc-search__icon" />
+              <input
+                ref={searchRef}
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t.searchPlaceholder}
+                className="doc-palette__input"
+                autoComplete="off"
+                spellCheck="false"
+                aria-label={L.filter}
+              />
+              <button type="button" className="doc-search__clear" onClick={closeSearch} aria-label={L.closeSearch}>
+                <X aria-hidden="true" className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="doc-palette__body">
+              {searchResults.length === 0 ? (
+                <p className="doc-palette__empty">{L.noResults}</p>
+              ) : (
+                <ul className="doc-palette__list">
+                  {searchQuery.trim() ? null : (
+                    <li className="doc-palette__label-row" aria-hidden="true">
+                      {L.chapters}
+                    </li>
+                  )}
+                  {searchResults.map((item) => (
+                    <li key={`${item.kind}-${item.id}`}>
+                      <button
+                        type="button"
+                        className="doc-palette__item"
+                        onClick={() =>
+                          item.kind === 'chapter' ? jumpToChapter(item.id) : jumpToMethod(item.id)
+                        }
+                      >
+                        <span className="doc-palette__kind" aria-hidden="true">
+                          {item.kind === 'chapter'
+                            ? <BookOpen className="w-4 h-4" />
+                            : <Hash className="w-4 h-4" />}
+                        </span>
+                        <span className="doc-palette__text">
+                          <span className="doc-palette__label">{item.title}</span>
+                          <span className="doc-palette__sub">{item.summary}</span>
+                        </span>
+                        <CornerDownLeft aria-hidden="true" className="doc-palette__go w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="doc-layout">
+        <aside className="doc-sidebar">
+          <h2 className="doc-sidebar__title">
             {activeTab === 'chapters' ? (t.tocTitle || L.chapters) : L.namespaces}
           </h2>
 
           {activeTab === 'chapters' ? (
-            <ol className="m-0 p-0 list-none flex flex-col">
+            <ol className="doc-nav">
               {filteredSections.map((sec, idx) => (
                 <li key={sec.id}>
                   <button
                     type="button"
-                    onClick={() => setActiveSection(idx)}
-                    aria-current={currentSection?.id === sec.id}
-                    className="toc-item"
+                    onClick={() => {
+                      setActiveSection(idx);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    aria-current={currentSection?.id === sec.id ? 'true' : undefined}
+                    className="doc-nav__item"
                   >
-                    {sec.title}
+                    <span className="doc-nav__num">{String(idx + 1).padStart(2, '0')}</span>
+                    <span className="doc-nav__label">{sec.title}</span>
                   </button>
                 </li>
               ))}
             </ol>
           ) : (
-            <ul className="m-0 p-0 list-none flex flex-col">
+            <ul className="doc-nav">
               {namespaces.map((ns) => (
                 <li key={ns}>
                   <button
                     type="button"
                     onClick={() => setSelectedNamespace(ns)}
-                    aria-current={selectedNamespace === ns}
-                    className="toc-item flex items-center justify-between gap-[var(--space-sm)]"
+                    aria-current={selectedNamespace === ns ? 'true' : undefined}
+                    className="doc-nav__item"
                   >
-                    <span>{ns}</span>
-                    <span className="num text-muted">
-                      {ns === 'all' ? CATALOG_METHODS.length : CATALOG_METHODS.filter((m) => m.namespace === ns).length}
+                    <span className="doc-nav__label">{ns}</span>
+                    <span className="doc-nav__count">
+                      {ns === 'all'
+                        ? CATALOG_METHODS.length
+                        : CATALOG_METHODS.filter((m) => m.namespace === ns).length}
                     </span>
                   </button>
                 </li>
@@ -355,14 +653,13 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
           )}
         </aside>
 
-        <main className="lg:col-start-5 lg:col-span-8 min-w-0 py-[var(--space-xl)] lg:py-[var(--space-2xl)]">
-          <div className="lg:hidden flex flex-col gap-[var(--space-sm)] mb-[var(--space-xl)]">
-            <div className="sm:hidden">{tabSwitch}</div>
-            {searchField('docs-search-m')}
+        <main className="doc-main">
+          <div className="doc-mobile">
+            <div className="doc-mobile__seg">{tabSwitch}</div>
 
             {activeTab === 'chapters' && (
-              <div className="relative">
-                <p className="text-sm text-muted mb-[var(--space-2xs)]">
+              <div className="doc-mobile__chapter">
+                <p className="doc-mobile__label">
                   {L.current} <span className="num">{activeSection + 1} / {filteredSections.length}</span>
                 </p>
                 <button
@@ -372,13 +669,13 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                   className="doc-select"
                 >
                   <span className="truncate">{currentSection?.title || L.pick}</span>
-                  <ChevronDown aria-hidden="true" className={`w-4 h-4 text-muted flex-shrink-0 transition-transform duration-short ease-out ${chapterDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown aria-hidden="true" className={`w-4 h-4 doc-chevron ${chapterDropdownOpen ? 'is-open' : ''}`} />
                 </button>
 
                 {chapterDropdownOpen && (
                   <>
-                    <div className="fixed inset-0 z-dropdown" onClick={() => setChapterDropdownOpen(false)} />
-                    <ol className="doc-menu absolute top-full mt-[var(--space-2xs)] inset-x-0 z-dropdown m-0 p-[var(--space-2xs)] list-none max-h-72 overflow-y-auto">
+                    <div className="doc-scrim" onClick={() => setChapterDropdownOpen(false)} />
+                    <ol className="doc-menu doc-menu--drop">
                       {filteredSections.map((sec, idx) => (
                         <li key={sec.id}>
                           <button
@@ -388,10 +685,11 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                               setChapterDropdownOpen(false);
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            aria-current={currentSection?.id === sec.id}
-                            className="toc-item"
+                            aria-current={currentSection?.id === sec.id ? 'true' : undefined}
+                            className="doc-nav__item"
                           >
-                            {sec.title}
+                            <span className="doc-nav__num">{String(idx + 1).padStart(2, '0')}</span>
+                            <span className="doc-nav__label">{sec.title}</span>
                           </button>
                         </li>
                       ))}
@@ -404,21 +702,25 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
 
           {activeTab === 'chapters' ? (
             currentSection ? (
-              <article>
-                <p className="text-sm text-muted font-mono">#{currentSection.id}</p>
-                <h1 className="mt-[var(--space-xs)] text-section text-ink max-w-[24ch]">{currentSection.title}</h1>
-                <p className="lead mt-[var(--space-md)] text-ink-2">{currentSection.summary}</p>
+              <article className="doc-article">
+                <p className="doc-eyebrow">
+                  <span className="doc-eyebrow__num">{String(activeSection + 1).padStart(2, '0')}</span>
+                  <span className="doc-eyebrow__rule" aria-hidden="true" />
+                  <span>{t.tocTitle || L.chapters}</span>
+                </p>
+                <h1 className="doc-title">{currentSection.title}</h1>
+                <p className="doc-lead">{currentSection.summary}</p>
 
-                <div className="mt-[var(--space-xl)] pt-[var(--space-xs)] border-t border-rule">
-                  <FormattedContent
-                    rawContent={currentSection.content}
-                    copyLabel={L.copyCode}
-                    copiedLabel={L.copied}
-                    failedLabel={L.failed}
-                  />
-                </div>
+                <div className="doc-rule" />
 
-                <nav className="mt-[var(--space-3xl)] pt-[var(--space-lg)] border-t border-rule grid grid-cols-2 gap-[var(--space-md)]" aria-label={L.chapters}>
+                <FormattedContent
+                  rawContent={currentSection.content}
+                  copyLabel={L.copyCode}
+                  copiedLabel={L.copied}
+                  failedLabel={L.failed}
+                />
+
+                <nav className="doc-pager" aria-label={L.chapters}>
                   {activeSection > 0 ? (
                     <button
                       type="button"
@@ -426,10 +728,10 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                         setActiveSection(activeSection - 1);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className="pager text-left"
+                      className="doc-pager__item doc-pager__item--prev"
                     >
-                      <span className="text-sm text-muted">{L.prev}</span>
-                      <span className="text-ink">{shortTitle(filteredSections[activeSection - 1]?.title || '')}</span>
+                      <span className="doc-pager__dir">{L.prev}</span>
+                      <span className="doc-pager__title">{shortTitle(filteredSections[activeSection - 1]?.title || '')}</span>
                     </button>
                   ) : <span />}
                   {activeSection < filteredSections.length - 1 ? (
@@ -439,54 +741,73 @@ export function FumadocsView({ content, lang, setLang, onBackToHome }) {
                         setActiveSection(activeSection + 1);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className="pager text-right items-end"
+                      className="doc-pager__item doc-pager__item--next"
                     >
-                      <span className="text-sm text-muted">{L.next}</span>
-                      <span className="text-ink">{shortTitle(filteredSections[activeSection + 1]?.title || '')}</span>
+                      <span className="doc-pager__dir">{L.next}</span>
+                      <span className="doc-pager__title">{shortTitle(filteredSections[activeSection + 1]?.title || '')}</span>
                     </button>
                   ) : <span />}
                 </nav>
               </article>
             ) : (
-              <p className="text-ink-2">{L.empty}</p>
+              <p className="doc-p">{L.empty}</p>
             )
           ) : (
-            <section>
-              <h1 className="text-section text-ink">{L.catalogTitle}</h1>
-              <p className="mt-[var(--space-sm)] text-muted num" aria-live="polite">
-                {L.showing(filteredCatalog.length, CATALOG_METHODS.length)}
+            <section className="doc-article">
+              <p className="doc-eyebrow">
+                <span className="doc-eyebrow__num">{String(CATALOG_METHODS.length).padStart(3, '0')}</span>
+                <span className="doc-eyebrow__rule" aria-hidden="true" />
+                <span>{L.methods}</span>
               </p>
+              <h1 className="doc-title">{L.catalogTitle}</h1>
+              <p className="doc-lead">{L.catalogLead}</p>
 
-              <div className="doc-chips lg:hidden mt-[var(--space-lg)]">
-                {namespaces.map((ns) => (
-                  <button key={ns} type="button" onClick={() => setSelectedNamespace(ns)} aria-pressed={selectedNamespace === ns} className="doc-chip">
-                    {ns}
-                  </button>
-                ))}
-              </div>
+              <div className="doc-rule" />
 
-              <div className="mt-[var(--space-lg)] border-t border-rule">
-                {filteredCatalog.length > 0
-                  ? filteredCatalog.map((method) => (
-                      <MethodCard
-                        key={method.name}
-                        method={method}
-                        lang={lang}
-                        copyLabel={L.copyMethod}
-                        copiedLabel={L.copied}
-                        failedLabel={L.failed}
-                      />
-                    ))
-                  : <p className="py-[var(--space-xl)] text-ink-2">{L.empty}</p>}
+              <div className="doc-catalog">
+                <div className="doc-catalog__bar">
+                  <p className="doc-catalog__count num" aria-live="polite">
+                    {L.showing(filteredCatalog.length, CATALOG_METHODS.length)}
+                  </p>
+                  <div className="doc-catalog__chips">
+                    {namespaces.map((ns) => (
+                      <button
+                        key={ns}
+                        type="button"
+                        onClick={() => setSelectedNamespace(ns)}
+                        aria-pressed={selectedNamespace === ns}
+                        className="doc-chip"
+                      >
+                        {ns}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {filteredCatalog.length > 0 ? (
+                  <div className="doc-catalog__list">
+                    {filteredCatalog.map((method) => (
+                      <div key={method.name} id={`method-${method.name}`}>
+                        <MethodCard method={method} lang={lang} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="doc-p doc-empty">{L.empty}</p>
+                )}
               </div>
             </section>
           )}
         </main>
       </div>
 
-      <footer className="border-t border-rule">
-        <div className="max-w-container mx-auto px-[var(--gutter)] py-[var(--space-lg)] text-sm text-muted">
-          {content.footer.copyright}
+      <footer className="doc-footer">
+        <div className="doc-footer__inner">
+          <span>{content.footer.copyright}</span>
+          <a href="./skill/SKILL.md" download="HOTARU_AGENT_SKILL.md" className="doc-footer__link">
+            <Download aria-hidden="true" className="w-4 h-4" />
+            <span>SKILL.md</span>
+          </a>
         </div>
       </footer>
     </div>

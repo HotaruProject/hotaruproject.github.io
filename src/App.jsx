@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
-import { Jail } from './components/Jail';
-import { Modules } from './components/Modules';
-import { Documentation } from './components/Documentation';
-import { Skill } from './components/Skill';
 import { Footer } from './components/Footer';
 import { FumadocsView } from './components/FumadocsView';
 import { CONTENT } from './data/content.jsx';
 
 export function App() {
   const [lang, setLang] = useState('en');
-  const [moduleId, setModuleId] = useState('info');
   const [view, setView] = useState(() => (window.location.hash.startsWith('#docs') ? 'docs' : 'home'));
   const currentContent = CONTENT[lang] || CONTENT.en;
 
@@ -29,16 +24,12 @@ export function App() {
       '.doc-chip',
       '.doc-ghost',
       '.doc-select',
-      '.toc-item',
-      '.pager',
-      '.mod-index__item',
-      '.jail__node:is(button)',
-      '.jail__node-btn',
-      '.jail__vault',
-      '.copy-block__code',
+      '.doc-nav__item',
+      '.doc-pager__item',
+      '.doc-palette__item',
       '.doc-code',
-      '.manifest__code',
-      '.doc-method__name',
+      '.doc-toolbar__hint',
+      '.doc-search__clear',
     ].join(', ');
     const ignite = (event) => {
       const el = event.target.closest(selector);
@@ -117,10 +108,6 @@ export function App() {
       />
       <main className="flex-grow w-full">
         <Hero content={currentContent} lang={lang} onOpenDocs={openDocs} />
-        <Jail content={currentContent} />
-        <Modules content={currentContent} lang={lang} moduleId={moduleId} onPickModule={setModuleId} />
-        <Documentation content={currentContent} lang={lang} onOpenDocs={openDocs} />
-        <Skill content={currentContent} copyLabels={currentContent.hero} />
       </main>
       <Footer content={currentContent} />
     </div>
