@@ -4,18 +4,18 @@ export const CATALOG_METHODS = [
     "rpc": "messages.toggleTodoCompleted",
     "namespace": "messages",
     "signature": "await ctx.set_checklist_completed(peer: InputPeer, msg_id: int, completed: Vector<int>, incompleted: Vector<int>)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       },
       {
@@ -31,26 +31,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.toggleTodoCompleted. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.toggleTodoCompleted. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark one or more items of a todo list as completed or not completed.",
+    "desc_ru": "Отметить один или несколько пунктов списка задач как выполненные или невыполненные."
   },
   {
     "name": "add_poll_answer",
     "rpc": "messages.addPollAnswer",
     "namespace": "messages",
     "signature": "await ctx.add_poll_answer(peer: InputPeer, msg_id: int, answer: PollAnswer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       },
       {
@@ -60,26 +60,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.addPollAnswer. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.addPollAnswer. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Add an answer option to an open-answer poll",
+    "desc_ru": "Добавить вариант ответа в открытый опрос."
   },
   {
     "name": "remove_poll_answer",
     "rpc": "messages.deletePollAnswer",
     "namespace": "messages",
     "signature": "await ctx.remove_poll_answer(peer: InputPeer, msg_id: int, option: bytes)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       },
       {
@@ -89,20 +89,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deletePollAnswer. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deletePollAnswer. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Remove an answer option from an open-answer poll",
+    "desc_ru": "Удалить вариант ответа из открытого опроса."
   },
   {
     "name": "unread_poll_votes",
     "rpc": "messages.getUnreadPollVotes",
     "namespace": "messages",
-    "signature": "await ctx.unread_poll_votes(peer: InputPeer, top_msg_id: flags.0?int = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
-    "returns": "bool",
+    "signature": "await ctx.unread_poll_votes(peer: InputPeer, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -114,48 +114,48 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "add_offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getUnreadPollVotes. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getUnreadPollVotes. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get messages containing polls with unread votes",
+    "desc_ru": "Получить сообщения с опросами, в которых есть непрочитанные голоса."
   },
   {
     "name": "mark_poll_votes_read",
     "rpc": "messages.readPollVotes",
     "namespace": "messages",
-    "signature": "await ctx.mark_poll_votes_read(peer: InputPeer, top_msg_id: flags.0?int = None)",
-    "returns": "bool",
+    "signature": "await ctx.mark_poll_votes_read(peer: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -165,15 +165,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.readPollVotes. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.readPollVotes. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark all unread poll votes in a chat as read",
+    "desc_ru": "Отметить все непрочитанные голоса в опросах чата как прочитанные."
   },
   {
     "name": "poll_statistics",
     "rpc": "stats.getPollStats",
     "namespace": "stats",
-    "signature": "await ctx.poll_statistics(dark: flags.0?true = None, peer: InputPeer, msg_id: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.poll_statistics(peer: InputPeer, msg_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -184,53 +184,53 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       }
     ],
-    "desc_en": "Calls Telegram stats.getPollStats. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stats.getPollStats. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get statistics for a poll sent in a message.",
+    "desc_ru": "Получить статистику опроса, отправленного в сообщении."
   },
   {
     "name": "scheduled_messages",
     "rpc": "messages.getScheduledHistory",
     "namespace": "messages",
     "signature": "await ctx.scheduled_messages(peer: InputPeer, hash: long)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getScheduledHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getScheduledHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get scheduled messages",
+    "desc_ru": "Получить отложенные сообщения."
   },
   {
     "name": "scheduled_by_ids",
     "rpc": "messages.getScheduledMessages",
     "namespace": "messages",
     "signature": "await ctx.scheduled_by_ids(peer: InputPeer, id: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -240,20 +240,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getScheduledMessages. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getScheduledMessages. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get scheduled messages",
+    "desc_ru": "Получить отложенные сообщения по их идентификаторам."
   },
   {
     "name": "publish_scheduled",
     "rpc": "messages.sendScheduledMessages",
     "namespace": "messages",
     "signature": "await ctx.publish_scheduled(peer: InputPeer, id: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -263,20 +263,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.sendScheduledMessages. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.sendScheduledMessages. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Send scheduled messages right away",
+    "desc_ru": "Отправить отложенные сообщения немедленно."
   },
   {
     "name": "cancel_scheduled",
     "rpc": "messages.deleteScheduledMessages",
     "namespace": "messages",
     "signature": "await ctx.cancel_scheduled(peer: InputPeer, id: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -286,20 +286,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteScheduledMessages. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteScheduledMessages. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete scheduled messages",
+    "desc_ru": "Удалить отложенные сообщения."
   },
   {
     "name": "configure_chat_reactions",
     "rpc": "messages.setChatAvailableReactions",
     "namespace": "messages",
-    "signature": "await ctx.configure_chat_reactions(peer: InputPeer, available_reactions: ChatReactions, reactions_limit: flags.0?int = None, paid_enabled: flags.1?Bool = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.configure_chat_reactions(peer: InputPeer, available_reactions: ChatReactions)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -321,32 +321,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.setChatAvailableReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.setChatAvailableReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Change the set of message reactions that can be used in a certain group, supergroup or channel",
+    "desc_ru": "Изменить набор реакций на сообщения, доступных в группе, супергруппе или канале."
   },
   {
     "name": "available_reactions",
     "rpc": "messages.getAvailableReactions",
     "namespace": "messages",
     "signature": "await ctx.available_reactions(hash: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getAvailableReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getAvailableReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain available message reactions",
+    "desc_ru": "Получить доступные реакции на сообщения."
   },
   {
     "name": "set_default_reaction",
     "rpc": "messages.setDefaultReaction",
     "namespace": "messages",
     "signature": "await ctx.set_default_reaction(reaction: Reaction)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "reaction",
@@ -355,20 +355,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.setDefaultReaction. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.setDefaultReaction. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Change default emoji reaction to use in the quick reaction menu: the value is synced across devices and can be fetched using help.getConfig, reactions_default field.",
+    "desc_ru": "Задать реакцию по умолчанию для быстрого меню реакций. Значение синхронизируется между устройствами и читается через help.getConfig, поле reactions_default."
   },
   {
     "name": "unread_reactions",
     "rpc": "messages.getUnreadReactions",
     "namespace": "messages",
-    "signature": "await ctx.unread_reactions(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
-    "returns": "bool",
+    "signature": "await ctx.unread_reactions(peer: InputPeer, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -386,48 +386,48 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "add_offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getUnreadReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getUnreadReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get unread reactions to messages you sent",
+    "desc_ru": "Получить непрочитанные реакции на отправленные нами сообщения."
   },
   {
     "name": "mark_reactions_read",
     "rpc": "messages.readReactions",
     "namespace": "messages",
-    "signature": "await ctx.mark_reactions_read(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None)",
-    "returns": "bool",
+    "signature": "await ctx.mark_reactions_read(peer: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -443,76 +443,77 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.readReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.readReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark message reactions as read",
+    "desc_ru": "Отметить реакции на сообщения как прочитанные."
   },
   {
     "name": "popular_reactions",
     "rpc": "messages.getTopReactions",
     "namespace": "messages",
     "signature": "await ctx.popular_reactions(limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getTopReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getTopReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Got popular message reactions",
+    "desc_ru": "Получить популярные реакции на сообщения."
   },
   {
     "name": "recent_reactions",
     "rpc": "messages.getRecentReactions",
     "namespace": "messages",
     "signature": "await ctx.recent_reactions(limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getRecentReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getRecentReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get recently used message reactions",
+    "desc_ru": "Получить недавно использованные реакции на сообщения."
   },
   {
     "name": "clear_recent_reactions",
     "rpc": "messages.clearRecentReactions",
     "namespace": "messages",
     "signature": "await ctx.clear_recent_reactions()",
-    "returns": "bool",
-    "params": [],
-    "desc_en": "Calls Telegram messages.clearRecentReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.clearRecentReactions. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Clear recently used message reactions",
+    "desc_ru": "Очистить список недавно использованных реакций на сообщения."
   },
   {
     "name": "remove_member_reactions",
     "rpc": "messages.deleteParticipantReactions",
     "namespace": "messages",
     "signature": "await ctx.remove_member_reactions(peer: InputPeer, participant: InputPeer)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -522,26 +523,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteParticipantReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteParticipantReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "As an admin, remove all of a specific participant's reactions from every message in a group or channel.",
+    "desc_ru": "Снять все реакции конкретного участника со всех сообщений в группе или канале. Требуются права администратора."
   },
   {
     "name": "remove_member_message_reaction",
     "rpc": "messages.deleteParticipantReaction",
     "namespace": "messages",
     "signature": "await ctx.remove_member_message_reaction(peer: InputPeer, msg_id: int, participant: InputPeer)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       },
       {
@@ -551,15 +552,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteParticipantReaction. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteParticipantReaction. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "As an admin, remove all of a specific participant's reactions from a single message.",
+    "desc_ru": "Снять все реакции конкретного участника с одного сообщения. Требуются права администратора."
   },
   {
     "name": "saved_dialogs",
     "rpc": "messages.getSavedDialogs",
     "namespace": "messages",
-    "signature": "await ctx.saved_dialogs(exclude_pinned: flags.0?true = None, parent_peer: flags.1?InputPeer = None, offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.saved_dialogs(offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "exclude_pinned",
@@ -576,43 +577,43 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_peer",
         "type": "InputPeer",
-        "required": true,
-        "default": "{'_': 'inputPeerEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSavedDialogs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSavedDialogs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns the current saved dialog list or monoforum topic list.",
+    "desc_ru": "Вернуть текущий список диалогов сохранённых сообщений или тем монфорума."
   },
   {
     "name": "saved_history",
     "rpc": "messages.getSavedHistory",
     "namespace": "messages",
-    "signature": "await ctx.saved_history(parent_peer: flags.0?InputPeer = None, peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.saved_history(peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -629,55 +630,55 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "add_offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSavedHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSavedHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch saved messages forwarded from a specific peer, or fetch messages from a monoforum topic.",
+    "desc_ru": "Получить сохранённые сообщения, пересланные от конкретного собеседника, или сообщения из темы монфорума."
   },
   {
     "name": "clear_saved_history",
     "rpc": "messages.deleteSavedHistory",
     "namespace": "messages",
-    "signature": "await ctx.clear_saved_history(parent_peer: flags.0?InputPeer = None, peer: InputPeer, max_id: int, min_date: flags.2?int = None, max_date: flags.3?int = None)",
-    "returns": "bool",
+    "signature": "await ctx.clear_saved_history(peer: InputPeer, max_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -710,25 +711,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteSavedHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteSavedHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes messages from a monoforum topic, or deletes messages forwarded from a specific peer to saved messages.",
+    "desc_ru": "Удалить сообщения из темы монфорума или пересланные от конкретного собеседника в сохранённые сообщения."
   },
   {
     "name": "pinned_saved_dialogs",
     "rpc": "messages.getPinnedSavedDialogs",
     "namespace": "messages",
     "signature": "await ctx.pinned_saved_dialogs()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram messages.getPinnedSavedDialogs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getPinnedSavedDialogs. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get pinned saved dialogs, see here for more info.",
+    "desc_ru": "Получить закреплённые диалоги сохранённых сообщений."
   },
   {
     "name": "set_saved_dialog_pinned",
     "rpc": "messages.toggleSavedDialogPin",
     "namespace": "messages",
-    "signature": "await ctx.set_saved_dialog_pinned(pinned: flags.0?true = None, peer: InputDialogPeer)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_saved_dialog_pinned(peer: InputDialogPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "pinned",
@@ -743,15 +745,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.toggleSavedDialogPin. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.toggleSavedDialogPin. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Pin or unpin a saved message dialog.",
+    "desc_ru": "Закрепить или открепить диалог сохранённых сообщений."
   },
   {
     "name": "reorder_saved_pins",
     "rpc": "messages.reorderPinnedSavedDialogs",
     "namespace": "messages",
-    "signature": "await ctx.reorder_saved_pins(force: flags.0?true = None, order: Vector<InputDialogPeer>)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.reorder_saved_pins(order: Vector<InputDialogPeer>)",
+    "returns": "Any",
     "params": [
       {
         "name": "force",
@@ -766,15 +768,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.reorderPinnedSavedDialogs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.reorderPinnedSavedDialogs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder pinned saved message dialogs.",
+    "desc_ru": "Изменить порядок закреплённых диалогов сохранённых сообщений."
   },
   {
     "name": "saved_reaction_tags",
     "rpc": "messages.getSavedReactionTags",
     "namespace": "messages",
-    "signature": "await ctx.saved_reaction_tags(peer: flags.0?InputPeer = None, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.saved_reaction_tags(hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -785,19 +787,19 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSavedReactionTags. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSavedReactionTags. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch the full list of saved message tags created by the user.",
+    "desc_ru": "Получить полный список созданных пользователем тегов сохранённых сообщений."
   },
   {
     "name": "rename_saved_tag",
     "rpc": "messages.updateSavedReactionTag",
     "namespace": "messages",
-    "signature": "await ctx.rename_saved_tag(reaction: Reaction, title: flags.0?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.rename_saved_tag(reaction: Reaction)",
+    "returns": "Any",
     "params": [
       {
         "name": "reaction",
@@ -812,32 +814,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.updateSavedReactionTag. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.updateSavedReactionTag. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Update the description of a saved message tag.",
+    "desc_ru": "Изменить описание тега сохранённых сообщений."
   },
   {
     "name": "suggested_saved_tags",
     "rpc": "messages.getDefaultTagReactions",
     "namespace": "messages",
     "signature": "await ctx.suggested_saved_tags(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getDefaultTagReactions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getDefaultTagReactions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch a default recommended list of saved message tag reactions.",
+    "desc_ru": "Получить рекомендуемый список тегов для сохранённых сообщений."
   },
   {
     "name": "saved_dialogs_by_peers",
     "rpc": "messages.getSavedDialogsByID",
     "namespace": "messages",
-    "signature": "await ctx.saved_dialogs_by_peers(parent_peer: flags.1?InputPeer = None, ids: Vector<InputPeer>)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.saved_dialogs_by_peers(ids: Vector<InputPeer>)",
+    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -852,15 +854,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSavedDialogsByID. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSavedDialogsByID. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain information about specific saved message dialogs or monoforum topics.",
+    "desc_ru": "Получить сведения о конкретных диалогах сохранённых сообщений или темах монфорума."
   },
   {
     "name": "mark_saved_history_read",
     "rpc": "messages.readSavedHistory",
     "namespace": "messages",
     "signature": "await ctx.mark_saved_history_read(parent_peer: InputPeer, peer: InputPeer, max_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -881,20 +883,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.readSavedHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.readSavedHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark messages as read in a monoforum topic.",
+    "desc_ru": "Отметить сообщения в теме монфорума как прочитанные."
   },
   {
     "name": "forum_topics",
     "rpc": "messages.getForumTopics",
     "namespace": "messages",
-    "signature": "await ctx.forum_topics(peer: InputPeer, q: flags.0?string = None, offset_date: int, offset_id: int, offset_topic: int, limit: int)",
-    "returns": "list[dict[str, Any]]",
+    "signature": "await ctx.forum_topics(peer: InputPeer, offset_date: int, offset_id: int, offset_topic: int, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -906,42 +908,42 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_topic",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getForumTopics. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getForumTopics. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get topics of a forum",
+    "desc_ru": "Получить темы форума."
   },
   {
     "name": "forum_topics_by_ids",
     "rpc": "messages.getForumTopicsByID",
     "namespace": "messages",
     "signature": "await ctx.forum_topics_by_ids(peer: InputPeer, topics: Vector<int>)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -951,20 +953,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getForumTopicsByID. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getForumTopicsByID. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get forum topics by their ID",
+    "desc_ru": "Получить темы форума по их идентификаторам."
   },
   {
     "name": "edit_forum_topic",
     "rpc": "messages.editForumTopic",
     "namespace": "messages",
-    "signature": "await ctx.edit_forum_topic(peer: InputPeer, topic_id: int, title: flags.0?string = None, icon_emoji_id: flags.1?long = None, closed: flags.2?Bool = None, hidden: flags.3?Bool = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.edit_forum_topic(peer: InputPeer, topic_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -998,20 +1000,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editForumTopic. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editForumTopic. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit forum topic.",
+    "desc_ru": "Изменить тему форума."
   },
   {
     "name": "set_forum_topic_pinned",
     "rpc": "messages.updatePinnedForumTopic",
     "namespace": "messages",
     "signature": "await ctx.set_forum_topic_pinned(peer: InputPeer, topic_id: int, pinned: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -1027,15 +1029,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.updatePinnedForumTopic. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.updatePinnedForumTopic. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Pin or unpin forum topics",
+    "desc_ru": "Закрепить или открепить темы форума."
   },
   {
     "name": "reorder_forum_pins",
     "rpc": "messages.reorderPinnedForumTopics",
     "namespace": "messages",
-    "signature": "await ctx.reorder_forum_pins(force: flags.0?true = None, peer: InputPeer, order: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.reorder_forum_pins(peer: InputPeer, order: Vector<int>)",
+    "returns": "Any",
     "params": [
       {
         "name": "force",
@@ -1046,7 +1048,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -1056,15 +1058,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.reorderPinnedForumTopics. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.reorderPinnedForumTopics. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder pinned forum topics",
+    "desc_ru": "Изменить порядок закреплённых тем форума."
   },
   {
     "name": "create_forum_topic",
     "rpc": "messages.createForumTopic",
     "namespace": "messages",
-    "signature": "await ctx.create_forum_topic(title_missing: flags.4?true = None, peer: InputPeer, title: string, icon_color: flags.0?int = None, icon_emoji_id: flags.3?long = None, random_id: long, send_as: flags.2?InputPeer = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.create_forum_topic(peer: InputPeer, title: string, random_id: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "title_missing",
@@ -1075,7 +1077,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -1099,8 +1101,8 @@ export const CATALOG_METHODS = [
       {
         "name": "random_id",
         "type": "long",
-        "required": true,
-        "default": "$random"
+        "required": false,
+        "default": "$random_id"
       },
       {
         "name": "send_as",
@@ -1109,20 +1111,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.createForumTopic. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.createForumTopic. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Create a forum topic.",
+    "desc_ru": "Создать тему форума."
   },
   {
     "name": "remove_forum_topic",
     "rpc": "messages.deleteTopicHistory",
     "namespace": "messages",
     "signature": "await ctx.remove_forum_topic(peer: InputPeer, top_msg_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -1132,20 +1134,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteTopicHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteTopicHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete message history of a forum topic",
+    "desc_ru": "Удалить историю сообщений темы форума."
   },
   {
     "name": "set_forum_enabled",
     "rpc": "channels.toggleForum",
     "namespace": "channels",
     "signature": "await ctx.set_forum_enabled(channel: InputChannel, enabled: Bool, tabs: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -1161,20 +1163,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleForum. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleForum. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Enable or disable forum functionality in a supergroup.",
+    "desc_ru": "Включить или выключить режим форума в супергруппе."
   },
   {
     "name": "set_forum_message_view",
     "rpc": "channels.toggleViewForumAsMessages",
     "namespace": "channels",
     "signature": "await ctx.set_forum_message_view(channel: InputChannel, enabled: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -1184,15 +1186,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleViewForumAsMessages. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleViewForumAsMessages. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Users may also choose to display messages from all topics of a forum as if they were sent to a normal group, using a \"View as messages\" setting in the local client: this setting only affects the current account, and is synced to other logged in sessions using this method. Invoking this method will update the value of the view_forum_as_messages flag of channelFull or dialog and emit an updateChannelViewForumAsMessages.",
+    "desc_ru": "Пользователи могут показывать сообщения всех тем форума как сообщения обычной группы через настройку Показывать как сообщения. Настройка действует только на текущий аккаунт и синхронизируется с другими сессиями. Вызов обновляет флаг view_forum_as_messages у channelFull или dialog и вызывает updateChannelViewForumAsMessages."
   },
   {
     "name": "story_posting_quota",
     "rpc": "stories.canSendStory",
     "namespace": "stories",
     "signature": "await ctx.story_posting_quota(peer: InputPeer)",
-    "returns": "int",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1201,15 +1203,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.canSendStory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.canSendStory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Check whether we can post stories as the specified peer.",
+    "desc_ru": "Проверить, можно ли публиковать истории от имени указанного собеседника."
   },
   {
     "name": "post_story",
     "rpc": "stories.sendStory",
     "namespace": "stories",
-    "signature": "await ctx.post_story(pinned: flags.2?true = None, noforwards: flags.4?true = None, fwd_modified: flags.7?true = None, peer: InputPeer, media: InputMedia, media_areas: flags.5?Vector<MediaArea> = None, caption: flags.0?string = None, entities: flags.1?Vector<MessageEntity> = None, privacy_rules: Vector<InputPrivacyRule>, random_id: long, period: flags.3?int = None, fwd_from_id: flags.6?InputPeer = None, fwd_from_story: flags.6?int = None, albums: flags.8?Vector<int> = None, music: flags.9?InputDocument = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.post_story(peer: InputPeer, media: InputMedia, privacy_rules: Vector<InputPrivacyRule>, random_id: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "pinned",
@@ -1268,8 +1270,8 @@ export const CATALOG_METHODS = [
       {
         "name": "random_id",
         "type": "long",
-        "required": true,
-        "default": "$random"
+        "required": false,
+        "default": "$random_id"
       },
       {
         "name": "period",
@@ -1302,15 +1304,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.sendStory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.sendStory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Uploads a Telegram Story. May also be used in a business connection, not by wrapping the query in invokeWithBusinessConnection, but rather by specifying the ID of a controlled business user in peer.",
+    "desc_ru": "Опубликовать историю Telegram. Может использоваться и в бизнес-подключении: укажите ID управляемого бизнес-пользователя в peer."
   },
   {
     "name": "edit_story",
     "rpc": "stories.editStory",
     "namespace": "stories",
-    "signature": "await ctx.edit_story(peer: InputPeer, id: int, media: flags.0?InputMedia = None, media_areas: flags.3?Vector<MediaArea> = None, caption: flags.1?string = None, entities: flags.1?Vector<MessageEntity> = None, privacy_rules: flags.2?Vector<InputPrivacyRule> = None, music: flags.4?InputDocument = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.edit_story(peer: InputPeer, id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1361,15 +1363,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.editStory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.editStory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit an uploaded story May also be used in a business connection, not by wrapping the query in invokeWithBusinessConnection, but rather by specifying the ID of a controlled business user in peer: in this context, the method can only be used to edit stories posted by the same business bot on behalf of the user with stories.sendStory.",
+    "desc_ru": "Изменить загруженную историю. Может использоваться и в бизнес-подключении: укажите ID управляемого бизнес-пользователя в peer, тогда метод правит только истории, опубликованные тем же ботом от имени пользователя."
   },
   {
     "name": "delete_stories",
     "rpc": "stories.deleteStories",
     "namespace": "stories",
     "signature": "await ctx.delete_stories(peer: InputPeer, id: Vector<int>)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1384,15 +1386,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.deleteStories. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.deleteStories. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes some posted stories.",
+    "desc_ru": "Удалить опубликованные истории."
   },
   {
     "name": "set_stories_on_profile",
     "rpc": "stories.togglePinned",
     "namespace": "stories",
     "signature": "await ctx.set_stories_on_profile(peer: InputPeer, id: Vector<int>, pinned: Bool)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1413,15 +1415,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.togglePinned. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.togglePinned. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Pin or unpin one or more stories",
+    "desc_ru": "Закрепить или открепить одну или несколько историй."
   },
   {
     "name": "story_feed",
     "rpc": "stories.getAllStories",
     "namespace": "stories",
-    "signature": "await ctx.story_feed(next: flags.1?true = None, hidden: flags.2?true = None, state: flags.0?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.story_feed()",
+    "returns": "Any",
     "params": [
       {
         "name": "next",
@@ -1442,15 +1444,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getAllStories. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getAllStories. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch the List of active (or active and hidden) stories, see here for more info on watching stories.",
+    "desc_ru": "Получить список активных, а также активных и скрытых историй."
   },
   {
     "name": "profile_stories",
     "rpc": "stories.getPinnedStories",
     "namespace": "stories",
     "signature": "await ctx.profile_stories(peer: InputPeer, offset_id: int, limit: int)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1461,25 +1463,25 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getPinnedStories. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getPinnedStories. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch the stories pinned on a peer's profile.",
+    "desc_ru": "Получить истории, закреплённые в профиле собеседника."
   },
   {
     "name": "archived_stories",
     "rpc": "stories.getStoriesArchive",
     "namespace": "stories",
     "signature": "await ctx.archived_stories(peer: InputPeer, offset_id: int, limit: int)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1490,25 +1492,25 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getStoriesArchive. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getStoriesArchive. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch the story archive of a peer we control.",
+    "desc_ru": "Получить архив историй собеседника, которым мы управляем."
   },
   {
     "name": "stories_by_ids",
     "rpc": "stories.getStoriesByID",
     "namespace": "stories",
     "signature": "await ctx.stories_by_ids(peer: InputPeer, id: Vector<int>)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1523,15 +1525,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getStoriesByID. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getStoriesByID. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain full info about a set of stories by their IDs.",
+    "desc_ru": "Получить полные сведения об историях по их идентификаторам."
   },
   {
     "name": "mark_stories_read",
     "rpc": "stories.readStories",
     "namespace": "stories",
     "signature": "await ctx.mark_stories_read(peer: InputPeer, max_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1542,19 +1544,19 @@ export const CATALOG_METHODS = [
       {
         "name": "max_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.readStories. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.readStories. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark all stories up to a certain ID as read, for a given peer; will emit an updateReadStories update to all logged-in sessions.",
+    "desc_ru": "Отметить все истории до указанного идентификатора как прочитанные для заданного собеседника. Обновление updateReadStories уходит во все активные сессии."
   },
   {
     "name": "story_viewers",
     "rpc": "stories.getStoryViewsList",
     "namespace": "stories",
-    "signature": "await ctx.story_viewers(just_contacts: flags.0?true = None, reactions_first: flags.2?true = None, forwards_first: flags.3?true = None, peer: InputPeer, q: flags.1?string = None, id: int, offset: string, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.story_viewers(peer: InputPeer, id: int, offset: string, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "just_contacts",
@@ -1595,25 +1597,25 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "string",
-        "required": true,
-        "default": ""
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getStoryViewsList. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getStoryViewsList. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain the list of users that have viewed a specific story we posted",
+    "desc_ru": "Получить список пользователей, посмотревших опубликованную нами историю."
   },
   {
     "name": "story_view_counts",
     "rpc": "stories.getStoriesViews",
     "namespace": "stories",
     "signature": "await ctx.story_view_counts(peer: InputPeer, id: Vector<int>)",
-    "returns": "int",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1628,15 +1630,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getStoriesViews. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getStoriesViews. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain info about the view count, forward count, reactions and recent viewers of one or more stories.",
+    "desc_ru": "Получить число просмотров, пересылок, реакции и недавних зрителей одной или нескольких историй."
   },
   {
     "name": "story_link",
     "rpc": "stories.exportStoryLink",
     "namespace": "stories",
     "signature": "await ctx.story_link(peer: InputPeer, id: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1651,15 +1653,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.exportStoryLink. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.exportStoryLink. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Generate a story deep link for a specific story",
+    "desc_ru": "Сгенерировать ссылку на конкретную историю."
   },
   {
     "name": "activate_story_stealth",
     "rpc": "stories.activateStealthMode",
     "namespace": "stories",
-    "signature": "await ctx.activate_story_stealth(past: flags.0?true = None, future: flags.1?true = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.activate_story_stealth()",
+    "returns": "Any",
     "params": [
       {
         "name": "past",
@@ -1674,15 +1676,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.activateStealthMode. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.activateStealthMode. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Activates stories stealth mode, see here for more info. Will return an updateStoriesStealthMode.",
+    "desc_ru": "Включить режим скрытности историй. Возвращает updateStoriesStealthMode."
   },
   {
     "name": "react_to_story",
     "rpc": "stories.sendReaction",
     "namespace": "stories",
-    "signature": "await ctx.react_to_story(add_to_recent: flags.0?true = None, peer: InputPeer, story_id: int, reaction: Reaction)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.react_to_story(peer: InputPeer, story_id: int, reaction: Reaction)",
+    "returns": "Any",
     "params": [
       {
         "name": "add_to_recent",
@@ -1709,15 +1711,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.sendReaction. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.sendReaction. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "React to a story.",
+    "desc_ru": "Отреагировать на историю."
   },
   {
     "name": "peer_stories",
     "rpc": "stories.getPeerStories",
     "namespace": "stories",
     "signature": "await ctx.peer_stories(peer: InputPeer)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1726,25 +1728,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getPeerStories. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getPeerStories. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch the full active story list of a specific peer.",
+    "desc_ru": "Получить полный список активных историй конкретного собеседника."
   },
   {
     "name": "story_read_markers",
     "rpc": "stories.getAllReadPeerStories",
     "namespace": "stories",
     "signature": "await ctx.story_read_markers()",
-    "returns": "bool",
-    "params": [],
-    "desc_en": "Calls Telegram stories.getAllReadPeerStories. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getAllReadPeerStories. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Obtain the latest read story ID for all peers when first logging in, returned as a list of updateReadStories updates, see here for more info.",
+    "desc_ru": "Получить последние прочитанные идентификаторы историй для всех собеседников при первом входе. Возвращается списком обновлений updateReadStories."
   },
   {
     "name": "peer_latest_story_ids",
     "rpc": "stories.getPeerMaxIDs",
     "namespace": "stories",
     "signature": "await ctx.peer_latest_story_ids(id: Vector<InputPeer>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -1753,25 +1756,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getPeerMaxIDs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getPeerMaxIDs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get compact active story summaries for a set of peers.",
+    "desc_ru": "Получить краткие сводки активных историй для набора собеседников."
   },
   {
     "name": "story_posting_chats",
     "rpc": "stories.getChatsToSend",
     "namespace": "stories",
     "signature": "await ctx.story_posting_chats()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram stories.getChatsToSend. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getChatsToSend. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Obtain a list of channels where the user can post stories",
+    "desc_ru": "Получить список каналов, где пользователь может публиковать истории."
   },
   {
     "name": "set_peer_stories_hidden",
     "rpc": "stories.togglePeerStoriesHidden",
     "namespace": "stories",
     "signature": "await ctx.set_peer_stories_hidden(peer: InputPeer, hidden: Bool)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1786,15 +1790,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.togglePeerStoriesHidden. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.togglePeerStoriesHidden. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Hide the active stories of a user, preventing them from being displayed on the action bar on the homescreen, see here for more info.",
+    "desc_ru": "Скрыть активные истории пользователя, чтобы они не показывались на панели действий на главном экране."
   },
   {
     "name": "story_reaction_senders",
     "rpc": "stories.getStoryReactionsList",
     "namespace": "stories",
-    "signature": "await ctx.story_reaction_senders(forwards_first: flags.2?true = None, peer: InputPeer, id: int, reaction: flags.0?Reaction = None, offset: flags.1?string = None, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.story_reaction_senders(peer: InputPeer, id: int, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "forwards_first",
@@ -1829,19 +1833,19 @@ export const CATALOG_METHODS = [
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getStoryReactionsList. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getStoryReactionsList. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get the reaction and interaction list of a story posted to a channel, along with the sender of each reaction. Can only be used by channel admins.",
+    "desc_ru": "Получить список реакций и взаимодействий с историей в канале вместе с автором каждой реакции. Доступно только администраторам канала."
   },
   {
     "name": "reorder_profile_story_pins",
     "rpc": "stories.togglePinnedToTop",
     "namespace": "stories",
     "signature": "await ctx.reorder_profile_story_pins(peer: InputPeer, id: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1856,15 +1860,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.togglePinnedToTop. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.togglePinnedToTop. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Pin some stories to the top of the profile, see here for more info.",
+    "desc_ru": "Закрепить истории вверху профиля."
   },
   {
     "name": "search_stories",
     "rpc": "stories.searchPosts",
     "namespace": "stories",
-    "signature": "await ctx.search_stories(hashtag: flags.0?string = None, area: flags.1?MediaArea = None, peer: flags.2?InputPeer = None, offset: string, limit: int)",
-    "returns": "list[dict[str, Any]]",
+    "signature": "await ctx.search_stories(offset: string, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "hashtag",
@@ -1887,25 +1891,25 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "string",
-        "required": true,
-        "default": ""
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.searchPosts. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.searchPosts. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Globally search for stories using a hashtag or a location media area, see here for more info on the full flow. Either hashtag or area must be set when invoking the method.",
+    "desc_ru": "Искать истории по всему Telegram по хэштегу или географической области. При вызове должен быть задан хэштег или область."
   },
   {
     "name": "create_story_album",
     "rpc": "stories.createAlbum",
     "namespace": "stories",
     "signature": "await ctx.create_story_album(peer: InputPeer, title: string, stories: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1926,15 +1930,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.createAlbum. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.createAlbum. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Creates a story album.",
+    "desc_ru": "Создать альбом историй."
   },
   {
     "name": "edit_story_album",
     "rpc": "stories.updateAlbum",
     "namespace": "stories",
-    "signature": "await ctx.edit_story_album(peer: InputPeer, album_id: int, title: flags.0?string = None, delete_stories: flags.1?Vector<int> = None, add_stories: flags.2?Vector<int> = None, order: flags.3?Vector<int> = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.edit_story_album(peer: InputPeer, album_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1973,15 +1977,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.updateAlbum. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.updateAlbum. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Rename a story albums, or add, delete or reorder stories in it.",
+    "desc_ru": "Переименовать альбом историй, а также добавить, удалить или переставить в нём истории."
   },
   {
     "name": "reorder_story_albums",
     "rpc": "stories.reorderAlbums",
     "namespace": "stories",
     "signature": "await ctx.reorder_story_albums(peer: InputPeer, order: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1996,15 +2000,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.reorderAlbums. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.reorderAlbums. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder story albums on a profile.",
+    "desc_ru": "Изменить порядок альбомов историй в профиле."
   },
   {
     "name": "remove_story_album",
     "rpc": "stories.deleteAlbum",
     "namespace": "stories",
     "signature": "await ctx.remove_story_album(peer: InputPeer, album_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -2019,15 +2023,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.deleteAlbum. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.deleteAlbum. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete a story album.",
+    "desc_ru": "Удалить альбом историй."
   },
   {
     "name": "story_albums",
     "rpc": "stories.getAlbums",
     "namespace": "stories",
     "signature": "await ctx.story_albums(peer: InputPeer, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -2038,19 +2042,19 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getAlbums. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getAlbums. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get story albums created by a peer.",
+    "desc_ru": "Получить альбомы историй, созданные собеседником."
   },
   {
     "name": "story_album_items",
     "rpc": "stories.getAlbumStories",
     "namespace": "stories",
     "signature": "await ctx.story_album_items(peer: InputPeer, album_id: int, offset: int, limit: int)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -2067,25 +2071,25 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stories.getAlbumStories. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stories.getAlbumStories. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get stories in a story album.",
+    "desc_ru": "Получить истории из альбома."
   },
   {
     "name": "stickers_for_emoji",
     "rpc": "messages.getStickers",
     "namespace": "messages",
     "signature": "await ctx.stickers_for_emoji(emoticon: string, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "emoticon",
@@ -2096,36 +2100,36 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get stickers by emoji",
+    "desc_ru": "Получить стикеры по эмодзи."
   },
   {
     "name": "installed_sticker_sets",
     "rpc": "messages.getAllStickers",
     "namespace": "messages",
     "signature": "await ctx.installed_sticker_sets(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getAllStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getAllStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get all installed stickers",
+    "desc_ru": "Получить все установленные наборы стикеров."
   },
   {
     "name": "sticker_set",
     "rpc": "messages.getStickerSet",
     "namespace": "messages",
     "signature": "await ctx.sticker_set(stickerset: InputStickerSet, hash: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2136,19 +2140,19 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getStickerSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getStickerSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get info about a stickerset",
+    "desc_ru": "Получить сведения о наборе стикеров."
   },
   {
     "name": "install_sticker_set",
     "rpc": "messages.installStickerSet",
     "namespace": "messages",
     "signature": "await ctx.install_sticker_set(stickerset: InputStickerSet, archived: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2159,19 +2163,19 @@ export const CATALOG_METHODS = [
       {
         "name": "archived",
         "type": "Bool",
-        "required": true,
-        "default": "False"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.installStickerSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.installStickerSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Install a stickerset",
+    "desc_ru": "Установить набор стикеров."
   },
   {
     "name": "uninstall_sticker_set",
     "rpc": "messages.uninstallStickerSet",
     "namespace": "messages",
     "signature": "await ctx.uninstall_sticker_set(stickerset: InputStickerSet)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2180,15 +2184,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.uninstallStickerSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.uninstallStickerSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Uninstall a stickerset",
+    "desc_ru": "Удалить набор стикеров."
   },
   {
     "name": "reorder_sticker_sets",
     "rpc": "messages.reorderStickerSets",
     "namespace": "messages",
-    "signature": "await ctx.reorder_sticker_sets(masks: flags.0?true = None, emojis: flags.1?true = None, order: Vector<long>)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.reorder_sticker_sets(order: Vector<long>)",
+    "returns": "Any",
     "params": [
       {
         "name": "masks",
@@ -2209,32 +2213,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.reorderStickerSets. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.reorderStickerSets. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder installed stickersets",
+    "desc_ru": "Изменить порядок установленных наборов стикеров."
   },
   {
     "name": "saved_gifs",
     "rpc": "messages.getSavedGifs",
     "namespace": "messages",
     "signature": "await ctx.saved_gifs(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSavedGifs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSavedGifs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get saved GIFs.",
+    "desc_ru": "Получить сохранённые GIF."
   },
   {
     "name": "set_gif_saved",
     "rpc": "messages.saveGif",
     "namespace": "messages",
     "signature": "await ctx.set_gif_saved(id: InputDocument, unsave: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -2249,32 +2253,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.saveGif. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.saveGif. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Add GIF to saved gifs list",
+    "desc_ru": "Добавить GIF в список сохранённых."
   },
   {
     "name": "featured_sticker_sets",
     "rpc": "messages.getFeaturedStickers",
     "namespace": "messages",
     "signature": "await ctx.featured_sticker_sets(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getFeaturedStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getFeaturedStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get featured stickers",
+    "desc_ru": "Получить рекомендуемые стикеры."
   },
   {
     "name": "mark_featured_stickers_seen",
     "rpc": "messages.readFeaturedStickers",
     "namespace": "messages",
     "signature": "await ctx.mark_featured_stickers_seen(id: Vector<long>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -2283,15 +2287,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.readFeaturedStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.readFeaturedStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark new featured stickers as read",
+    "desc_ru": "Отметить новые рекомендуемые стикеры как просмотренные."
   },
   {
     "name": "recent_stickers",
     "rpc": "messages.getRecentStickers",
     "namespace": "messages",
-    "signature": "await ctx.recent_stickers(attached: flags.0?true = None, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.recent_stickers(hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "attached",
@@ -2302,19 +2306,19 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getRecentStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getRecentStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get recent stickers",
+    "desc_ru": "Получить недавние стикеры."
   },
   {
     "name": "set_sticker_recent",
     "rpc": "messages.saveRecentSticker",
     "namespace": "messages",
-    "signature": "await ctx.set_sticker_recent(attached: flags.0?true = None, id: InputDocument, unsave: Bool)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_sticker_recent(id: InputDocument, unsave: Bool)",
+    "returns": "Any",
     "params": [
       {
         "name": "attached",
@@ -2335,15 +2339,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.saveRecentSticker. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.saveRecentSticker. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Add/remove sticker from recent stickers list",
+    "desc_ru": "Добавить или удалить стикер из списка недавних."
   },
   {
     "name": "clear_recent_stickers",
     "rpc": "messages.clearRecentStickers",
     "namespace": "messages",
-    "signature": "await ctx.clear_recent_stickers(attached: flags.0?true = None)",
-    "returns": "bool",
+    "signature": "await ctx.clear_recent_stickers()",
+    "returns": "Any",
     "params": [
       {
         "name": "attached",
@@ -2352,15 +2356,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.clearRecentStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.clearRecentStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Clear recent stickers",
+    "desc_ru": "Очистить список недавних стикеров."
   },
   {
     "name": "archived_sticker_sets",
     "rpc": "messages.getArchivedStickers",
     "namespace": "messages",
-    "signature": "await ctx.archived_sticker_sets(masks: flags.0?true = None, emojis: flags.1?true = None, offset_id: long, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.archived_sticker_sets(offset_id: long, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "masks",
@@ -2377,42 +2381,42 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_id",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getArchivedStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getArchivedStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get all archived stickers",
+    "desc_ru": "Получить все архивные наборы стикеров."
   },
   {
     "name": "installed_masks",
     "rpc": "messages.getMaskStickers",
     "namespace": "messages",
     "signature": "await ctx.installed_masks(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getMaskStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getMaskStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get installed mask stickers",
+    "desc_ru": "Получить установленные стикеры-маски."
   },
   {
     "name": "media_sticker_sets",
     "rpc": "messages.getAttachedStickers",
     "namespace": "messages",
     "signature": "await ctx.media_sticker_sets(media: InputStickeredMedia)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "media",
@@ -2421,32 +2425,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getAttachedStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getAttachedStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get stickers attached to a photo or video",
+    "desc_ru": "Получить стикеры, прикреплённые к фото или видео."
   },
   {
     "name": "favorite_stickers",
     "rpc": "messages.getFavedStickers",
     "namespace": "messages",
     "signature": "await ctx.favorite_stickers(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getFavedStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getFavedStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get faved stickers",
+    "desc_ru": "Получить избранные стикеры."
   },
   {
     "name": "set_sticker_favorite",
     "rpc": "messages.faveSticker",
     "namespace": "messages",
     "signature": "await ctx.set_sticker_favorite(id: InputDocument, unfave: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -2461,15 +2465,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.faveSticker. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.faveSticker. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark or unmark a sticker as favorite",
+    "desc_ru": "Отметить стикер как избранный или снять отметку."
   },
   {
     "name": "search_sticker_sets",
     "rpc": "messages.searchStickerSets",
     "namespace": "messages",
-    "signature": "await ctx.search_sticker_sets(exclude_featured: flags.0?true = None, q: string, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.search_sticker_sets(q: string, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "exclude_featured",
@@ -2486,19 +2490,19 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.searchStickerSets. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.searchStickerSets. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Search for stickersets",
+    "desc_ru": "Искать наборы стикеров."
   },
   {
     "name": "bulk_sticker_set_action",
     "rpc": "messages.toggleStickerSets",
     "namespace": "messages",
-    "signature": "await ctx.bulk_sticker_set_action(uninstall: flags.0?true = None, archive: flags.1?true = None, unarchive: flags.2?true = None, stickersets: Vector<InputStickerSet>)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.bulk_sticker_set_action(stickersets: Vector<InputStickerSet>)",
+    "returns": "Any",
     "params": [
       {
         "name": "uninstall",
@@ -2525,44 +2529,44 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.toggleStickerSets. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.toggleStickerSets. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Apply changes to multiple stickersets",
+    "desc_ru": "Применить изменения сразу к нескольким наборам стикеров."
   },
   {
     "name": "older_featured_sticker_sets",
     "rpc": "messages.getOldFeaturedStickers",
     "namespace": "messages",
     "signature": "await ctx.older_featured_sticker_sets(offset: int, limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getOldFeaturedStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getOldFeaturedStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Method for fetching previously featured stickers",
+    "desc_ru": "Получить ранее рекомендуемые стикеры."
   },
   {
     "name": "custom_emoji_documents",
     "rpc": "messages.getCustomEmojiDocuments",
     "namespace": "messages",
     "signature": "await ctx.custom_emoji_documents(document_id: Vector<long>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "document_id",
@@ -2571,49 +2575,49 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getCustomEmojiDocuments. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getCustomEmojiDocuments. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch custom emoji stickers. Returns a list of documents with the animated custom emoji in TGS format, and a documentAttributeCustomEmoji attribute with the original emoji and info about the emoji stickerset this custom emoji belongs to.",
+    "desc_ru": "Получить стикеры кастомных эмодзи. Возвращает документы с анимированными эмодзи в формате TGS и атрибут documentAttributeCustomEmoji с исходным эмодзи и данными о наборе."
   },
   {
     "name": "installed_emoji_sets",
     "rpc": "messages.getEmojiStickers",
     "namespace": "messages",
     "signature": "await ctx.installed_emoji_sets(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getEmojiStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getEmojiStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Gets the list of currently installed custom emoji stickersets.",
+    "desc_ru": "Получить список установленных наборов стикеров кастомных эмодзи."
   },
   {
     "name": "featured_emoji_sets",
     "rpc": "messages.getFeaturedEmojiStickers",
     "namespace": "messages",
     "signature": "await ctx.featured_emoji_sets(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getFeaturedEmojiStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getFeaturedEmojiStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Gets featured custom emoji stickersets.",
+    "desc_ru": "Получить рекомендуемые наборы стикеров кастомных эмодзи."
   },
   {
     "name": "search_custom_emoji",
     "rpc": "messages.searchCustomEmoji",
     "namespace": "messages",
     "signature": "await ctx.search_custom_emoji(emoticon: string, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "emoticon",
@@ -2624,19 +2628,19 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.searchCustomEmoji. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.searchCustomEmoji. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Look for custom emojis associated to a UTF8 emoji",
+    "desc_ru": "Найти кастомные эмодзи по символу UTF-8."
   },
   {
     "name": "search_emoji_sets",
     "rpc": "messages.searchEmojiStickerSets",
     "namespace": "messages",
-    "signature": "await ctx.search_emoji_sets(exclude_featured: flags.0?true = None, q: string, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.search_emoji_sets(q: string, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "exclude_featured",
@@ -2653,42 +2657,42 @@ export const CATALOG_METHODS = [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.searchEmojiStickerSets. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.searchEmojiStickerSets. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Search for custom emoji stickersets",
+    "desc_ru": "Искать наборы стикеров кастомных эмодзи."
   },
   {
     "name": "owned_sticker_sets",
     "rpc": "messages.getMyStickers",
     "namespace": "messages",
     "signature": "await ctx.owned_sticker_sets(offset_id: long, limit: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "offset_id",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getMyStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getMyStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch all stickersets owned by the current user.",
+    "desc_ru": "Получить все наборы стикеров, принадлежащие текущему пользователю."
   },
   {
     "name": "search_stickers",
     "rpc": "messages.searchStickers",
     "namespace": "messages",
-    "signature": "await ctx.search_stickers(emojis: flags.0?true = None, q: string, emoticon: string, lang_code: Vector<string>, offset: int, limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.search_stickers(q: string, emoticon: string, lang_code: Vector<string>, offset: int, limit: int, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "emojis",
@@ -2717,31 +2721,31 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.searchStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.searchStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Search for stickers using AI-powered keyword search",
+    "desc_ru": "Искать стикеры по ключевым словам с помощью ИИ."
   },
   {
     "name": "create_sticker_set",
     "rpc": "stickers.createStickerSet",
     "namespace": "stickers",
-    "signature": "await ctx.create_sticker_set(masks: flags.0?true = None, emojis: flags.5?true = None, text_color: flags.6?true = None, user_id: InputUser, title: string, short_name: string, thumb: flags.2?InputDocument = None, stickers: Vector<InputStickerSetItem>, software: flags.3?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.create_sticker_set(user_id: InputUser, title: string, short_name: string, stickers: Vector<InputStickerSetItem>)",
+    "returns": "Any",
     "params": [
       {
         "name": "masks",
@@ -2798,15 +2802,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.createStickerSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.createStickerSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Create a stickerset.",
+    "desc_ru": "Создать набор стикеров."
   },
   {
     "name": "remove_sticker",
     "rpc": "stickers.removeStickerFromSet",
     "namespace": "stickers",
     "signature": "await ctx.remove_sticker(sticker: InputDocument)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -2815,15 +2819,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.removeStickerFromSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.removeStickerFromSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Remove a sticker from the set where it belongs. The sticker set must have been created by the current user/bot.",
+    "desc_ru": "Удалить стикер из его набора. Набор должен быть создан текущим пользователем или ботом."
   },
   {
     "name": "move_sticker",
     "rpc": "stickers.changeStickerPosition",
     "namespace": "stickers",
     "signature": "await ctx.move_sticker(sticker: InputDocument, position: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -2838,15 +2842,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.changeStickerPosition. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.changeStickerPosition. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Changes the absolute position of a sticker in the set to which it belongs. The sticker set must have been created by the current user/bot.",
+    "desc_ru": "Изменить абсолютную позицию стикера в его наборе. Набор должен быть создан текущим пользователем или ботом."
   },
   {
     "name": "add_sticker",
     "rpc": "stickers.addStickerToSet",
     "namespace": "stickers",
     "signature": "await ctx.add_sticker(stickerset: InputStickerSet, sticker: InputStickerSetItem)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2861,15 +2865,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.addStickerToSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.addStickerToSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Add a sticker to a stickerset. The sticker set must have been created by the current user/bot.",
+    "desc_ru": "Добавить стикер в набор. Набор должен быть создан текущим пользователем или ботом."
   },
   {
     "name": "set_sticker_set_thumbnail",
     "rpc": "stickers.setStickerSetThumb",
     "namespace": "stickers",
-    "signature": "await ctx.set_sticker_set_thumbnail(stickerset: InputStickerSet, thumb: flags.0?InputDocument = None, thumb_document_id: flags.1?long = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_sticker_set_thumbnail(stickerset: InputStickerSet)",
+    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2890,15 +2894,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.setStickerSetThumb. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.setStickerSetThumb. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Set stickerset thumbnail",
+    "desc_ru": "Задать обложку набора стикеров."
   },
   {
     "name": "check_sticker_set_name",
     "rpc": "stickers.checkShortName",
     "namespace": "stickers",
     "signature": "await ctx.check_sticker_set_name(short_name: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "short_name",
@@ -2907,15 +2911,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.checkShortName. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.checkShortName. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Check whether the given short name is available",
+    "desc_ru": "Проверить, доступно ли указанное короткое имя."
   },
   {
     "name": "suggest_sticker_set_name",
     "rpc": "stickers.suggestShortName",
     "namespace": "stickers",
     "signature": "await ctx.suggest_sticker_set_name(title: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "title",
@@ -2924,15 +2928,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.suggestShortName. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.suggestShortName. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Suggests a short name for a given stickerpack name",
+    "desc_ru": "Предложить короткое имя для указанного набора стикеров."
   },
   {
     "name": "edit_sticker_metadata",
     "rpc": "stickers.changeSticker",
     "namespace": "stickers",
-    "signature": "await ctx.edit_sticker_metadata(sticker: InputDocument, emoji: flags.0?string = None, mask_coords: flags.1?MaskCoords = None, keywords: flags.2?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.edit_sticker_metadata(sticker: InputDocument)",
+    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -2959,15 +2963,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.changeSticker. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.changeSticker. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Update the keywords, emojis or mask coordinates of a sticker.",
+    "desc_ru": "Обновить ключевые слова, эмодзи или координаты маски стикера."
   },
   {
     "name": "rename_sticker_set",
     "rpc": "stickers.renameStickerSet",
     "namespace": "stickers",
     "signature": "await ctx.rename_sticker_set(stickerset: InputStickerSet, title: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2982,15 +2986,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.renameStickerSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.renameStickerSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Renames a stickerset.",
+    "desc_ru": "Переименовать набор стикеров."
   },
   {
     "name": "remove_sticker_set",
     "rpc": "stickers.deleteStickerSet",
     "namespace": "stickers",
     "signature": "await ctx.remove_sticker_set(stickerset: InputStickerSet)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2999,15 +3003,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.deleteStickerSet. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.deleteStickerSet. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes a stickerset we created.",
+    "desc_ru": "Удалить созданный нами набор стикеров."
   },
   {
     "name": "replace_sticker",
     "rpc": "stickers.replaceSticker",
     "namespace": "stickers",
     "signature": "await ctx.replace_sticker(sticker: InputDocument, new_sticker: InputStickerSetItem)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -3022,59 +3026,60 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stickers.replaceSticker. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stickers.replaceSticker. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Replace a sticker in a stickerset.",
+    "desc_ru": "Заменить стикер в наборе."
   },
   {
     "name": "contact_ids",
     "rpc": "contacts.getContactIDs",
     "namespace": "contacts",
     "signature": "await ctx.contact_ids(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.getContactIDs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.getContactIDs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get the telegram IDs of all contacts. Returns an array of Telegram user IDs for all contacts (0 if a contact does not have an associated Telegram account or have hidden their account using privacy settings).",
+    "desc_ru": "Получить Telegram ID всех контактов. Возвращает массив идентификаторов; для контакта без Telegram-аккаунта или со скрытым аккаунтом возвращается 0."
   },
   {
     "name": "contact_statuses",
     "rpc": "contacts.getStatuses",
     "namespace": "contacts",
     "signature": "await ctx.contact_statuses()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram contacts.getStatuses. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.getStatuses. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Use this method to obtain the online statuses of all contacts with an accessible Telegram account.",
+    "desc_ru": "Получить статусы в сети всех контактов с доступным Telegram-аккаунтом."
   },
   {
     "name": "contacts_list",
     "rpc": "contacts.getContacts",
     "namespace": "contacts",
     "signature": "await ctx.contacts_list(hash: long)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.getContacts. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.getContacts. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns the current user's contact list.",
+    "desc_ru": "Вернуть текущий список контактов пользователя."
   },
   {
     "name": "import_contacts",
     "rpc": "contacts.importContacts",
     "namespace": "contacts",
     "signature": "await ctx.import_contacts(contacts: Vector<InputContact>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "contacts",
@@ -3083,15 +3088,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.importContacts. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.importContacts. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Imports contacts: saves a full list on the server, adds already registered contacts to the contact list, returns added contacts and their info. Use contacts.addContact to add Telegram contacts without actually using their phone number.",
+    "desc_ru": "Импортировать контакты: сохранить полный список на сервере, добавить зарегистрированные контакты в список и вернуть добавленные контакты с их данными. Чтобы добавить контакт Telegram без использования его номера, вызывайте contacts.addContact."
   },
   {
     "name": "remove_contacts",
     "rpc": "contacts.deleteContacts",
     "namespace": "contacts",
     "signature": "await ctx.remove_contacts(id: Vector<InputUser>)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3100,15 +3105,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.deleteContacts. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.deleteContacts. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes several contacts from the list.",
+    "desc_ru": "Удалить несколько контактов из списка."
   },
   {
     "name": "remove_contacts_by_phone",
     "rpc": "contacts.deleteByPhones",
     "namespace": "contacts",
     "signature": "await ctx.remove_contacts_by_phone(phones: Vector<string>)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "phones",
@@ -3117,15 +3122,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.deleteByPhones. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.deleteByPhones. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete contacts by phone number",
+    "desc_ru": "Удалить контакты по номеру телефона."
   },
   {
     "name": "block_peer",
     "rpc": "contacts.block",
     "namespace": "contacts",
-    "signature": "await ctx.block_peer(my_stories_from: flags.0?true = None, id: InputPeer)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.block_peer(id: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3140,15 +3145,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.block. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.block. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Adds a peer to a blocklist, see here for more info.",
+    "desc_ru": "Добавить собеседника в список заблокированных."
   },
   {
     "name": "unblock_peer",
     "rpc": "contacts.unblock",
     "namespace": "contacts",
-    "signature": "await ctx.unblock_peer(my_stories_from: flags.0?true = None, id: InputPeer)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.unblock_peer(id: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3163,15 +3168,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.unblock. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.unblock. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes a peer from a blocklist, see here for more info.",
+    "desc_ru": "Удалить собеседника из списка заблокированных."
   },
   {
     "name": "blocked_peers",
     "rpc": "contacts.getBlocked",
     "namespace": "contacts",
-    "signature": "await ctx.blocked_peers(my_stories_from: flags.0?true = None, offset: int, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.blocked_peers(offset: int, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3182,25 +3187,25 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.getBlocked. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.getBlocked. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns the list of blocked users.",
+    "desc_ru": "Вернуть список заблокированных пользователей."
   },
   {
     "name": "search_public_peers",
     "rpc": "contacts.search",
     "namespace": "contacts",
-    "signature": "await ctx.search_public_peers(broadcasts: flags.0?true = None, bots: flags.1?true = None, q: string, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.search_public_peers(q: string, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "broadcasts",
@@ -3223,19 +3228,19 @@ export const CATALOG_METHODS = [
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.search. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.search. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns users found by username substring.",
+    "desc_ru": "Вернуть пользователей, найденных по подстроке имени пользователя."
   },
   {
     "name": "frequent_peers",
     "rpc": "contacts.getTopPeers",
     "namespace": "contacts",
-    "signature": "await ctx.frequent_peers(correspondents: flags.0?true = None, bots_pm: flags.1?true = None, bots_inline: flags.2?true = None, phone_calls: flags.3?true = None, forward_users: flags.4?true = None, forward_chats: flags.5?true = None, groups: flags.10?true = None, channels: flags.15?true = None, bots_app: flags.16?true = None, bots_guestchat: flags.17?true = None, offset: int, limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.frequent_peers(offset: int, limit: int, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "correspondents",
@@ -3300,31 +3305,31 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.getTopPeers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.getTopPeers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get most used peers",
+    "desc_ru": "Получить чаще всего используемых собеседников."
   },
   {
     "name": "reset_peer_rating",
     "rpc": "contacts.resetTopPeerRating",
     "namespace": "contacts",
     "signature": "await ctx.reset_peer_rating(category: TopPeerCategory, peer: InputPeer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "category",
@@ -3339,35 +3344,37 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.resetTopPeerRating. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.resetTopPeerRating. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reset rating of top peer",
+    "desc_ru": "Сбросить рейтинг часто используемого собеседника."
   },
   {
     "name": "clear_imported_contacts",
     "rpc": "contacts.resetSaved",
     "namespace": "contacts",
     "signature": "await ctx.clear_imported_contacts()",
-    "returns": "bool",
-    "params": [],
-    "desc_en": "Calls Telegram contacts.resetSaved. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.resetSaved. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Removes all contacts without an associated Telegram account.",
+    "desc_ru": "Удалить все контакты без связанного Telegram-аккаунта."
   },
   {
     "name": "imported_contacts",
     "rpc": "contacts.getSaved",
     "namespace": "contacts",
     "signature": "await ctx.imported_contacts()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram contacts.getSaved. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.getSaved. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get all contacts, requires a takeout session, see here for more info.",
+    "desc_ru": "Получить все контакты. Требуется сессия выгрузки данных."
   },
   {
     "name": "set_frequent_peers_enabled",
     "rpc": "contacts.toggleTopPeers",
     "namespace": "contacts",
     "signature": "await ctx.set_frequent_peers_enabled(enabled: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "enabled",
@@ -3376,15 +3383,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.toggleTopPeers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.toggleTopPeers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Enable/disable top peers",
+    "desc_ru": "Включить или выключить список часто используемых собеседников."
   },
   {
     "name": "add_contact",
     "rpc": "contacts.addContact",
     "namespace": "contacts",
-    "signature": "await ctx.add_contact(add_phone_privacy_exception: flags.0?true = None, id: InputUser, first_name: string, last_name: string, phone: string, note: flags.1?TextWithEntities = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.add_contact(id: InputUser, first_name: string, last_name: string, phone: string)",
+    "returns": "Any",
     "params": [
       {
         "name": "add_phone_privacy_exception",
@@ -3423,15 +3430,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.addContact. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.addContact. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Add an existing telegram user as contact. Use contacts.importContacts to add contacts by phone number, without knowing their Telegram ID.",
+    "desc_ru": "Добавить существующего пользователя Telegram в контакты. Чтобы добавить контакт по номеру телефона, не зная его Telegram ID, используйте contacts.importContacts."
   },
   {
     "name": "accept_contact",
     "rpc": "contacts.acceptContact",
     "namespace": "contacts",
     "signature": "await ctx.accept_contact(id: InputUser)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3440,15 +3447,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.acceptContact. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.acceptContact. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "If the add contact action bar is active, add that user as contact",
+    "desc_ru": "Добавить пользователя в контакты, если активна панель добавления контакта."
   },
   {
     "name": "set_close_friends",
     "rpc": "contacts.editCloseFriends",
     "namespace": "contacts",
     "signature": "await ctx.set_close_friends(id: Vector<long>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3457,15 +3464,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.editCloseFriends. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.editCloseFriends. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit the close friends list, see here for more info.",
+    "desc_ru": "Изменить список близких друзей."
   },
   {
     "name": "replace_blocklist",
     "rpc": "contacts.setBlocked",
     "namespace": "contacts",
-    "signature": "await ctx.replace_blocklist(my_stories_from: flags.0?true = None, id: Vector<InputPeer>, limit: int)",
-    "returns": "list[dict[str, Any]]",
+    "signature": "await ctx.replace_blocklist(id: Vector<InputPeer>, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3482,29 +3489,30 @@ export const CATALOG_METHODS = [
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.setBlocked. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.setBlocked. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Replace the contents of an entire blocklist, see here for more info.",
+    "desc_ru": "Заменить содержимое всего списка заблокированных."
   },
   {
     "name": "contact_birthdays",
     "rpc": "contacts.getBirthdays",
     "namespace": "contacts",
     "signature": "await ctx.contact_birthdays()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram contacts.getBirthdays. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.getBirthdays. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Fetch all users with birthdays that fall within +1/-1 days, relative to the current day: this method should be invoked by clients every 6-8 hours, and if the result is non-empty, it should be used to appropriately update locally cached birthday information in user.birthday. See here for more info.",
+    "desc_ru": "Получить пользователей с днями рождения в пределах плюс или минус одного дня от текущего. Клиенту стоит вызывать метод каждые 6-8 часов и обновлять локальный кеш дня рождения."
   },
   {
     "name": "edit_contact_note",
     "rpc": "contacts.updateContactNote",
     "namespace": "contacts",
     "signature": "await ctx.edit_contact_note(id: InputUser, note: TextWithEntities)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3519,15 +3527,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram contacts.updateContactNote. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram contacts.updateContactNote. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Update the private note associated to a contact; see here for more info.",
+    "desc_ru": "Обновить личную заметку о контакте."
   },
   {
     "name": "dialogs",
     "rpc": "messages.getDialogs",
     "namespace": "messages",
-    "signature": "await ctx.dialogs(exclude_pinned: flags.0?true = None, folder_id: flags.1?int = None, offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.dialogs(offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "exclude_pinned",
@@ -3544,107 +3552,107 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_peer",
         "type": "InputPeer",
-        "required": true,
-        "default": "{'_': 'inputPeerEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getDialogs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getDialogs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns the current user dialog list.",
+    "desc_ru": "Вернуть текущий список диалогов пользователя."
   },
   {
     "name": "chat_history",
     "rpc": "messages.getHistory",
     "namespace": "messages",
     "signature": "await ctx.chat_history(peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "add_offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns the message history in a peer. Results are ordered by date (descending).",
+    "desc_ru": "Вернуть историю сообщений в диалоге. Результат отсортирован по дате по убыванию."
   },
   {
     "name": "search_chat_messages",
     "rpc": "messages.search",
     "namespace": "messages",
-    "signature": "await ctx.search_chat_messages(peer: InputPeer, q: string, from_id: flags.0?InputPeer = None, saved_peer_id: flags.2?InputPeer = None, saved_reaction: flags.3?Vector<Reaction> = None, top_msg_id: flags.1?int = None, filter: MessagesFilter, min_date: int, max_date: int, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
-    "returns": "list[dict[str, Any]]",
+    "signature": "await ctx.search_chat_messages(peer: InputPeer, q: string, filter: MessagesFilter, min_date: int, max_date: int, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -3680,72 +3688,72 @@ export const CATALOG_METHODS = [
       {
         "name": "filter",
         "type": "MessagesFilter",
-        "required": true,
-        "default": "{'_': 'inputMessagesFilterEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "add_offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.search. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.search. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Search for messages.",
+    "desc_ru": "Искать сообщения."
   },
   {
     "name": "mark_chat_read",
     "rpc": "messages.readHistory",
     "namespace": "messages",
     "signature": "await ctx.mark_chat_read(peer: InputPeer, max_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -3755,15 +3763,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.readHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.readHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Marks message history as read.",
+    "desc_ru": "Отметить историю сообщений как прочитанную."
   },
   {
     "name": "clear_chat_history",
     "rpc": "messages.deleteHistory",
     "namespace": "messages",
-    "signature": "await ctx.clear_chat_history(just_clear: flags.0?true = None, revoke: flags.1?true = None, peer: InputPeer, max_id: int, min_date: flags.2?int = None, max_date: flags.3?int = None)",
-    "returns": "bool",
+    "signature": "await ctx.clear_chat_history(peer: InputPeer, max_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "just_clear",
@@ -3780,7 +3788,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -3802,32 +3810,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes communication history.",
+    "desc_ru": "Удалить историю переписки."
   },
   {
     "name": "peer_settings",
     "rpc": "messages.getPeerSettings",
     "namespace": "messages",
     "signature": "await ctx.peer_settings(peer: InputPeer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram messages.getPeerSettings. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getPeerSettings. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get peer settings",
+    "desc_ru": "Получить настройки собеседника."
   },
   {
     "name": "basic_groups",
     "rpc": "messages.getChats",
     "namespace": "messages",
     "signature": "await ctx.basic_groups(id: Vector<long>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3836,15 +3844,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getChats. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getChats. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns chat basic info on their IDs.",
+    "desc_ru": "Вернуть основные сведения о чатах по их идентификаторам."
   },
   {
     "name": "basic_group_details",
     "rpc": "messages.getFullChat",
     "namespace": "messages",
     "signature": "await ctx.basic_group_details(chat_id: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -3853,15 +3861,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getFullChat. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getFullChat. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get full info about a basic group.",
+    "desc_ru": "Получить полные сведения о базовой группе."
   },
   {
     "name": "search_all_messages",
     "rpc": "messages.searchGlobal",
     "namespace": "messages",
-    "signature": "await ctx.search_all_messages(broadcasts_only: flags.1?true = None, groups_only: flags.2?true = None, users_only: flags.3?true = None, folder_id: flags.0?int = None, community: flags.4?InputChannel = None, q: string, filter: MessagesFilter, min_date: int, max_date: int, offset_rate: int, offset_peer: InputPeer, offset_id: int, limit: int)",
-    "returns": "list[dict[str, Any]]",
+    "signature": "await ctx.search_all_messages(q: string, filter: MessagesFilter, min_date: int, max_date: int, offset_rate: int, offset_peer: InputPeer, offset_id: int, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "broadcasts_only",
@@ -3902,78 +3910,78 @@ export const CATALOG_METHODS = [
       {
         "name": "filter",
         "type": "MessagesFilter",
-        "required": true,
-        "default": "{'_': 'inputMessagesFilterEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_rate",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_peer",
         "type": "InputPeer",
-        "required": true,
-        "default": "{'_': 'inputPeerEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.searchGlobal. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.searchGlobal. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Search for messages and peers globally",
+    "desc_ru": "Искать сообщения и собеседников по всему Telegram."
   },
   {
     "name": "message_editability",
     "rpc": "messages.getMessageEditData",
     "namespace": "messages",
     "signature": "await ctx.message_editability(peer: InputPeer, id: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       }
     ],
-    "desc_en": "Calls Telegram messages.getMessageEditData. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getMessageEditData. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Find out if a media message's caption can be edited",
+    "desc_ru": "Узнать, можно ли изменить подпись к медиасообщению."
   },
   {
     "name": "peer_dialogs",
     "rpc": "messages.getPeerDialogs",
     "namespace": "messages",
     "signature": "await ctx.peer_dialogs(peers: Vector<InputDialogPeer>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peers",
@@ -3982,25 +3990,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getPeerDialogs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getPeerDialogs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get dialog info of specified peers",
+    "desc_ru": "Получить сведения о диалогах с указанными собеседниками."
   },
   {
     "name": "all_drafts",
     "rpc": "messages.getAllDrafts",
     "namespace": "messages",
     "signature": "await ctx.all_drafts()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram messages.getAllDrafts. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getAllDrafts. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Return all message drafts. Returns all the latest updateDraftMessage updates related to all chats with drafts.",
+    "desc_ru": "Вернуть все черновики сообщений: последние обновления updateDraftMessage по всем чатам с черновиками."
   },
   {
     "name": "mutual_groups",
     "rpc": "messages.getCommonChats",
     "namespace": "messages",
     "signature": "await ctx.mutual_groups(user_id: InputUser, max_id: long, limit: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "user_id",
@@ -4011,25 +4020,25 @@ export const CATALOG_METHODS = [
       {
         "name": "max_id",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getCommonChats. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getCommonChats. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get chats in common with a user",
+    "desc_ru": "Получить общие чаты с пользователем."
   },
   {
     "name": "set_dialog_pinned",
     "rpc": "messages.toggleDialogPin",
     "namespace": "messages",
-    "signature": "await ctx.set_dialog_pinned(pinned: flags.0?true = None, peer: InputDialogPeer)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_dialog_pinned(peer: InputDialogPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "pinned",
@@ -4044,15 +4053,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.toggleDialogPin. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.toggleDialogPin. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Pin/unpin a dialog",
+    "desc_ru": "Закрепить или открепить диалог."
   },
   {
     "name": "reorder_dialog_pins",
     "rpc": "messages.reorderPinnedDialogs",
     "namespace": "messages",
-    "signature": "await ctx.reorder_dialog_pins(force: flags.0?true = None, folder_id: int, order: Vector<InputDialogPeer>)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.reorder_dialog_pins(folder_id: int, order: Vector<InputDialogPeer>)",
+    "returns": "Any",
     "params": [
       {
         "name": "force",
@@ -4073,15 +4082,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.reorderPinnedDialogs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.reorderPinnedDialogs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder pinned dialogs",
+    "desc_ru": "Изменить порядок закреплённых диалогов."
   },
   {
     "name": "pinned_dialogs",
     "rpc": "messages.getPinnedDialogs",
     "namespace": "messages",
     "signature": "await ctx.pinned_dialogs(folder_id: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "folder_id",
@@ -4090,20 +4099,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getPinnedDialogs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getPinnedDialogs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get pinned dialogs",
+    "desc_ru": "Получить закреплённые диалоги."
   },
   {
     "name": "unread_mentions",
     "rpc": "messages.getUnreadMentions",
     "namespace": "messages",
-    "signature": "await ctx.unread_mentions(peer: InputPeer, top_msg_id: flags.0?int = None, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
-    "returns": "bool",
+    "signature": "await ctx.unread_mentions(peer: InputPeer, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4115,48 +4124,48 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "add_offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "min_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getUnreadMentions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getUnreadMentions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get unread messages where we were mentioned",
+    "desc_ru": "Получить непрочитанные сообщения, в которых нас упомянули."
   },
   {
     "name": "mark_mentions_read",
     "rpc": "messages.readMentions",
     "namespace": "messages",
-    "signature": "await ctx.mark_mentions_read(peer: InputPeer, top_msg_id: flags.0?int = None)",
-    "returns": "bool",
+    "signature": "await ctx.mark_mentions_read(peer: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4166,44 +4175,44 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.readMentions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.readMentions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark mentions as read; can be used in forums but cannot be used in monoforums.",
+    "desc_ru": "Отметить упоминания как прочитанные. Работает в форумах, но не в монфорумах."
   },
   {
     "name": "recent_live_locations",
     "rpc": "messages.getRecentLocations",
     "namespace": "messages",
     "signature": "await ctx.recent_live_locations(peer: InputPeer, limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getRecentLocations. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getRecentLocations. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get all recent live locations sent to a specific chat: returns up to 1 location message (messageMediaGeoLive) per chat participant.",
+    "desc_ru": "Получить все недавние трансляции геопозиции в чате: не больше одного сообщения messageMediaGeoLive на каждого участника."
   },
   {
     "name": "set_dialog_unread",
     "rpc": "messages.markDialogUnread",
     "namespace": "messages",
-    "signature": "await ctx.set_dialog_unread(unread: flags.0?true = None, parent_peer: flags.1?InputPeer = None, peer: InputDialogPeer)",
-    "returns": "bool",
+    "signature": "await ctx.set_dialog_unread(peer: InputDialogPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "unread",
@@ -4224,15 +4233,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.markDialogUnread. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.markDialogUnread. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Manually mark dialog as unread",
+    "desc_ru": "Вручную отметить диалог непрочитанным."
   },
   {
     "name": "unread_dialog_marks",
     "rpc": "messages.getDialogUnreadMarks",
     "namespace": "messages",
-    "signature": "await ctx.unread_dialog_marks(parent_peer: flags.0?InputPeer = None)",
-    "returns": "bool",
+    "signature": "await ctx.unread_dialog_marks()",
+    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -4241,47 +4250,48 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getDialogUnreadMarks. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getDialogUnreadMarks. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get dialogs manually marked as unread",
+    "desc_ru": "Получить диалоги, вручную отмеченные непрочитанными."
   },
   {
     "name": "clear_all_drafts",
     "rpc": "messages.clearAllDrafts",
     "namespace": "messages",
     "signature": "await ctx.clear_all_drafts()",
-    "returns": "bool",
-    "params": [],
-    "desc_en": "Calls Telegram messages.clearAllDrafts. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.clearAllDrafts. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Clear all drafts.",
+    "desc_ru": "Удалить все черновики."
   },
   {
     "name": "chat_online_count",
     "rpc": "messages.getOnlines",
     "namespace": "messages",
     "signature": "await ctx.chat_online_count(peer: InputPeer)",
-    "returns": "int",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram messages.getOnlines. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getOnlines. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get count of online users in a chat",
+    "desc_ru": "Получить число пользователей в сети в чате."
   },
   {
     "name": "message_type_counts",
     "rpc": "messages.getSearchCounters",
     "namespace": "messages",
-    "signature": "await ctx.message_type_counts(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, top_msg_id: flags.0?int = None, filters: Vector<MessagesFilter>)",
-    "returns": "int",
+    "signature": "await ctx.message_type_counts(peer: InputPeer, filters: Vector<MessagesFilter>)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4303,43 +4313,43 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSearchCounters. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSearchCounters. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get the number of results that would be found by a messages.search call with the same parameters",
+    "desc_ru": "Получить число результатов, которые нашёл бы вызов messages.search с теми же параметрами."
   },
   {
     "name": "dismiss_peer_settings_bar",
     "rpc": "messages.hidePeerSettingsBar",
     "namespace": "messages",
     "signature": "await ctx.dismiss_peer_settings_bar(peer: InputPeer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram messages.hidePeerSettingsBar. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.hidePeerSettingsBar. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Should be called after the user hides the report spam/add as contact bar of a new chat, effectively prevents the user from executing the actions specified in the action bar.",
+    "desc_ru": "Вызывается после того, как пользователь скрыл панель пожаловаться на спам или добавить в контакты в новом чате, и запрещает выполнение действий этой панели."
   },
   {
     "name": "mark_discussion_read",
     "rpc": "messages.readDiscussion",
     "namespace": "messages",
     "signature": "await ctx.mark_discussion_read(peer: InputPeer, msg_id: int, read_max_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       },
       {
@@ -4349,20 +4359,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.readDiscussion. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.readDiscussion. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark a thread as read",
+    "desc_ru": "Отметить ветку как прочитанную."
   },
   {
     "name": "unpin_all_chat_messages",
     "rpc": "messages.unpinAllMessages",
     "namespace": "messages",
-    "signature": "await ctx.unpin_all_chat_messages(peer: InputPeer, top_msg_id: flags.0?int = None, saved_peer_id: flags.1?InputPeer = None)",
-    "returns": "list[dict[str, Any]]",
+    "signature": "await ctx.unpin_all_chat_messages(peer: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4378,43 +4388,43 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.unpinAllMessages. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.unpinAllMessages. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Unpin all pinned messages",
+    "desc_ru": "Открепить все закреплённые сообщения."
   },
   {
     "name": "message_readers",
     "rpc": "messages.getMessageReadParticipants",
     "namespace": "messages",
     "signature": "await ctx.message_readers(peer: InputPeer, msg_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       }
     ],
-    "desc_en": "Calls Telegram messages.getMessageReadParticipants. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getMessageReadParticipants. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get which users read a specific message: only available for groups and supergroups with less than chat_read_mark_size_threshold members, read receipts will be stored for chat_read_mark_expire_period seconds after the message was sent, see client configuration for more info.",
+    "desc_ru": "Получить список пользователей, прочитавших конкретное сообщение. Доступно только для групп и супергрупп с числом участников меньше chat_read_mark_size_threshold; отметки о прочтении хранятся chat_read_mark_expire_period секунд после отправки."
   },
   {
     "name": "message_search_calendar",
     "rpc": "messages.getSearchResultsCalendar",
     "namespace": "messages",
-    "signature": "await ctx.message_search_calendar(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, filter: MessagesFilter, offset_id: int, offset_date: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.message_search_calendar(peer: InputPeer, filter: MessagesFilter, offset_id: int, offset_date: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4426,36 +4436,36 @@ export const CATALOG_METHODS = [
       {
         "name": "filter",
         "type": "MessagesFilter",
-        "required": true,
-        "default": "{'_': 'inputMessagesFilterEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSearchResultsCalendar. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSearchResultsCalendar. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns information about the next messages of the specified type in the chat split by days. Returns the results in reverse chronological order. Can return partial results for the last returned day.",
+    "desc_ru": "Вернуть сведения о следующих сообщениях указанного типа в чате с разбивкой по дням. Порядок обратный хронологический; для последнего дня результат может быть неполным."
   },
   {
     "name": "message_search_positions",
     "rpc": "messages.getSearchResultsPositions",
     "namespace": "messages",
-    "signature": "await ctx.message_search_positions(peer: InputPeer, saved_peer_id: flags.2?InputPeer = None, filter: MessagesFilter, offset_id: int, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.message_search_positions(peer: InputPeer, filter: MessagesFilter, offset_id: int, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4467,36 +4477,36 @@ export const CATALOG_METHODS = [
       {
         "name": "filter",
         "type": "MessagesFilter",
-        "required": true,
-        "default": "{'_': 'inputMessagesFilterEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_id",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getSearchResultsPositions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSearchResultsPositions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns sparse positions of messages of the specified type in the chat to be used for shared media scroll implementation. Returns the results in reverse chronological order (i.e., in order of decreasing message_id).",
+    "desc_ru": "Вернуть разреженные позиции сообщений указанного типа в чате для прокрутки общих медиа. Порядок обратный хронологический, по убыванию message_id."
   },
   {
     "name": "set_default_send_as",
     "rpc": "messages.saveDefaultSendAs",
     "namespace": "messages",
     "signature": "await ctx.set_default_send_as(peer: InputPeer, send_as: InputPeer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4506,15 +4516,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.saveDefaultSendAs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.saveDefaultSendAs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Change the default peer that should be used when sending messages, reactions, poll votes to a specific group",
+    "desc_ru": "Задать собеседника по умолчанию для отправки сообщений, реакций и голосов в опросах в конкретной группе."
   },
   {
     "name": "sent_media_search",
     "rpc": "messages.searchSentMedia",
     "namespace": "messages",
     "signature": "await ctx.sent_media_search(q: string, filter: MessagesFilter, limit: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "q",
@@ -4525,53 +4535,53 @@ export const CATALOG_METHODS = [
       {
         "name": "filter",
         "type": "MessagesFilter",
-        "required": true,
-        "default": "{'_': 'inputMessagesFilterEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.searchSentMedia. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.searchSentMedia. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "View and search recently sent media. This method does not support pagination.",
+    "desc_ru": "Просмотреть и найти недавно отправленные медиа. Метод не поддерживает постраничность."
   },
   {
     "name": "outgoing_read_date",
     "rpc": "messages.getOutboxReadDate",
     "namespace": "messages",
     "signature": "await ctx.outgoing_read_date(peer: InputPeer, msg_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "msg_id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       }
     ],
-    "desc_en": "Calls Telegram messages.getOutboxReadDate. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getOutboxReadDate. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get the exact read date of one of our messages, sent to a private chat with another user. Can be only done for private outgoing messages not older than appConfig.pm_read_date_expire_period. If the peer's userFull.read_dates_private flag is set, we will not be able to fetch the exact read date of messages we send to them, and a USER_PRIVACY_RESTRICTED RPC error will be emitted. The exact read date of messages might still be unavailable for other reasons, see here for more info. To set userFull.read_dates_private for ourselves invoke account.setGlobalPrivacySettings, setting the settings.hide_read_marks flag.",
+    "desc_ru": "Получить точную дату прочтения одного из исходящих сообщений в личном чате. Работает только для личных исходящих сообщений не старше appConfig.pm_read_date_expire_period. Если у собеседника установлен флаг userFull.read_dates_private, точную дату получить нельзя и вернётся ошибка USER_PRIVACY_RESTRICTED."
   },
   {
     "name": "channel_message_author",
     "rpc": "channels.getMessageAuthor",
     "namespace": "channels",
     "signature": "await ctx.channel_message_author(channel: InputChannel, id: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -4581,15 +4591,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.getMessageAuthor. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getMessageAuthor. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Can only be invoked by non-bot admins of a monoforum, obtains the original sender of a message sent by other monoforum admins to the monoforum, on behalf of the channel associated to the monoforum.",
+    "desc_ru": "Доступно только администраторам монфорума, кроме ботов. Возвращает исходного отправителя сообщения, отправленного другими администраторами монфорума от имени связанного с ним канала."
   },
   {
     "name": "move_dialogs_to_archive",
     "rpc": "folders.editPeerFolders",
     "namespace": "folders",
     "signature": "await ctx.move_dialogs_to_archive(folder_peers: Vector<InputFolderPeer>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "folder_peers",
@@ -4598,35 +4608,37 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram folders.editPeerFolders. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram folders.editPeerFolders. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit peers in peer folder",
+    "desc_ru": "Изменить папку, в которой лежат собеседники."
   },
   {
     "name": "chat_folders",
     "rpc": "messages.getDialogFilters",
     "namespace": "messages",
     "signature": "await ctx.chat_folders()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram messages.getDialogFilters. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getDialogFilters. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get folders",
+    "desc_ru": "Получить папки."
   },
   {
     "name": "suggested_chat_folders",
     "rpc": "messages.getSuggestedDialogFilters",
     "namespace": "messages",
     "signature": "await ctx.suggested_chat_folders()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram messages.getSuggestedDialogFilters. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getSuggestedDialogFilters. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get suggested folders",
+    "desc_ru": "Получить рекомендуемые папки."
   },
   {
     "name": "save_chat_folder",
     "rpc": "messages.updateDialogFilter",
     "namespace": "messages",
-    "signature": "await ctx.save_chat_folder(id: int, filter: flags.0?DialogFilter = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.save_chat_folder(id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -4641,15 +4653,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.updateDialogFilter. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.updateDialogFilter. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Update folder",
+    "desc_ru": "Обновить папку."
   },
   {
     "name": "reorder_chat_folders",
     "rpc": "messages.updateDialogFiltersOrder",
     "namespace": "messages",
     "signature": "await ctx.reorder_chat_folders(order: Vector<int>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "order",
@@ -4658,15 +4670,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.updateDialogFiltersOrder. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.updateDialogFiltersOrder. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder folders",
+    "desc_ru": "Изменить порядок папок."
   },
   {
     "name": "set_folder_tags_visible",
     "rpc": "messages.toggleDialogFilterTags",
     "namespace": "messages",
     "signature": "await ctx.set_folder_tags_visible(enabled: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "enabled",
@@ -4675,15 +4687,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.toggleDialogFilterTags. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.toggleDialogFilterTags. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Enable or disable folder tags.",
+    "desc_ru": "Показать или скрыть теги папок."
   },
   {
     "name": "share_chat_folder",
     "rpc": "chatlists.exportChatlistInvite",
     "namespace": "chatlists",
     "signature": "await ctx.share_chat_folder(chatlist: InputChatlist, title: string, peers: Vector<InputPeer>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4704,15 +4716,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.exportChatlistInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.exportChatlistInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Export a folder, creating a chat folder deep link.",
+    "desc_ru": "Экспортировать папку, создав ссылку на папку чатов."
   },
   {
     "name": "remove_folder_invite",
     "rpc": "chatlists.deleteExportedInvite",
     "namespace": "chatlists",
     "signature": "await ctx.remove_folder_invite(chatlist: InputChatlist, slug: string)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4727,15 +4739,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.deleteExportedInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.deleteExportedInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete a previously created chat folder deep link.",
+    "desc_ru": "Удалить ранее созданную ссылку на папку чатов."
   },
   {
     "name": "edit_folder_invite",
     "rpc": "chatlists.editExportedInvite",
     "namespace": "chatlists",
-    "signature": "await ctx.edit_folder_invite(chatlist: InputChatlist, slug: string, title: flags.1?string = None, peers: flags.2?Vector<InputPeer> = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.edit_folder_invite(chatlist: InputChatlist, slug: string)",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4762,15 +4774,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.editExportedInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.editExportedInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit a chat folder deep link.",
+    "desc_ru": "Изменить ссылку на папку чатов."
   },
   {
     "name": "folder_invites",
     "rpc": "chatlists.getExportedInvites",
     "namespace": "chatlists",
     "signature": "await ctx.folder_invites(chatlist: InputChatlist)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4779,15 +4791,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.getExportedInvites. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.getExportedInvites. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "List all chat folder deep links associated to a folder",
+    "desc_ru": "Получить все ссылки на папку чатов, связанные с папкой."
   },
   {
     "name": "inspect_folder_invite",
     "rpc": "chatlists.checkChatlistInvite",
     "namespace": "chatlists",
     "signature": "await ctx.inspect_folder_invite(slug: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "slug",
@@ -4796,15 +4808,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.checkChatlistInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.checkChatlistInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain information about a chat folder deep link.",
+    "desc_ru": "Получить сведения о ссылке на папку чатов."
   },
   {
     "name": "join_folder_invite",
     "rpc": "chatlists.joinChatlistInvite",
     "namespace": "chatlists",
     "signature": "await ctx.join_folder_invite(slug: string, peers: Vector<InputPeer>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "slug",
@@ -4819,15 +4831,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.joinChatlistInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.joinChatlistInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Import a chat folder deep link, joining some or all the chats in the folder.",
+    "desc_ru": "Импортировать ссылку на папку чатов, присоединившись к некоторым или всем чатам в ней."
   },
   {
     "name": "folder_updates",
     "rpc": "chatlists.getChatlistUpdates",
     "namespace": "chatlists",
     "signature": "await ctx.folder_updates(chatlist: InputChatlist)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4836,15 +4848,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.getChatlistUpdates. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.getChatlistUpdates. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch new chats associated with an imported chat folder deep link. Must be invoked at most every chatlist_update_period seconds (as per the related client configuration parameter ).",
+    "desc_ru": "Получить новые чаты, связанные с импортированной ссылкой на папку чатов. Метод следует вызывать не чаще, чем раз в chatlist_update_period секунд."
   },
   {
     "name": "accept_folder_updates",
     "rpc": "chatlists.joinChatlistUpdates",
     "namespace": "chatlists",
     "signature": "await ctx.accept_folder_updates(chatlist: InputChatlist, peers: Vector<InputPeer>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4859,15 +4871,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.joinChatlistUpdates. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.joinChatlistUpdates. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Join channels and supergroups recently added to a chat folder deep link.",
+    "desc_ru": "Присоединиться к каналам и супергруппам, недавно добавленным по ссылке на папку чатов."
   },
   {
     "name": "dismiss_folder_updates",
     "rpc": "chatlists.hideChatlistUpdates",
     "namespace": "chatlists",
     "signature": "await ctx.dismiss_folder_updates(chatlist: InputChatlist)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4876,15 +4888,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.hideChatlistUpdates. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.hideChatlistUpdates. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Dismiss new pending peers recently added to a chat folder deep link.",
+    "desc_ru": "Отклонить новых ожидающих собеседников, добавленных по ссылке на папку чатов."
   },
   {
     "name": "folder_leave_suggestions",
     "rpc": "chatlists.getLeaveChatlistSuggestions",
     "namespace": "chatlists",
     "signature": "await ctx.folder_leave_suggestions(chatlist: InputChatlist)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4893,15 +4905,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.getLeaveChatlistSuggestions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.getLeaveChatlistSuggestions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns identifiers of pinned or always included chats from a chat folder imported using a chat folder deep link, which are suggested to be left when the chat folder is deleted.",
+    "desc_ru": "Вернуть идентификаторы закреплённых или всегда включаемых чатов из импортированной папки, которые предлагается покинуть при её удалении."
   },
   {
     "name": "leave_shared_folder",
     "rpc": "chatlists.leaveChatlist",
     "namespace": "chatlists",
     "signature": "await ctx.leave_shared_folder(chatlist: InputChatlist, peers: Vector<InputPeer>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4916,15 +4928,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram chatlists.leaveChatlist. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram chatlists.leaveChatlist. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete a folder imported using a chat folder deep link",
+    "desc_ru": "Удалить папку, импортированную по ссылке на папку чатов."
   },
   {
     "name": "edit_profile",
     "rpc": "account.updateProfile",
     "namespace": "account",
-    "signature": "await ctx.edit_profile(first_name: flags.0?string = None, last_name: flags.1?string = None, about: flags.2?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.edit_profile()",
+    "returns": "Any",
     "params": [
       {
         "name": "first_name",
@@ -4945,15 +4957,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updateProfile. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updateProfile. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Updates user profile.",
+    "desc_ru": "Обновить профиль пользователя."
   },
   {
     "name": "set_online_status",
     "rpc": "account.updateStatus",
     "namespace": "account",
     "signature": "await ctx.set_online_status(offline: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "offline",
@@ -4962,15 +4974,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updateStatus. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updateStatus. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Updates online user status.",
+    "desc_ru": "Обновить статус в сети."
   },
   {
     "name": "check_profile_username",
     "rpc": "account.checkUsername",
     "namespace": "account",
     "signature": "await ctx.check_profile_username(username: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "username",
@@ -4979,15 +4991,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.checkUsername. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.checkUsername. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Validates a username and checks availability.",
+    "desc_ru": "Проверить корректность и доступность имени пользователя."
   },
   {
     "name": "set_profile_username",
     "rpc": "account.updateUsername",
     "namespace": "account",
     "signature": "await ctx.set_profile_username(username: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "username",
@@ -4996,15 +5008,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updateUsername. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updateUsername. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Changes username for the current user.",
+    "desc_ru": "Изменить имя пользователя текущего аккаунта."
   },
   {
     "name": "privacy_rules",
     "rpc": "account.getPrivacy",
     "namespace": "account",
     "signature": "await ctx.privacy_rules(key: InputPrivacyKey)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "key",
@@ -5013,25 +5025,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getPrivacy. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getPrivacy. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get privacy settings of current account",
+    "desc_ru": "Получить настройки приватности текущего аккаунта."
   },
   {
     "name": "account_inactivity_ttl",
     "rpc": "account.getAccountTTL",
     "namespace": "account",
     "signature": "await ctx.account_inactivity_ttl()",
-    "returns": "int",
-    "params": [],
-    "desc_en": "Calls Telegram account.getAccountTTL. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getAccountTTL. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get days to live of account",
+    "desc_ru": "Получить срок жизни аккаунта в днях."
   },
   {
     "name": "set_emoji_status",
     "rpc": "account.updateEmojiStatus",
     "namespace": "account",
     "signature": "await ctx.set_emoji_status(emoji_status: EmojiStatus)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "emoji_status",
@@ -5040,59 +5053,60 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updateEmojiStatus. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updateEmojiStatus. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Set an emoji status",
+    "desc_ru": "Задать эмодзи-статус."
   },
   {
     "name": "suggested_emoji_statuses",
     "rpc": "account.getDefaultEmojiStatuses",
     "namespace": "account",
     "signature": "await ctx.suggested_emoji_statuses(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getDefaultEmojiStatuses. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getDefaultEmojiStatuses. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get a list of default suggested emoji statuses",
+    "desc_ru": "Получить список эмодзи-статусов, рекомендуемых по умолчанию."
   },
   {
     "name": "recent_emoji_statuses",
     "rpc": "account.getRecentEmojiStatuses",
     "namespace": "account",
     "signature": "await ctx.recent_emoji_statuses(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getRecentEmojiStatuses. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getRecentEmojiStatuses. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get recently used emoji statuses",
+    "desc_ru": "Получить недавно использованные эмодзи-статусы."
   },
   {
     "name": "clear_recent_emoji_statuses",
     "rpc": "account.clearRecentEmojiStatuses",
     "namespace": "account",
     "signature": "await ctx.clear_recent_emoji_statuses()",
-    "returns": "bool",
-    "params": [],
-    "desc_en": "Calls Telegram account.clearRecentEmojiStatuses. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.clearRecentEmojiStatuses. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Clears list of recently used emoji statuses",
+    "desc_ru": "Очистить список недавно использованных эмодзи-статусов."
   },
   {
     "name": "reorder_profile_usernames",
     "rpc": "account.reorderUsernames",
     "namespace": "account",
     "signature": "await ctx.reorder_profile_usernames(order: Vector<string>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "order",
@@ -5101,15 +5115,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.reorderUsernames. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.reorderUsernames. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder usernames associated with the currently logged-in user.",
+    "desc_ru": "Изменить порядок имён пользователей текущего аккаунта."
   },
   {
     "name": "set_profile_username_active",
     "rpc": "account.toggleUsername",
     "namespace": "account",
     "signature": "await ctx.set_profile_username_active(username: string, active: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "username",
@@ -5124,32 +5138,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.toggleUsername. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.toggleUsername. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Activate or deactivate a purchased fragment.com username associated to the currently logged-in user.",
+    "desc_ru": "Активировать или деактивировать купленное имя пользователя на fragment.com, привязанное к текущему аккаунту."
   },
   {
     "name": "profile_photo_emojis",
     "rpc": "account.getDefaultProfilePhotoEmojis",
     "namespace": "account",
     "signature": "await ctx.profile_photo_emojis(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getDefaultProfilePhotoEmojis. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getDefaultProfilePhotoEmojis. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get a set of suggested custom emoji stickers that can be used as profile picture",
+    "desc_ru": "Получить набор рекомендуемых стикеров кастомных эмодзи для использования как фото профиля."
   },
   {
     "name": "set_profile_color",
     "rpc": "account.updateColor",
     "namespace": "account",
-    "signature": "await ctx.set_profile_color(for_profile: flags.1?true = None, color: flags.2?PeerColor = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_profile_color()",
+    "returns": "Any",
     "params": [
       {
         "name": "for_profile",
@@ -5164,15 +5178,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updateColor. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updateColor. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Update the accent color and background custom emoji of the current account.",
+    "desc_ru": "Обновить акцентный цвет и фоновый кастомный эмодзи текущего аккаунта."
   },
   {
     "name": "set_birthday",
     "rpc": "account.updateBirthday",
     "namespace": "account",
-    "signature": "await ctx.set_birthday(birthday: flags.0?Birthday = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_birthday()",
+    "returns": "Any",
     "params": [
       {
         "name": "birthday",
@@ -5181,15 +5195,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updateBirthday. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updateBirthday. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Update our birthday, see here for more info.",
+    "desc_ru": "Обновить день рождения текущего аккаунта."
   },
   {
     "name": "set_personal_channel",
     "rpc": "account.updatePersonalChannel",
     "namespace": "account",
     "signature": "await ctx.set_personal_channel(channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -5198,15 +5212,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updatePersonalChannel. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updatePersonalChannel. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Associate (or remove) a personal channel, that will be listed on our personal profile page. Changing it will emit an updateUser update.",
+    "desc_ru": "Привязать или отвязать личный канал, который показывается на странице профиля. Изменение вызывает обновление updateUser."
   },
   {
     "name": "set_profile_tab",
     "rpc": "account.setMainProfileTab",
     "namespace": "account",
     "signature": "await ctx.set_profile_tab(tab: ProfileTab)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "tab",
@@ -5215,15 +5229,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.setMainProfileTab. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.setMainProfileTab. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Changes the main profile tab of the current user, see here for more info.",
+    "desc_ru": "Изменить основную вкладку профиля текущего пользователя."
   },
   {
     "name": "set_music_saved",
     "rpc": "account.saveMusic",
     "namespace": "account",
-    "signature": "await ctx.set_music_saved(unsave: flags.0?true = None, id: InputDocument, after_id: flags.1?InputDocument = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_music_saved(id: InputDocument)",
+    "returns": "Any",
     "params": [
       {
         "name": "unsave",
@@ -5244,32 +5258,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.saveMusic. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.saveMusic. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Adds or removes a song from the current user's profile see here for more info on the music tab of the profile page.",
+    "desc_ru": "Добавить или удалить трек из профиля текущего пользователя."
   },
   {
     "name": "saved_music_ids",
     "rpc": "account.getSavedMusicIds",
     "namespace": "account",
     "signature": "await ctx.saved_music_ids(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getSavedMusicIds. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getSavedMusicIds. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch the full list of only the IDs of songs currently added to the profile, see here for more info.",
+    "desc_ru": "Получить полный список идентификаторов треков, добавленных в профиль."
   },
   {
     "name": "user_details",
     "rpc": "users.getFullUser",
     "namespace": "users",
     "signature": "await ctx.user_details(id: InputUser)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5278,15 +5292,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram users.getFullUser. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram users.getFullUser. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns extended user info by ID.",
+    "desc_ru": "Вернуть расширенные сведения о пользователе по его ID."
   },
   {
     "name": "contact_requirements",
     "rpc": "users.getRequirementsToContact",
     "namespace": "users",
     "signature": "await ctx.contact_requirements(id: Vector<InputUser>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5295,15 +5309,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram users.getRequirementsToContact. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram users.getRequirementsToContact. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Check whether we can write to the specified users, used to implement bulk checks for Premium-only messages and paid messages. For each input user, returns a RequirementToContact constructor (at the same offset in the vector) containing requirements to contact them.",
+    "desc_ru": "Проверить, можно ли писать указанным пользователям. Нужен для массовых проверок сообщений только для Premium и платных сообщений. Для каждого пользователя возвращает конструктор RequirementToContact с требованиями к написанию."
   },
   {
     "name": "user_music",
     "rpc": "users.getSavedMusic",
     "namespace": "users",
     "signature": "await ctx.user_music(id: InputUser, offset: int, limit: int, hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5314,31 +5328,31 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram users.getSavedMusic. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram users.getSavedMusic. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get songs pinned to the user's profile, see here for more info.",
+    "desc_ru": "Получить треки, закреплённые в профиле пользователя."
   },
   {
     "name": "user_music_by_documents",
     "rpc": "users.getSavedMusicByID",
     "namespace": "users",
     "signature": "await ctx.user_music_by_documents(id: InputUser, documents: Vector<InputDocument>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5353,15 +5367,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram users.getSavedMusicByID. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram users.getSavedMusicByID. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Check if the passed songs are still pinned to the user's profile, or refresh the file references of songs pinned on a user's profile see here for more info.",
+    "desc_ru": "Проверить, закреплены ли переданные треки в профиле пользователя, либо обновить ссылки на файлы закреплённых треков."
   },
   {
     "name": "suggest_contact_birthday",
     "rpc": "users.suggestBirthday",
     "namespace": "users",
     "signature": "await ctx.suggest_contact_birthday(id: InputUser, birthday: Birthday)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5376,15 +5390,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram users.suggestBirthday. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram users.suggestBirthday. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Suggest a birthday to another user, see here for more info on birthdays in the API.",
+    "desc_ru": "Предложить другому пользователю день рождения."
   },
   {
     "name": "select_profile_photo",
     "rpc": "photos.updateProfilePhoto",
     "namespace": "photos",
-    "signature": "await ctx.select_profile_photo(fallback: flags.0?true = None, bot: flags.1?InputUser = None, id: InputPhoto)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.select_profile_photo(id: InputPhoto)",
+    "returns": "Any",
     "params": [
       {
         "name": "fallback",
@@ -5405,15 +5419,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram photos.updateProfilePhoto. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram photos.updateProfilePhoto. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Installs a previously uploaded photo as a profile photo.",
+    "desc_ru": "Установить ранее загруженную фотографию как фото профиля."
   },
   {
     "name": "upload_profile_photo",
     "rpc": "photos.uploadProfilePhoto",
     "namespace": "photos",
-    "signature": "await ctx.upload_profile_photo(fallback: flags.3?true = None, bot: flags.5?InputUser = None, file: flags.0?InputFile = None, video: flags.1?InputFile = None, video_start_ts: flags.2?double = None, video_emoji_markup: flags.4?VideoSize = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.upload_profile_photo()",
+    "returns": "Any",
     "params": [
       {
         "name": "fallback",
@@ -5452,15 +5466,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram photos.uploadProfilePhoto. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram photos.uploadProfilePhoto. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Updates current user profile photo. The file, video and video_emoji_markup flags are mutually exclusive.",
+    "desc_ru": "Обновить фото профиля текущего пользователя. Флаги file, video и video_emoji_markup взаимоисключающи."
   },
   {
     "name": "remove_profile_photos",
     "rpc": "photos.deletePhotos",
     "namespace": "photos",
     "signature": "await ctx.remove_profile_photos(id: Vector<InputPhoto>)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5469,15 +5483,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram photos.deletePhotos. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram photos.deletePhotos. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes profile photos. The method returns a list of successfully deleted photo IDs.",
+    "desc_ru": "Удалить фотографии профиля. Возвращает список идентификаторов удалённых фотографий."
   },
   {
     "name": "profile_photos",
     "rpc": "photos.getUserPhotos",
     "namespace": "photos",
     "signature": "await ctx.profile_photos(user_id: InputUser, offset: int, max_id: long, limit: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "user_id",
@@ -5488,31 +5502,31 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "max_id",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram photos.getUserPhotos. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram photos.getUserPhotos. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns the list of user photos.",
+    "desc_ru": "Вернуть список фотографий пользователя."
   },
   {
     "name": "set_contact_photo",
     "rpc": "photos.uploadContactProfilePhoto",
     "namespace": "photos",
-    "signature": "await ctx.set_contact_photo(suggest: flags.3?true = None, save: flags.4?true = None, user_id: InputUser, file: flags.0?InputFile = None, video: flags.1?InputFile = None, video_start_ts: flags.2?double = None, video_emoji_markup: flags.5?VideoSize = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_contact_photo(user_id: InputUser)",
+    "returns": "Any",
     "params": [
       {
         "name": "suggest",
@@ -5557,15 +5571,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram photos.uploadContactProfilePhoto. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram photos.uploadContactProfilePhoto. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Upload a custom profile picture for a contact, or suggest a new profile picture to a contact. The file, video and video_emoji_markup flags are mutually exclusive.",
+    "desc_ru": "Загрузить своё фото для контакта или предложить контакту новое. Флаги file, video и video_emoji_markup взаимоисключающи."
   },
   {
     "name": "notification_settings",
     "rpc": "account.getNotifySettings",
     "namespace": "account",
     "signature": "await ctx.notification_settings(peer: InputNotifyPeer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -5574,15 +5588,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getNotifySettings. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getNotifySettings. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Gets current notification settings for a given user/group, from all users/all groups.",
+    "desc_ru": "Получить текущие настройки уведомлений для указанного пользователя или группы, либо для всех пользователей и групп."
   },
   {
     "name": "set_notification_settings",
     "rpc": "account.updateNotifySettings",
     "namespace": "account",
     "signature": "await ctx.set_notification_settings(peer: InputNotifyPeer, settings: InputPeerNotifySettings)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -5597,35 +5611,37 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.updateNotifySettings. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.updateNotifySettings. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edits notification settings from a given user/group, from all users/all groups.",
+    "desc_ru": "Изменить настройки уведомлений для указанного пользователя или группы, либо для всех пользователей и групп."
   },
   {
     "name": "reset_notification_settings",
     "rpc": "account.resetNotifySettings",
     "namespace": "account",
     "signature": "await ctx.reset_notification_settings()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram account.resetNotifySettings. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.resetNotifySettings. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Resets all notification settings from users and groups.",
+    "desc_ru": "Сбросить все настройки уведомлений пользователей и групп."
   },
   {
     "name": "contact_signup_notifications",
     "rpc": "account.getContactSignUpNotification",
     "namespace": "account",
     "signature": "await ctx.contact_signup_notifications()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram account.getContactSignUpNotification. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getContactSignUpNotification. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Whether the user will receive notifications when contacts sign up",
+    "desc_ru": "Будут ли приходить уведомления, когда контакты регистрируются в Telegram."
   },
   {
     "name": "set_contact_signup_notifications",
     "rpc": "account.setContactSignUpNotification",
     "namespace": "account",
     "signature": "await ctx.set_contact_signup_notifications(silent: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "silent",
@@ -5634,15 +5650,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.setContactSignUpNotification. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.setContactSignUpNotification. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Toggle contact sign up notifications",
+    "desc_ru": "Включить или выключить уведомления о контактах, зарегистрировавшихся в Telegram."
   },
   {
     "name": "notification_exceptions",
     "rpc": "account.getNotifyExceptions",
     "namespace": "account",
-    "signature": "await ctx.notification_exceptions(compare_sound: flags.1?true = None, compare_stories: flags.2?true = None, peer: flags.0?InputNotifyPeer = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.notification_exceptions()",
+    "returns": "Any",
     "params": [
       {
         "name": "compare_sound",
@@ -5663,25 +5679,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getNotifyExceptions. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getNotifyExceptions. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Returns list of chats with non-default notification settings",
+    "desc_ru": "Вернуть список чатов с нестандартными настройками уведомлений."
   },
   {
     "name": "reaction_notification_settings",
     "rpc": "account.getReactionsNotifySettings",
     "namespace": "account",
     "signature": "await ctx.reaction_notification_settings()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram account.getReactionsNotifySettings. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getReactionsNotifySettings. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get the current reaction notification settings.",
+    "desc_ru": "Получить текущие настройки уведомлений о реакциях."
   },
   {
     "name": "set_reaction_notification_settings",
     "rpc": "account.setReactionsNotifySettings",
     "namespace": "account",
     "signature": "await ctx.set_reaction_notification_settings(settings: ReactionsNotifySettings)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "settings",
@@ -5690,32 +5707,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.setReactionsNotifySettings. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.setReactionsNotifySettings. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Change the reaction notification settings.",
+    "desc_ru": "Изменить настройки уведомлений о реакциях."
   },
   {
     "name": "saved_notification_sounds",
     "rpc": "account.getSavedRingtones",
     "namespace": "account",
     "signature": "await ctx.saved_notification_sounds(hash: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "hash",
         "type": "long",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.getSavedRingtones. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.getSavedRingtones. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Fetch saved notification sounds",
+    "desc_ru": "Получить сохранённые звуки уведомлений."
   },
   {
     "name": "set_notification_sound_saved",
     "rpc": "account.saveRingtone",
     "namespace": "account",
     "signature": "await ctx.set_notification_sound_saved(id: InputDocument, unsave: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5730,15 +5747,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.saveRingtone. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.saveRingtone. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Save or remove saved notification sound. If the notification sound is already in MP3 format, account.savedRingtone will be returned. Otherwise, it will be automatically converted and a account.savedRingtoneConverted will be returned, containing a new document object that should be used to refer to the ringtone from now on (ie when deleting it using the unsave parameter, or when downloading it).",
+    "desc_ru": "Сохранить или удалить звук уведомления. Если звук уже в MP3, вернётся account.savedRingtone, иначе он будет сконвертирован и вернётся account.savedRingtoneConverted с новым документом."
   },
   {
     "name": "upload_notification_sound",
     "rpc": "account.uploadRingtone",
     "namespace": "account",
     "signature": "await ctx.upload_notification_sound(file: InputFile, file_name: string, mime_type: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "file",
@@ -5759,15 +5776,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram account.uploadRingtone. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram account.uploadRingtone. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Upload notification sound, use account.saveRingtone to convert it and add it to the list of saved notification sounds.",
+    "desc_ru": "Загрузить звук уведомления. Чтобы добавить его в список сохранённых, используйте account.saveRingtone."
   },
   {
     "name": "rename_basic_group",
     "rpc": "messages.editChatTitle",
     "namespace": "messages",
     "signature": "await ctx.rename_basic_group(chat_id: long, title: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5782,15 +5799,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editChatTitle. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editChatTitle. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Changes chat name and sends a service message on it.",
+    "desc_ru": "Изменить название чата и отправить служебное сообщение."
   },
   {
     "name": "set_basic_group_photo",
     "rpc": "messages.editChatPhoto",
     "namespace": "messages",
     "signature": "await ctx.set_basic_group_photo(chat_id: long, photo: InputChatPhoto)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5805,15 +5822,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editChatPhoto. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editChatPhoto. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Changes chat photo and sends a service message on it",
+    "desc_ru": "Изменить фото чата и отправить служебное сообщение."
   },
   {
     "name": "add_basic_group_member",
     "rpc": "messages.addChatUser",
     "namespace": "messages",
     "signature": "await ctx.add_basic_group_member(chat_id: long, user_id: InputUser, fwd_limit: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5830,19 +5847,19 @@ export const CATALOG_METHODS = [
       {
         "name": "fwd_limit",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.addChatUser. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.addChatUser. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Adds a user to a chat and sends a service message on it.",
+    "desc_ru": "Добавить пользователя в чат и отправить служебное сообщение."
   },
   {
     "name": "remove_basic_group_member",
     "rpc": "messages.deleteChatUser",
     "namespace": "messages",
-    "signature": "await ctx.remove_basic_group_member(revoke_history: flags.0?true = None, chat_id: long, user_id: InputUser)",
-    "returns": "bool",
+    "signature": "await ctx.remove_basic_group_member(chat_id: long, user_id: InputUser)",
+    "returns": "Any",
     "params": [
       {
         "name": "revoke_history",
@@ -5863,15 +5880,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteChatUser. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteChatUser. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Deletes a user from a chat and sends a service message on it.",
+    "desc_ru": "Удалить пользователя из чата и отправить служебное сообщение."
   },
   {
     "name": "create_basic_group",
     "rpc": "messages.createChat",
     "namespace": "messages",
-    "signature": "await ctx.create_basic_group(users: Vector<InputUser>, title: string, ttl_period: flags.0?int = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.create_basic_group(users: Vector<InputUser>, title: string)",
+    "returns": "Any",
     "params": [
       {
         "name": "users",
@@ -5892,15 +5909,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.createChat. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.createChat. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Creates a new chat.",
+    "desc_ru": "Создать новый чат."
   },
   {
     "name": "set_basic_group_admin",
     "rpc": "messages.editChatAdmin",
     "namespace": "messages",
     "signature": "await ctx.set_basic_group_admin(chat_id: long, user_id: InputUser, is_admin: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5921,15 +5938,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editChatAdmin. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editChatAdmin. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Make a user admin in a basic group.",
+    "desc_ru": "Назначить пользователя администратором базовой группы."
   },
   {
     "name": "upgrade_basic_group",
     "rpc": "messages.migrateChat",
     "namespace": "messages",
     "signature": "await ctx.upgrade_basic_group(chat_id: long)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5938,20 +5955,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.migrateChat. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.migrateChat. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Turn a basic group into a supergroup",
+    "desc_ru": "Превратить базовую группу в супергруппу."
   },
   {
     "name": "edit_chat_description",
     "rpc": "messages.editChatAbout",
     "namespace": "messages",
     "signature": "await ctx.edit_chat_description(peer: InputPeer, about: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -5961,20 +5978,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editChatAbout. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editChatAbout. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit the description of a group/supergroup/channel.",
+    "desc_ru": "Изменить описание группы, супергруппы или канала."
   },
   {
     "name": "set_default_member_restrictions",
     "rpc": "messages.editChatDefaultBannedRights",
     "namespace": "messages",
     "signature": "await ctx.set_default_member_restrictions(peer: InputPeer, banned_rights: ChatBannedRights)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -5984,15 +6001,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editChatDefaultBannedRights. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editChatDefaultBannedRights. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit the default banned rights of a channel/supergroup/group.",
+    "desc_ru": "Изменить права по умолчанию для участников канала, супергруппы или группы."
   },
   {
     "name": "remove_basic_group",
     "rpc": "messages.deleteChat",
     "namespace": "messages",
     "signature": "await ctx.remove_basic_group(chat_id: long)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -6001,20 +6018,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteChat. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteChat. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete a chat",
+    "desc_ru": "Удалить чат."
   },
   {
     "name": "set_chat_auto_delete",
     "rpc": "messages.setHistoryTTL",
     "namespace": "messages",
     "signature": "await ctx.set_chat_auto_delete(peer: InputPeer, period: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6024,20 +6041,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.setHistoryTTL. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.setHistoryTTL. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Set maximum Time-To-Live of all messages in the specified chat",
+    "desc_ru": "Задать максимальный срок жизни сообщений в указанном чате."
   },
   {
     "name": "set_content_protection",
     "rpc": "messages.toggleNoForwards",
     "namespace": "messages",
-    "signature": "await ctx.set_content_protection(peer: InputPeer, enabled: Bool, request_msg_id: flags.0?int = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_content_protection(peer: InputPeer, enabled: Bool)",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6053,20 +6070,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.toggleNoForwards. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.toggleNoForwards. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Enable or disable content protection on a channel, group or private chat.",
+    "desc_ru": "Включить или выключить защиту содержимого в канале, группе или личном чате."
   },
   {
     "name": "mark_channel_read",
     "rpc": "channels.readHistory",
     "namespace": "channels",
     "signature": "await ctx.mark_channel_read(channel: InputChannel, max_id: int)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6076,39 +6093,39 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.readHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.readHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark channel/supergroup history as read",
+    "desc_ru": "Отметить историю канала или супергруппы как прочитанную."
   },
   {
     "name": "channel_members",
     "rpc": "channels.getParticipants",
     "namespace": "channels",
     "signature": "await ctx.channel_members(channel: InputChannel, filter: ChannelParticipantsFilter, offset: int, limit: int, hash: long)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "filter",
         "type": "ChannelParticipantsFilter",
-        "required": true,
-        "default": "{'_': 'channelParticipantsRecent'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       },
       {
         "name": "hash",
@@ -6117,20 +6134,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.getParticipants. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getParticipants. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get the participants of a supergroup/channel",
+    "desc_ru": "Получить участников супергруппы или канала."
   },
   {
     "name": "channel_member",
     "rpc": "channels.getParticipant",
     "namespace": "channels",
     "signature": "await ctx.channel_member(channel: InputChannel, participant: InputPeer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6140,32 +6157,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.getParticipant. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getParticipant. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get info about a channel/supergroup participant",
+    "desc_ru": "Получить сведения об участнике канала или супергруппы."
   },
   {
     "name": "channel_details",
     "rpc": "channels.getFullChannel",
     "namespace": "channels",
     "signature": "await ctx.channel_details(channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram channels.getFullChannel. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getFullChannel. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get full info about a supergroup, gigagroup or channel",
+    "desc_ru": "Получить полные сведения о супергруппе, гигагруппе или канале."
   },
   {
     "name": "create_channel",
     "rpc": "channels.createChannel",
     "namespace": "channels",
-    "signature": "await ctx.create_channel(broadcast: flags.0?true = None, megagroup: flags.1?true = None, for_import: flags.3?true = None, forum: flags.5?true = None, title: string, about: string, geo_point: flags.2?InputGeoPoint = None, address: flags.2?string = None, ttl_period: flags.4?int = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.create_channel(title: string, about: string)",
+    "returns": "Any",
     "params": [
       {
         "name": "broadcast",
@@ -6222,20 +6239,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.createChannel. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.createChannel. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Create a supergroup/channel.",
+    "desc_ru": "Создать супергруппу или канал."
   },
   {
     "name": "set_channel_admin",
     "rpc": "channels.editAdmin",
     "namespace": "channels",
-    "signature": "await ctx.set_channel_admin(channel: InputChannel, user_id: InputUser, admin_rights: ChatAdminRights, rank: flags.0?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_channel_admin(channel: InputChannel, user_id: InputUser, admin_rights: ChatAdminRights)",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6257,20 +6274,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.editAdmin. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.editAdmin. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Modify the admin rights of a user in a supergroup/channel.",
+    "desc_ru": "Изменить права администратора пользователя в супергруппе или канале."
   },
   {
     "name": "rename_channel",
     "rpc": "channels.editTitle",
     "namespace": "channels",
     "signature": "await ctx.rename_channel(channel: InputChannel, title: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6280,20 +6297,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.editTitle. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.editTitle. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit the name of a channel/supergroup",
+    "desc_ru": "Изменить название канала или супергруппы."
   },
   {
     "name": "set_channel_photo",
     "rpc": "channels.editPhoto",
     "namespace": "channels",
     "signature": "await ctx.set_channel_photo(channel: InputChannel, photo: InputChatPhoto)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6303,20 +6320,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.editPhoto. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.editPhoto. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Change the photo of a channel/supergroup",
+    "desc_ru": "Изменить фото канала или супергруппы."
   },
   {
     "name": "check_channel_username",
     "rpc": "channels.checkUsername",
     "namespace": "channels",
     "signature": "await ctx.check_channel_username(channel: InputChannel, username: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6326,20 +6343,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.checkUsername. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.checkUsername. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Check if a username is free and can be assigned to a channel/supergroup",
+    "desc_ru": "Проверить, свободно ли имя пользователя и можно ли назначить его каналу или супергруппе."
   },
   {
     "name": "set_channel_username",
     "rpc": "channels.updateUsername",
     "namespace": "channels",
     "signature": "await ctx.set_channel_username(channel: InputChannel, username: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6349,54 +6366,54 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.updateUsername. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.updateUsername. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Change or remove the username of a supergroup/channel",
+    "desc_ru": "Изменить или снять имя пользователя супергруппы или канала."
   },
   {
     "name": "join_channel",
     "rpc": "channels.joinChannel",
     "namespace": "channels",
     "signature": "await ctx.join_channel(channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram channels.joinChannel. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.joinChannel. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Join a channel/supergroup",
+    "desc_ru": "Вступить в канал или супергруппу."
   },
   {
     "name": "leave_channel",
     "rpc": "channels.leaveChannel",
     "namespace": "channels",
     "signature": "await ctx.leave_channel(channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram channels.leaveChannel. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.leaveChannel. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Leave a channel/supergroup",
+    "desc_ru": "Покинуть канал или супергруппу."
   },
   {
     "name": "invite_channel_members",
     "rpc": "channels.inviteToChannel",
     "namespace": "channels",
     "signature": "await ctx.invite_channel_members(channel: InputChannel, users: Vector<InputUser>)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6406,32 +6423,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.inviteToChannel. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.inviteToChannel. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Invite users to a channel/supergroup",
+    "desc_ru": "Пригласить пользователей в канал или супергруппу."
   },
   {
     "name": "remove_channel",
     "rpc": "channels.deleteChannel",
     "namespace": "channels",
     "signature": "await ctx.remove_channel(channel: InputChannel)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram channels.deleteChannel. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.deleteChannel. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete a channel/supergroup",
+    "desc_ru": "Удалить канал или супергруппу."
   },
   {
     "name": "set_channel_signatures",
     "rpc": "channels.toggleSignatures",
     "namespace": "channels",
-    "signature": "await ctx.set_channel_signatures(signatures_enabled: flags.0?true = None, profiles_enabled: flags.1?true = None, channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_channel_signatures(channel: InputChannel)",
+    "returns": "Any",
     "params": [
       {
         "name": "signatures_enabled",
@@ -6448,19 +6465,19 @@ export const CATALOG_METHODS = [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleSignatures. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleSignatures. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Enable/disable message signatures in channels",
+    "desc_ru": "Включить или выключить подписи сообщений в каналах."
   },
   {
     "name": "owned_public_channels",
     "rpc": "channels.getAdminedPublicChannels",
     "namespace": "channels",
-    "signature": "await ctx.owned_public_channels(by_location: flags.0?true = None, check_limit: flags.1?true = None, for_personal: flags.2?true = None, for_community_peer: flags.3?true = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.owned_public_channels()",
+    "returns": "Any",
     "params": [
       {
         "name": "by_location",
@@ -6487,20 +6504,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.getAdminedPublicChannels. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getAdminedPublicChannels. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get channels/supergroups/geogroups we're admin in. Usually called when the user exceeds the limit for owned public channels/supergroups/geogroups, and the user is given the choice to remove one of his channels/supergroups/geogroups.",
+    "desc_ru": "Получить каналы, супергруппы и геогруппы, где мы администратор. Обычно вызывается, когда пользователь превысил лимит публичных каналов и должен выбрать, какой удалить."
   },
   {
     "name": "restrict_channel_member",
     "rpc": "channels.editBanned",
     "namespace": "channels",
     "signature": "await ctx.restrict_channel_member(channel: InputChannel, participant: InputPeer, banned_rights: ChatBannedRights)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6516,27 +6533,27 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.editBanned. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.editBanned. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Ban/unban/kick a user in a supergroup/channel.",
+    "desc_ru": "Забанить, разбанить или исключить пользователя в супергруппе или канале."
   },
   {
     "name": "channel_admin_log",
     "rpc": "channels.getAdminLog",
     "namespace": "channels",
-    "signature": "await ctx.channel_admin_log(channel: InputChannel, q: string, events_filter: flags.0?ChannelAdminLogEventsFilter = None, admins: flags.1?Vector<InputUser> = None, max_id: long, min_id: long, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.channel_admin_log(channel: InputChannel, q: string, max_id: long, min_id: long, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "q",
         "type": "string",
-        "required": true,
-        "default": ""
+        "required": false,
+        "default": null
       },
       {
         "name": "events_filter",
@@ -6565,24 +6582,24 @@ export const CATALOG_METHODS = [
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.getAdminLog. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getAdminLog. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get the admin log of a channel/supergroup",
+    "desc_ru": "Получить журнал администраторов канала или супергруппы."
   },
   {
     "name": "set_group_sticker_set",
     "rpc": "channels.setStickers",
     "namespace": "channels",
     "signature": "await ctx.set_group_sticker_set(channel: InputChannel, stickerset: InputStickerSet)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6592,20 +6609,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.setStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.setStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Associate a stickerset to the supergroup",
+    "desc_ru": "Назначить набор стикеров супергруппе."
   },
   {
     "name": "mark_channel_media_read",
     "rpc": "channels.readMessageContents",
     "namespace": "channels",
     "signature": "await ctx.mark_channel_media_read(channel: InputChannel, id: Vector<int>)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6615,15 +6632,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.readMessageContents. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.readMessageContents. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Mark channel/supergroup message contents as read, emitting an updateChannelReadMessagesContents.",
+    "desc_ru": "Отметить содержимое сообщений канала или супергруппы как прочитанное. Вызывается обновление updateChannelReadMessagesContents."
   },
   {
     "name": "clear_channel_history",
     "rpc": "channels.deleteHistory",
     "namespace": "channels",
-    "signature": "await ctx.clear_channel_history(for_everyone: flags.0?true = None, channel: InputChannel, max_id: int)",
-    "returns": "bool",
+    "signature": "await ctx.clear_channel_history(channel: InputChannel, max_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "for_everyone",
@@ -6634,7 +6651,7 @@ export const CATALOG_METHODS = [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6644,20 +6661,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.deleteHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.deleteHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete the history of a supergroup",
+    "desc_ru": "Удалить историю супергруппы."
   },
   {
     "name": "set_prehistory_hidden",
     "rpc": "channels.togglePreHistoryHidden",
     "namespace": "channels",
     "signature": "await ctx.set_prehistory_hidden(channel: InputChannel, enabled: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6667,42 +6684,43 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.togglePreHistoryHidden. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.togglePreHistoryHidden. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Hide/unhide message history for new channel/supergroup users",
+    "desc_ru": "Скрыть или показать историю сообщений для новых участников канала или супергруппы."
   },
   {
     "name": "left_channels",
     "rpc": "channels.getLeftChannels",
     "namespace": "channels",
     "signature": "await ctx.left_channels(offset: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "offset",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.getLeftChannels. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getLeftChannels. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get a list of channels/supergroups we left, requires a takeout session, see here for more info.",
+    "desc_ru": "Получить список каналов и супергрупп, из которых мы вышли. Требуется сессия выгрузки данных."
   },
   {
     "name": "eligible_discussion_groups",
     "rpc": "channels.getGroupsForDiscussion",
     "namespace": "channels",
     "signature": "await ctx.eligible_discussion_groups()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram channels.getGroupsForDiscussion. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getGroupsForDiscussion. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get all groups that can be used as discussion groups. Returned basic group chats must be first upgraded to supergroups before they can be set as a discussion group. To set a returned supergroup as a discussion group, access to its old messages must be enabled using channels.togglePreHistoryHidden, first.",
+    "desc_ru": "Получить все группы, которые можно назначить обсуждением. Базовую группу сначала нужно повысить до супергруппы, а для супергруппы открыть доступ к старым сообщениям через channels.togglePreHistoryHidden."
   },
   {
     "name": "set_discussion_group",
     "rpc": "channels.setDiscussionGroup",
     "namespace": "channels",
     "signature": "await ctx.set_discussion_group(broadcast: InputChannel, group: InputChannel)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "broadcast",
@@ -6717,20 +6735,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.setDiscussionGroup. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.setDiscussionGroup. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Associate a group to a channel as discussion group for that channel",
+    "desc_ru": "Назначить группу обсуждением для канала."
   },
   {
     "name": "set_group_location",
     "rpc": "channels.editLocation",
     "namespace": "channels",
     "signature": "await ctx.set_group_location(channel: InputChannel, geo_point: InputGeoPoint, address: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6746,20 +6764,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.editLocation. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.editLocation. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit location of geogroup, see here for more info on geogroups.",
+    "desc_ru": "Изменить местоположение геогруппы."
   },
   {
     "name": "set_slow_mode",
     "rpc": "channels.toggleSlowMode",
     "namespace": "channels",
     "signature": "await ctx.set_slow_mode(channel: InputChannel, seconds: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6769,25 +6787,26 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleSlowMode. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleSlowMode. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Toggle supergroup slow mode: if enabled, users will only be able to send one message every seconds seconds",
+    "desc_ru": "Включить или выключить медленный режим в супергруппе: пользователи смогут отправлять одно сообщение в seconds секунд."
   },
   {
     "name": "inactive_channels",
     "rpc": "channels.getInactiveChannels",
     "namespace": "channels",
     "signature": "await ctx.inactive_channels()",
-    "returns": "dict[str, Any]",
-    "params": [],
-    "desc_en": "Calls Telegram channels.getInactiveChannels. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getInactiveChannels. Передает параметры и возвращает типизированный ответ."
+    "returns": "Any",
+    "params": [
+    ],
+    "desc_en": "Get inactive channels and supergroups",
+    "desc_ru": "Получить неактивные каналы и супергруппы."
   },
   {
     "name": "send_as_identities",
     "rpc": "channels.getSendAs",
     "namespace": "channels",
-    "signature": "await ctx.send_as_identities(for_paid_reactions: flags.0?true = None, for_live_stories: flags.1?true = None, peer: InputPeer)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.send_as_identities(peer: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "for_paid_reactions",
@@ -6804,24 +6823,24 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram channels.getSendAs. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getSendAs. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtains a list of peers that can be displayed as the sender in a specific context. With for_live_stories, returns peers that may author live story in-call messages.",
+    "desc_ru": "Получить список собеседников, которых можно показать как отправителя в конкретном контексте. С флагом for_live_stories возвращает тех, кто может публиковать сообщения в звонках в трансляции."
   },
   {
     "name": "remove_member_history",
     "rpc": "channels.deleteParticipantHistory",
     "namespace": "channels",
     "signature": "await ctx.remove_member_history(channel: InputChannel, participant: InputPeer)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6831,20 +6850,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.deleteParticipantHistory. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.deleteParticipantHistory. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete all messages sent by a specific participant of a given supergroup",
+    "desc_ru": "Удалить все сообщения, отправленные конкретным участником супергруппы."
   },
   {
     "name": "set_join_to_send",
     "rpc": "channels.toggleJoinToSend",
     "namespace": "channels",
     "signature": "await ctx.set_join_to_send(channel: InputChannel, enabled: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6854,15 +6873,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleJoinToSend. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleJoinToSend. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Set whether all users should join a discussion group in order to comment on a post",
+    "desc_ru": "Задать, должны ли все пользователи вступать в группу обсуждения, чтобы комментировать публикацию."
   },
   {
     "name": "set_join_requests",
     "rpc": "channels.toggleJoinRequest",
     "namespace": "channels",
-    "signature": "await ctx.set_join_requests(apply_to_invites: flags.1?true = None, channel: InputChannel, enabled: Bool, guard_bot: flags.0?InputUser = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_join_requests(channel: InputChannel, enabled: Bool)",
+    "returns": "Any",
     "params": [
       {
         "name": "apply_to_invites",
@@ -6873,7 +6892,7 @@ export const CATALOG_METHODS = [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6889,20 +6908,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleJoinRequest. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleJoinRequest. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Set whether all users should request admin approval to join the group.",
+    "desc_ru": "Задать, должны ли все пользователи отправлять заявку на одобрение администратора для вступления в группу."
   },
   {
     "name": "reorder_channel_usernames",
     "rpc": "channels.reorderUsernames",
     "namespace": "channels",
     "signature": "await ctx.reorder_channel_usernames(channel: InputChannel, order: Vector<string>)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6912,20 +6931,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.reorderUsernames. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.reorderUsernames. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Reorder active usernames",
+    "desc_ru": "Изменить порядок активных имён пользователей."
   },
   {
     "name": "set_channel_username_active",
     "rpc": "channels.toggleUsername",
     "namespace": "channels",
     "signature": "await ctx.set_channel_username_active(channel: InputChannel, username: string, active: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6941,37 +6960,37 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleUsername. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleUsername. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Activate or deactivate a purchased fragment.com username associated to a supergroup or channel we own.",
+    "desc_ru": "Активировать или деактивировать купленное имя пользователя на fragment.com, привязанное к супергруппе или каналу."
   },
   {
     "name": "deactivate_channel_usernames",
     "rpc": "channels.deactivateAllUsernames",
     "namespace": "channels",
     "signature": "await ctx.deactivate_channel_usernames(channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram channels.deactivateAllUsernames. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.deactivateAllUsernames. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Disable all purchased usernames of a supergroup or channel",
+    "desc_ru": "Отключить все купленные имена пользователей супергруппы или канала."
   },
   {
     "name": "set_antispam",
     "rpc": "channels.toggleAntiSpam",
     "namespace": "channels",
     "signature": "await ctx.set_antispam(channel: InputChannel, enabled: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -6981,20 +7000,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleAntiSpam. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleAntiSpam. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Enable or disable the native antispam system.",
+    "desc_ru": "Включить или выключить встроенную систему антиспама."
   },
   {
     "name": "set_members_hidden",
     "rpc": "channels.toggleParticipantsHidden",
     "namespace": "channels",
     "signature": "await ctx.set_members_hidden(channel: InputChannel, enabled: Bool)",
-    "returns": "list[dict[str, Any]]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7004,15 +7023,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleParticipantsHidden. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleParticipantsHidden. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Hide or display the participants list in a supergroup. The supergroup must have at least hidden_members_group_size_min participants in order to use this method, as specified by the client configuration parameters.",
+    "desc_ru": "Скрыть или показать список участников супергруппы. В supergroup должно быть не меньше hidden_members_group_size_min участников."
   },
   {
     "name": "set_channel_color",
     "rpc": "channels.updateColor",
     "namespace": "channels",
-    "signature": "await ctx.set_channel_color(for_profile: flags.1?true = None, channel: InputChannel, color: flags.2?int = None, background_emoji_id: flags.0?long = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.set_channel_color(channel: InputChannel)",
+    "returns": "Any",
     "params": [
       {
         "name": "for_profile",
@@ -7023,7 +7042,7 @@ export const CATALOG_METHODS = [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7039,15 +7058,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.updateColor. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.updateColor. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Update the accent color and background custom emoji of a channel.",
+    "desc_ru": "Обновить акцентный цвет и фоновый кастомный эмодзи канала."
   },
   {
     "name": "related_channels",
     "rpc": "channels.getChannelRecommendations",
     "namespace": "channels",
-    "signature": "await ctx.related_channels(channel: flags.0?InputChannel = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.related_channels()",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7056,20 +7075,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.getChannelRecommendations. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.getChannelRecommendations. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain a list of similarly themed public channels, selected based on similarities in their subscriber bases.",
+    "desc_ru": "Получить список публичных каналов со схожей тематикой, отобранных по сходству баз подписчиков."
   },
   {
     "name": "set_channel_emoji_status",
     "rpc": "channels.updateEmojiStatus",
     "namespace": "channels",
     "signature": "await ctx.set_channel_emoji_status(channel: InputChannel, emoji_status: EmojiStatus)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7079,20 +7098,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.updateEmojiStatus. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.updateEmojiStatus. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Set an emoji status for a channel or supergroup.",
+    "desc_ru": "Задать эмодзи-статус для канала или супергруппы."
   },
   {
     "name": "set_group_emoji_set",
     "rpc": "channels.setEmojiStickers",
     "namespace": "channels",
     "signature": "await ctx.set_group_emoji_set(channel: InputChannel, stickerset: InputStickerSet)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7102,20 +7121,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.setEmojiStickers. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.setEmojiStickers. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Set a custom emoji stickerset for supergroups. Only usable after reaching at least the boost level specified in the group_emoji_stickers_level_min config parameter.",
+    "desc_ru": "Задать набор стикеров кастомных эмодзи для супергруппы. Доступно только после достижения уровня буста, заданного параметром group_emoji_stickers_level_min."
   },
   {
     "name": "set_channel_auto_translation",
     "rpc": "channels.toggleAutotranslation",
     "namespace": "channels",
     "signature": "await ctx.set_channel_auto_translation(channel: InputChannel, enabled: Bool)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7125,20 +7144,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.toggleAutotranslation. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.toggleAutotranslation. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Toggle autotranslation in a channel, for all users: see here for more info.",
+    "desc_ru": "Включить или выключить автоперевод в канале для всех пользователей."
   },
   {
     "name": "set_channel_profile_tab",
     "rpc": "channels.setMainProfileTab",
     "namespace": "channels",
     "signature": "await ctx.set_channel_profile_tab(channel: InputChannel, tab: ProfileTab)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7148,20 +7167,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram channels.setMainProfileTab. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram channels.setMainProfileTab. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Changes the main profile tab of a channel, see here for more info.",
+    "desc_ru": "Изменить основную вкладку профиля канала."
   },
   {
     "name": "edit_member_rank",
     "rpc": "messages.editChatParticipantRank",
     "namespace": "messages",
     "signature": "await ctx.edit_member_rank(peer: InputPeer, participant: InputPeer, rank: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7177,15 +7196,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editChatParticipantRank. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editChatParticipantRank. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit a group participant's tag.",
+    "desc_ru": "Изменить тег участника группы."
   },
   {
     "name": "create_chat_invite",
     "rpc": "messages.exportChatInvite",
     "namespace": "messages",
-    "signature": "await ctx.create_chat_invite(legacy_revoke_permanent: flags.2?true = None, request_needed: flags.3?true = None, peer: InputPeer, expire_date: flags.0?int = None, usage_limit: flags.1?int = None, title: flags.4?string = None, subscription_pricing: flags.5?StarsSubscriptionPricing = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.create_chat_invite(peer: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "legacy_revoke_permanent",
@@ -7202,7 +7221,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7222,23 +7241,17 @@ export const CATALOG_METHODS = [
         "type": "flags.4?string",
         "required": false,
         "default": null
-      },
-      {
-        "name": "subscription_pricing",
-        "type": "flags.5?StarsSubscriptionPricing",
-        "required": false,
-        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.exportChatInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.exportChatInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Export an invite link for a chat",
+    "desc_ru": "Экспортировать ссылку-приглашение в чат."
   },
   {
     "name": "chat_invites",
     "rpc": "messages.getExportedChatInvites",
     "namespace": "messages",
-    "signature": "await ctx.chat_invites(revoked: flags.3?true = None, peer: InputPeer, admin_id: InputUser, offset_date: flags.2?int = None, offset_link: flags.2?string = None, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.chat_invites(peer: InputPeer, admin_id: InputUser, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "revoked",
@@ -7249,7 +7262,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7273,24 +7286,24 @@ export const CATALOG_METHODS = [
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getExportedChatInvites. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getExportedChatInvites. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get info about the chat invites of a specific chat",
+    "desc_ru": "Получить сведения о приглашениях в конкретный чат."
   },
   {
     "name": "chat_invite_details",
     "rpc": "messages.getExportedChatInvite",
     "namespace": "messages",
     "signature": "await ctx.chat_invite_details(peer: InputPeer, link: string)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7300,15 +7313,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getExportedChatInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getExportedChatInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get info about a chat invite",
+    "desc_ru": "Получить сведения о приглашении в чат."
   },
   {
     "name": "edit_chat_invite",
     "rpc": "messages.editExportedChatInvite",
     "namespace": "messages",
-    "signature": "await ctx.edit_chat_invite(revoked: flags.2?true = None, peer: InputPeer, link: string, expire_date: flags.0?int = None, usage_limit: flags.1?int = None, request_needed: flags.3?Bool = None, title: flags.4?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.edit_chat_invite(peer: InputPeer, link: string)",
+    "returns": "Any",
     "params": [
       {
         "name": "revoked",
@@ -7319,7 +7332,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7353,20 +7366,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.editExportedChatInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.editExportedChatInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Edit an exported chat invite",
+    "desc_ru": "Изменить экспортированное приглашение в чат."
   },
   {
     "name": "purge_revoked_chat_invites",
     "rpc": "messages.deleteRevokedExportedChatInvites",
     "namespace": "messages",
     "signature": "await ctx.purge_revoked_chat_invites(peer: InputPeer, admin_id: InputUser)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7376,20 +7389,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteRevokedExportedChatInvites. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteRevokedExportedChatInvites. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete all revoked chat invites",
+    "desc_ru": "Удалить все отозванные приглашения в чаты."
   },
   {
     "name": "remove_chat_invite",
     "rpc": "messages.deleteExportedChatInvite",
     "namespace": "messages",
     "signature": "await ctx.remove_chat_invite(peer: InputPeer, link: string)",
-    "returns": "bool",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7399,32 +7412,32 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.deleteExportedChatInvite. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.deleteExportedChatInvite. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Delete a chat invite",
+    "desc_ru": "Удалить приглашение в чат."
   },
   {
     "name": "invite_admins",
     "rpc": "messages.getAdminsWithInvites",
     "namespace": "messages",
     "signature": "await ctx.invite_admins(peer: InputPeer)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram messages.getAdminsWithInvites. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getAdminsWithInvites. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get info about chat invites generated by admins.",
+    "desc_ru": "Получить сведения о приглашениях в чат, созданных администраторами."
   },
   {
     "name": "invite_joiners",
     "rpc": "messages.getChatInviteImporters",
     "namespace": "messages",
-    "signature": "await ctx.invite_joiners(requested: flags.0?true = None, subscription_expired: flags.3?true = None, peer: InputPeer, link: flags.1?string = None, q: flags.2?string = None, offset_date: int, offset_user: InputUser, limit: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.invite_joiners(peer: InputPeer, offset_date: int, offset_user: InputUser, limit: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "requested",
@@ -7441,7 +7454,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7459,31 +7472,31 @@ export const CATALOG_METHODS = [
       {
         "name": "offset_date",
         "type": "int",
-        "required": true,
-        "default": "0"
+        "required": false,
+        "default": null
       },
       {
         "name": "offset_user",
         "type": "InputUser",
-        "required": true,
-        "default": "{'_': 'inputUserEmpty'}"
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.getChatInviteImporters. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.getChatInviteImporters. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get info about the users that joined the chat using a specific chat invite",
+    "desc_ru": "Получить сведения о пользователях, присоединившихся к чату по конкретному приглашению."
   },
   {
     "name": "resolve_join_request",
     "rpc": "messages.hideChatJoinRequest",
     "namespace": "messages",
-    "signature": "await ctx.resolve_join_request(approved: flags.0?true = None, peer: InputPeer, user_id: InputUser)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.resolve_join_request(peer: InputPeer, user_id: InputUser)",
+    "returns": "Any",
     "params": [
       {
         "name": "approved",
@@ -7494,7 +7507,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7504,15 +7517,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.hideChatJoinRequest. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.hideChatJoinRequest. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Dismiss or approve a chat join request related to a specific chat or channel.",
+    "desc_ru": "Отклонить или одобрить заявку на вступление в чат или канал."
   },
   {
     "name": "resolve_all_join_requests",
     "rpc": "messages.hideAllChatJoinRequests",
     "namespace": "messages",
-    "signature": "await ctx.resolve_all_join_requests(approved: flags.0?true = None, peer: InputPeer, link: flags.1?string = None)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.resolve_all_join_requests(peer: InputPeer)",
+    "returns": "Any",
     "params": [
       {
         "name": "approved",
@@ -7523,7 +7536,7 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7533,15 +7546,15 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram messages.hideAllChatJoinRequests. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram messages.hideAllChatJoinRequests. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Dismiss or approve all join requests related to a specific chat or channel.",
+    "desc_ru": "Отклонить или одобрить все заявки на вступление в чат или канал."
   },
   {
     "name": "channel_statistics",
     "rpc": "stats.getBroadcastStats",
     "namespace": "stats",
-    "signature": "await ctx.channel_statistics(dark: flags.0?true = None, channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.channel_statistics(channel: InputChannel)",
+    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7552,19 +7565,19 @@ export const CATALOG_METHODS = [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram stats.getBroadcastStats. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stats.getBroadcastStats. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get channel statistics",
+    "desc_ru": "Получить статистику канала."
   },
   {
     "name": "supergroup_statistics",
     "rpc": "stats.getMegagroupStats",
     "namespace": "stats",
-    "signature": "await ctx.supergroup_statistics(dark: flags.0?true = None, channel: InputChannel)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.supergroup_statistics(channel: InputChannel)",
+    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7575,19 +7588,19 @@ export const CATALOG_METHODS = [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       }
     ],
-    "desc_en": "Calls Telegram stats.getMegagroupStats. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stats.getMegagroupStats. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get supergroup statistics",
+    "desc_ru": "Получить статистику супергруппы."
   },
   {
     "name": "message_statistics",
     "rpc": "stats.getMessageStats",
     "namespace": "stats",
-    "signature": "await ctx.message_statistics(dark: flags.0?true = None, channel: InputChannel, msg_id: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.message_statistics(channel: InputChannel, msg_id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7598,7 +7611,7 @@ export const CATALOG_METHODS = [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7608,20 +7621,20 @@ export const CATALOG_METHODS = [
         "default": null
       }
     ],
-    "desc_en": "Calls Telegram stats.getMessageStats. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stats.getMessageStats. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get message statistics",
+    "desc_ru": "Получить статистику сообщения."
   },
   {
     "name": "message_public_forwards",
     "rpc": "stats.getMessagePublicForwards",
     "namespace": "stats",
     "signature": "await ctx.message_public_forwards(channel: InputChannel, msg_id: int, offset: string, limit: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "channel",
         "type": "InputChannel",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
@@ -7633,25 +7646,25 @@ export const CATALOG_METHODS = [
       {
         "name": "offset",
         "type": "string",
-        "required": true,
-        "default": ""
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stats.getMessagePublicForwards. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stats.getMessagePublicForwards. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtains a list of messages, indicating to which other public channels was a channel message forwarded. Will return a list of messages with peer_id equal to the public channel to which this message was forwarded.",
+    "desc_ru": "Получить список сообщений с указанием, в какие другие публичные каналы было переслано сообщение канала. В списке peer_id равен публичному каналу-получателю."
   },
   {
     "name": "story_statistics",
     "rpc": "stats.getStoryStats",
     "namespace": "stats",
-    "signature": "await ctx.story_statistics(dark: flags.0?true = None, peer: InputPeer, id: int)",
-    "returns": "dict[str, Any]",
+    "signature": "await ctx.story_statistics(peer: InputPeer, id: int)",
+    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7662,52 +7675,52 @@ export const CATALOG_METHODS = [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       }
     ],
-    "desc_en": "Calls Telegram stats.getStoryStats. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stats.getStoryStats. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Get statistics for a certain story.",
+    "desc_ru": "Получить статистику конкретной истории."
   },
   {
     "name": "story_public_forwards",
     "rpc": "stats.getStoryPublicForwards",
     "namespace": "stats",
     "signature": "await ctx.story_public_forwards(peer: InputPeer, id: int, offset: string, limit: int)",
-    "returns": "dict[str, Any]",
+    "returns": "Any",
     "params": [
       {
         "name": "peer",
         "type": "InputPeer",
-        "required": true,
+        "required": false,
         "default": "$peer"
       },
       {
         "name": "id",
         "type": "int",
-        "required": true,
+        "required": false,
         "default": "$message"
       },
       {
         "name": "offset",
         "type": "string",
-        "required": true,
-        "default": ""
+        "required": false,
+        "default": null
       },
       {
         "name": "limit",
         "type": "int",
-        "required": true,
-        "default": "50"
+        "required": false,
+        "default": null
       }
     ],
-    "desc_en": "Calls Telegram stats.getStoryPublicForwards. Dispatches typed parameters and returns structured result.",
-    "desc_ru": "Вызывает метод Telegram stats.getStoryPublicForwards. Передает параметры и возвращает типизированный ответ."
+    "desc_en": "Obtain forwards of a story as a message to public chats and reposts by public channels.",
+    "desc_ru": "Получить пересылки истории в публичные чаты и репосты публичными каналами."
   }
 ];

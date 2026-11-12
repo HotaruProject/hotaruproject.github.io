@@ -1,125 +1,819 @@
 export const DOCS_EN = [
   {
-    "id": "quickstart",
-    "title": "1. Quickstart: Writing & Loading Modules with .ld",
-    "summary": "Step-by-step workflow for writing a .hmod file, sending it to Telegram, and loading it on the fly with .ld.",
-    "content": "Hotaru enables you to write custom Telegram userbot modules in standard Python 3.13 and load them on the fly directly inside any Telegram chat without restarting the core userbot process. Unlike traditional monolithic userbots where third-party scripts execute in the main interpreter alongside session keys, Hotaru executes modules inside an isolated capability-based sandbox.\n\n### Step 1: Create Your First .hmod File\n\nA Hotaru module is a regular Python file saved with the `.hmod` extension. Hotaru enforces the First-Statement Rule: the `HOTARU = { ... }` manifest dictionary must be the very first executable statement in the file.\n\nCreate a file named `hello_world.hmod`:\n\n```python\nHOTARU = {\n    \"id\": \"hello_world\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"hello\": \"hello_cmd\",\n        \"greet\": \"hello_cmd\",\n    },\n    \"capabilities\": [],\n    \"lexicon\": {\n        \"en\": {\n            \"greet\": \"Hello from custom module! Kernel uptime: {uptime}s\",\n            \"reply_greet\": \"Hello, <b>{name}</b>! Nice to meet you.\",\n        },\n        \"ru\": {\n            \"greet\": \"Привет от кастомного модуля! Аптайм ядра: {uptime}с\",\n            \"reply_greet\": \"Привет, <b>{name}</b>! Рад знакомству.\",\n        },\n    },\n}\n\nasync def hello_cmd(ctx):\n    if ctx.reply_to and ctx.reply_to.sender:\n        name = ctx.reply_to.sender.first_name or \"Friend\"\n        text = ctx.t(\"reply_greet\", name=name)\n    else:\n        text = ctx.t(\"greet\", uptime=int(ctx.uptime))\n    await ctx.respond(text)\n```\n\n### Step 2: Send and Load via .ld in Telegram\n\n1. Open any Telegram chat (your Saved Messages, a private group, or direct message).\n2. Attach `hello_world.hmod` as a document file and send it.\n3. Reply to that document message with the command:\n   `.ld`\n4. Hotaru intercepts the command, performs AST static security analysis, spawns an isolated worker process with Linux namespaces (`CLONE_NEWNS`, `CLONE_NEWIPC`, `CLONE_NEWUTS`, `CLONE_NEWNET`), creates an ephemeral tmpfs mount, and registers the command triggers.\n5. Hotaru replies with an activation card confirming that `hello_world` v1.0.0 is loaded (standard messaging helpers require no extra capabilities, so `capabilities: []` is sufficient).\n6. Now type `.hello` or `.greet` in any chat to execute your new command!\n\nYou can also load a module directly from an HTTPS URL without uploading the file:\n```\n.ld https://raw.githubusercontent.com/HotaruProject/modules/main/tools/calc.hmod\n```\n\n### What Happens When You Run .ld\n\nWhen you reply with `.ld` to a module file, Hotaru loads it safely and automatically:\n\n1. **Fast Validation**: Checks that `HOTARU = { ... }` is the first line in the file and defines the module name (`id`) and commands.\n2. **Permission Check**: Reviews requested `capabilities`. If no permissions are needed (`capabilities: []`), it loads instantly. Special permissions (like `net`) are verified before activation.\n3. **Isolated Sandbox**: Runs the module in a private, sandboxed process. Untrusted code can never access your Telegram session keys or server files.\n4. **Instant Registration**: Commands become active immediately in chat without restarting the userbot.\n5. **Startup Hook**: If the module defines a `rise` function, it runs automatically.\n\n### Essential Module Management Commands\n\n• `.ld` (reply to file or URL): Loads a new module into the runtime.\n• `.rl <id>`: Hot-reloads an existing module from disk. The worker process is re-spawned, reload hook executed, and state restored from SQLite without restarting the userbot core.\n• `.ul <id>`: Unloads the module. Gracefully signals background tasks to stop, calls the `fade` hook, unregisters commands, closes the IPC socket, and terminates the worker process.\n• `.ex <id>`: Exports the module by sending the `.hmod` file from `sanctuary/modules/<id>.hmod` directly back into Telegram.\n• `.resetdb <id>`: Drops and recreates the isolated SQLite database associated with this module (`sanctuary/modules/<id>.db`).\n• `.modules` or `.mods`: Opens an interactive Telegram screen listing all active modules, their versions, memory consumption, and capabilities.\n\n### Error Handling & Debugging\n\nIf your `.hmod` file contains a syntax error or invalid manifest structure, Hotaru prevents execution and sends a clean error card indicating the exact line and column number where parsing failed. Your main userbot process is completely unaffected and continues running smoothly."
+    id: 'overview',
+    title: 'Overview',
+    summary: 'Hotaru is a Telegram userbot runtime that loads .hmod modules into isolated sandboxes.',
+    content: `![The Hotaru userbot banner from the upstream project](media/hotaru-banner.png)
+
+Hotaru is a Telegram userbot built on GoyGram, an asynchronous Python MTProto client with native Rust cryptography. The runtime owns the account session; modules are third-party code that the runtime loads, supervises and confines.
+
+### What the runtime provides
+
+- **Namespace isolation.** Every module runs in its own Linux namespaces (\`CLONE_NEWNS\`, \`CLONE_NEWIPC\`, \`CLONE_NEWUTS\`, \`CLONE_NEWNET\`), on a private tmpfs, as uid 65534 (\`nobody\`). Modules talk to the kernel over a UNIX pipe, never over a socket.
+- **Explicit capabilities.** A module declares what it needs in its manifest: \`mt\`, \`state\`, \`net\`, \`files\`, \`shell\`, \`inline\`, \`modules\`, \`assets\`. \`logs\` and \`fetch\` are always granted.
+- **Encrypted storage.** Session strings, database entries and authorization keys live in \`sanctuary/hotaru.vault\`, encrypted with AES-GCM. The kernel is the only reader.
+- **FloodWait protection.** The \`shield\` module samples API call rates and pauses calls locally before Telegram applies a floodwait.
+- **Multi-account supervisor.** One instance runs several accounts concurrently, each with its own MTProto session and isolated state.
+- **Web dashboard.** Singularity runs on Node.js and Vite, serving system metrics, logs and module management on port 8787. It can also open as a Telegram Mini App through a Cloudflare Horizon tunnel.
+
+### Runtime shape
+
+The kernel boots, activates modules from the \`constellations/\` directory, and hands each one a context object. The context is the only surface a module sees: messaging helpers, state storage, screens, and the contextual Telegram operations.
+
+### The core underneath
+
+Hotaru inherits the transport and the cryptography from GoyGram.
+
+![The GoyGram mark](media/goygram-mark.png)
+
+The chart below is the upstream GoyGram TL codec benchmark, rendered here in grayscale to match the rest of the interface.
+
+![GoyGram TL codec benchmark: 351270 operations per second for serialize sendMessage](media/goygram-codec.png)`,
   },
   {
-    "id": "manifest-schema",
-    "title": "2. Manifest Schema & First-Statement Rule",
-    "summary": "Detailed specification of the HOTARU manifest dictionary, AST parsing rules, and supported fields.",
-    "content": "Every Hotaru module must declare a top-level dictionary named `HOTARU` at the very beginning of the file. This dictionary acts as the module manifest, declaring identity, required permissions, command mappings, background tasks, lifecycle hooks, and configuration schemas.\n\n### The First-Statement Rule\n\nHotaru parses the module via Python's `ast` (Abstract Syntax Tree) module prior to loading or compiling any bytecode. The assignment `HOTARU = { ... }` must be the first statement in the file.\n- Statements or expressions placed before `HOTARU` trigger `ModuleValidationError`.\n- This ensures the security gate can verify capabilities, identifiers, and dependencies deterministically without executing unverified code.\n\n### Complete Manifest Schema Reference\n\n```python\nHOTARU = {\n    \"id\": \"vault_sync\",\n    \"version\": \"1.2.0\",\n    \"commands\": {\n        \"sync\": \"sync_command\",\n        \"status\": \"status_command\",\n    },\n    \"capabilities\": [\"net\", \"state\"],\n    \"watchers\": [\"message_watcher\"],\n    \"tasks\": {\n        \"sync_loop\": {\n            \"interval\": 300.0,\n            \"autostart\": True,\n        },\n    },\n    \"aliases\": {\n        \"vstatus\": \"status\",\n        \"vsync\": \"sync\",\n    },\n    \"config_schema\": {\n        \"remote_endpoint\": {\n            \"type\": \"string\",\n            \"default\": \"https://api.vault.internal/sync\",\n            \"description\": \"Remote sync endpoint URL\",\n            \"category\": \"Network\",\n            \"min_len\": 5,\n            \"max_len\": 200,\n        },\n        \"sync_interval\": {\n            \"type\": \"int\",\n            \"default\": 300,\n            \"min\": 30,\n            \"max\": 86400,\n            \"description\": \"Background sync interval in seconds\",\n            \"category\": \"Timing\",\n            \"requires_restart\": True,\n        },\n        \"auto_notify\": {\n            \"type\": \"bool\",\n            \"default\": True,\n            \"description\": \"Send notification upon successful sync\",\n            \"category\": \"Notifications\",\n        },\n        \"sync_mode\": {\n            \"type\": \"select\",\n            \"options\": [\"fast\", \"deep\", \"stealth\"],\n            \"default\": \"fast\",\n            \"description\": \"Synchronization algorithm\",\n            \"category\": \"Engine\",\n        },\n        \"api_token\": {\n            \"type\": \"string\",\n            \"secret\": True,\n            \"default\": \"\",\n            \"description\": \"Private API token\",\n            \"category\": \"Security\",\n        },\n    },\n    \"lexicon\": {\n        \"en\": {\n            \"syncing\": \"Synchronizing vault with remote...\",\n            \"done\": \"Vault sync completed in {duration}ms.\",\n            \"error\": \"Sync failed: {reason}\",\n        },\n        \"ru\": {\n            \"syncing\": \"Синхронизация хранилища с сервером...\",\n            \"done\": \"Синхронизация завершена за {duration}мс.\",\n            \"error\": \"Ошибка синхронизации: {reason}\",\n        },\n    },\n    \"requires\": [\"common_crypto\"],\n    \"after\": [\"accounts\", \"shield\"],\n    \"inline_commands\": [\"vault_query\"],\n    \"rise\": \"on_startup\",\n    \"fade\": \"on_shutdown\",\n    \"template_fields\": {\n        \"vault_health\": {\n            \"scope\": \"global\",\n            \"provider\": \"vault_health_provider\",\n        },\n    },\n    \"banner\": \"https://raw.githubusercontent.com/HotaruProject/assets/main/banners/vault.png\",\n    \"bot_commands\": [\"sync\", \"status\"],\n}\n```\n\n### Deep Dive into Manifest Fields\n\n1. `id` (str, required) — **Module Name**:\n   - The unique identifier and name of your module (e.g. `\"calc\"`, `\"notes\"`, `\"vault_sync\"`).\n   - This name is how you manage the module inside Telegram:\n     • `.rl <id>` — hot-reload the module after editing code (e.g. `.rl notes`)\n     • `.ul <id>` — unload and deactivate the module (`.ul notes`)\n     • `.ex <id>` — export the `.hmod` file back into chat (`.ex notes`)\n     • `.config <id>` — open the module's interactive settings menu (`.config notes`)\n     • `.resetdb <id>` — wipe the module's saved database (`.resetdb notes`)\n   - It appears in your `.mods` list and names its private SQLite database (`sanctuary/modules/<id>.db`).\n\n2. `version` (str, required) — **Module Version**:\n   - Semantic version string (e.g. `\"1.0.0\"`, `\"2.1.0\"`). Displayed in `.mods` and exported headers.\n\n3. `commands` (dict | list, required) — **Chat Commands**:\n   - Maps chat trigger commands to Python coroutine functions.\n   - Dict format: `{\"calc\": \"calc_cmd\", \"c\": \"calc_cmd\"}` means typing `.calc` or `.c` in chat will run `async def calc_cmd(ctx):`.\n   - List format: `[\"calc\", \"help\"]` automatically maps to functions named `calc_command` or matching names.\n\n4. `capabilities` (list[str], required) — **Security Permissions**:\n   - Declares privileged hardware, network, and storage permissions requested by the module.\n   - **Principle of Least Privilege**: Standard message operations (`ctx.respond`, `ctx.reply`, `ctx.edit`, `ctx.delete`, `ctx.react`), media reply helpers (`ctx.reply_photo`, `ctx.reply_file`), interactive screens (`ctx.screens`), formatting helpers (`ctx.html`), and **all 292 extended MTProto methods** on `ctx` require **NO capabilities** (`\"capabilities\": []`).\n   - Supported capabilities in Hotaru:\n     • `\"mt\"`: Direct raw Telegram MTProto calls via `ctx.tg.call(method, kwargs)` or `mt(...)`. Protected by relay firewall. (NOT needed for the 292 standard methods on `ctx`!).\n     • `\"state\"`: Private SQLite key-value persistence through `ctx.state` (`get`, `set`, `delete`, `keys`, `pointer`).\n     • `\"net\"`: Outbound HTTP/HTTPS network requests and live streams through `ctx.net` and `ctx.stream` (SSRF protected).\n     • `\"files\"`: File read and write operations inside the sandboxed tmpfs workspace (`ctx.files`).\n     • `\"shell\"`: Running shell commands in workspace jail (`ctx.shell`).\n     • `\"inline\"`: Querying and interacting with Telegram inline bots (`ctx.inline`).\n     • `\"modules\"`: Dynamic module management (`ctx.modules` - load, unload, reload).\n     • `\"assets\"`: Access to encrypted assets storage (`ctx.assets`, `ctx.download_file`).\n   - Built-in (always granted without declaration):\n     • `\"logs\"`: Structured observatory logging (`ctx.logs`).\n     • `\"fetch\"`: Read-only access to messages, entities, and reply resolution.\n\n5. `tasks` (dict, optional) — **Supervised Background Tasks**:\n   - Hotaru has a built-in supervisor that runs background tasks periodically and reliably.\n   - Schema: `{\"<task_name>\": {\"interval\": 30.0, \"autostart\": True}}`.\n   - **Task Parameters**:\n     • `interval` (float | int, default `60.0`): The period in seconds between task runs. Hotaru calls your handler, awaits its completion, and then pauses for `interval` seconds before the next call.\n     • `autostart` (bool, default `False`): If `True`, the task automatically begins running when the module is activated/loaded. If `False`, it remains idle until manually triggered.\n   - **Worker Handler**:\n     • Handlers must be named `task_<task_name>(ctx)`. For example, for task `\"sync_loop\"`, define `async def task_sync_loop(ctx):`.\n     • The handler receives standard `ctx` with full module capabilities and helpers.\n   - **Supervisor Resilience**:\n     • The supervisor wraps every execution in exception handling. If an unhandled error occurs, it is logged to the observatory logs, and the supervisor retries after `interval` seconds. It never crashes Hotaru or the userbot.\n     • Clean cancellation: on `.ul` or `.rl`, background tasks are automatically cancelled via `asyncio.CancelledError`.\n\n6. `config_schema` (dict, optional) — **User Settings (Configured in Telegram)**:\n   - **NOTE: This is NOT for the web panel.** (The Singularity web panel is purely a telemetry dashboard for CPU, RAM, Uptime, and logs; it does NOT edit module configs).\n   - Module settings are configured directly inside Telegram via the `.config <id>` command (or `.settings`) through interactive inline keyboard screens (`ctx.screens`) with buttons, toggles, selectors, and text prompts.\n   - **Reading settings in module code**:\n     ```python\n     endpoint = ctx.config.get(\"remote_endpoint\", \"https://api.default.org\")\n     # or\n     interval = ctx.config[\"sync_interval\"]\n     ```\n   - **Supported Data Types (`type`)**:\n     • `\"bool\"` / `\"boolean\"`: A True/False switch. In Telegram UI rendered with interactive one-click toggle buttons `[ON / OFF]`.\n     • `\"int\"` / `\"integer\"`: An integer number. Supports `min` (or `minimum`) and `max` (or `maximum`) bounds. Telegram UI allows adjusting or typing numbers within range.\n     • `\"float\"`: A decimal floating-point number. Also supports `min` / `max` bounds.\n     • `\"str\"` / `\"string\"`: A text string. Supports `min_len` / `min_length`, `max_len` / `max_length`, and `regex` validation.\n     • `\"choice\"` / `\"select\"`: Single selection from a predefined list. Requires `options: [\"val1\", \"val2\", ...]`. In Telegram UI rendered as clickable choice buttons.\n     • `\"series\"` / `\"list\"`: A sequence/list of values. Supports `item` (specification dict for items, default `{\"type\": \"str\"}`), `separator` (delimiter, default `\",\"`), `min_items`, and `max_items`.\n   - **Field Configuration Attributes**:\n     • `default`: Initial fallback value when the user hasn't set one yet.\n     • `description`: Short readable label displayed next to the setting in the `.config` screen.\n     • `category`: Category / section name for grouping settings in the Telegram menu (default `\"General\"`).\n     • `doc`: Detailed documentation or instructions displayed when expanding setting details.\n     • `secret` (bool, default `False`): If `True`, masks the value in Telegram UI as `••••••••` to keep tokens, passwords, and private keys safe from onlookers.\n     • `requires_restart` (bool, default `False`): If `True`, displays an indicator in Telegram that changing this parameter requires reloading the module (`.rl <id>`).\n     • `min` / `max`: Lower and upper bounds for numeric values (`int`, `float`).\n     • `min_len` / `max_len`: Minimum and maximum string length for text values (`str`).\n     • `regex`: Regular expression string pattern that the text value must match.\n     • `options`: List of allowable options for `choice` / `select`.\n\n7. `watchers` (list[str], optional):\n   - List of coroutine function names invoked on every incoming and outgoing chat message without requiring a command prefix.\n\n8. `aliases` (dict[str, str], optional):\n   - Additional shortcuts for commands. Format: `{\"alias_trigger\": \"target_command\"}`.\n\n9. `lexicon` (dict, optional):\n   - Localized strings indexed by ISO language codes (`en`, `ru`, `uk`, `ja`, `kz`, `zh`).\n   - Accessed in handlers via `ctx.t(\"key\", **kwargs)`. If the user's active language lacks a key, Hotaru falls back to `en`.\n\n10. `requires` (list[str], optional):\n    - List of other module IDs that must be present and loaded before this module can initialize.\n\n11. `after` (list[str], optional):\n    - Load order ordering constraint. Specifies modules that should be loaded earlier in the boot sequence.\n\n12. `rise` (str | Callable, optional):\n    - Async coroutine called immediately after sandbox initialization and worker startup.\n\n13. `fade` (str | Callable, optional):\n    - Async coroutine called when the module is unloaded, reloaded, or during userbot shutdown.\n\n14. `template_fields` (dict, optional):\n    - Exposes custom placeholders (e.g. `{vault_health}`) to system layout templates and status cards.\n\n15. `bot_commands` (list[str], optional):\n    - Commands registered with Telegram's autocomplete list for quick tab completion.\n\n16. `banner` (str, optional):\n    - URL or local path to a banner image displayed at the top of the module's `.help` and `.config` screens."
+    id: 'install',
+    title: 'Install',
+    summary: 'Requirements, the installer script, and the manual and container setups.',
+    content: `### Requirements
+
+- Linux on x86_64 or aarch64
+- Python 3.13 or newer
+- A Telegram API ID and API Hash from my.telegram.org
+- A bot token from @BotFather, for inline UI and Mini App access
+- The \`uv\` package manager, installed by the setup script
+
+### Interactive installer
+
+\`\`\`bash
+curl -fsSL https://raw.githubusercontent.com/HotaruProject/Hotaru/main/install.sh | bash
+\`\`\`
+
+The script installs system packages, prompts for your Telegram credentials, and offers a deployment: a host systemd service, Docker Compose, or a Proxmox LXC container.
+
+### Docker Compose
+
+\`\`\`bash
+git clone -b develop https://github.com/HotaruProject/Hotaru.git
+cd Hotaru
+docker compose run --rm hotaru
+docker compose up -d
+\`\`\`
+
+### Proxmox VE and LXC
+
+\`\`\`bash
+git clone -b develop https://github.com/HotaruProject/Hotaru.git
+cd Hotaru
+bash lxc/create.sh
+\`\`\`
+
+### Manual setup with uv
+
+\`\`\`bash
+git clone -b develop https://github.com/HotaruProject/Hotaru.git
+cd Hotaru
+uv sync
+uv run python -m hotaru
+\`\`\`
+
+Keep \`sanctuary/\` and the \`hotaru.vault\` key private. They hold your active sessions and master encryption secrets.`,
   },
   {
-    "id": "optional-typing",
-    "title": "3. Command Handlers & Optional Typing",
-    "summary": "Writing command handlers, argument extraction, context fields, and optional typing support.",
-    "content": "Hotaru is designed with flexibility at its core. While type annotations are fully supported for developers using IDEs with BasedPyright, Mypy, or PyLance, type annotations are strictly optional. Python 3.13 dynamically executes handlers whether typed or untyped with zero difference in performance.\n\n### Untyped Command Handler\n\n```python\nHOTARU = {\n    \"id\": \"calc_tool\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"calc\": \"calc_command\",\n    },\n    \"capabilities\": [],\n}\n\nasync def calc_command(ctx):\n    args = ctx.args\n    if not args:\n        await ctx.respond(\"Usage: .calc <expression>\")\n        return\n    expr = ctx.raw_args.strip()\n    try:\n        allowed_chars = set(\"0123456789+-*/(). \")\n        if not all(c in allowed_chars for c in expr):\n            await ctx.respond(\"Error: Disallowed characters in expression.\")\n            return\n        result = eval(expr, {\"__builtins__\": None}, {})\n        await ctx.respond(f\"Expression: <code>{expr}</code>\\nResult: <b>{result}</b>\")\n    except Exception as e:\n        await ctx.respond(f\"Computation failed: <code>{e}</code>\")\n```\n\n### Strongly-Typed Command Handler\n\n```python\nfrom __future__ import annotations\nfrom typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from hotaru.response import ModuleContext\n\nHOTARU = {\n    \"id\": \"calc_tool_typed\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"calc\": \"calc_command\",\n    },\n    \"capabilities\": [],\n}\n\nasync def calc_command(ctx: ModuleContext) -> None:\n    args: list[str] = ctx.args\n    if not args:\n        await ctx.respond(\"Usage: .calc <expression>\")\n        return\n    expr: str = ctx.raw_args.strip()\n    try:\n        allowed_chars = set(\"0123456789+-*/(). \")\n        if not all(c in allowed_chars for c in expr):\n            await ctx.respond(\"Error: Disallowed characters in expression.\")\n            return\n        result = eval(expr, {\"__builtins__\": None}, {})\n        await ctx.respond(f\"Expression: <code>{expr}</code>\\nResult: <b>{result}</b>\")\n    except Exception as e:\n        await ctx.respond(f\"Computation failed: <code>{e}</code>\")\n```\n\n### Full ModuleContext Attribute Reference (`ctx`)\n\nWhen a command triggers, Hotaru passes a `ModuleContext` instance (`hotaru/response.py`) as the sole argument:\n\n• `ctx.args` (list[str]):\n  The arguments passed to the command, split by whitespace. The command trigger itself is excluded.\n  Example: For `.ban 12345 spamming`, `ctx.args` is `['12345', 'spamming']`.\n\n• `ctx.raw_args` (str):\n  The full raw string trailing the command trigger, preserving consecutive whitespace and linebreaks.\n  Example: For `.say   hello\\nworld`, `ctx.raw_args` is `'   hello\\nworld'`.\n\n• `ctx.message` (Any):\n  The complete incoming or outgoing Telegram message object. Contains properties such as `.id`, `.text`, `.date`, `.media`, `.entities`, and `.reactions`.\n\n• `ctx.reply_to` (Any | None):\n  If the command was executed in reply to another message, `ctx.reply_to` contains the referenced message object. If not a reply, it evaluates to `None`.\n\n• `ctx.peer_id` (int):\n  The unique 64-bit integer identifier of the current chat, channel, or user dialog.\n\n• `ctx.sender_id` (int):\n  The unique integer identifier of the user who sent the command message.\n\n• `ctx.is_me` (bool):\n  Evaluates to `True` if the command message was authored by the userbot account itself.\n\n• `ctx.out` (bool):\n  Boolean alias for `ctx.is_me`. Used for quick message flow direction checks.\n\n• `ctx.prefix` (str):\n  The command prefix character used (default is `.`).\n\n• `ctx.command` (str):\n  The exact string trigger that invoked this handler (useful when multiple triggers point to one coroutine).\n\n• `ctx.uptime` (float):\n  The total userbot core process uptime in seconds.\n\n• `ctx.user_id` (int):\n  The Telegram user ID of the userbot account.\n\n• `ctx.chat_id` (int):\n  The peer ID of the current conversation context.\n\n### Argument Parsing Patterns\n\n1. **Quoted String Parsing**:\n   To parse arguments containing spaces enclosed in quotes (e.g. `.tag \"My First Tag\" value`), use Python's built-in `shlex` module:\n   ```python\n   import shlex\n\n   async def tag_cmd(ctx):\n       try:\n           parts = shlex.split(ctx.raw_args)\n           if len(parts) < 2:\n               await ctx.respond(\"Usage: .tag <title> <content>\")\n               return\n           title, content = parts[0], parts[1]\n           await ctx.respond(f\"Tag: <b>{title}</b> -> {content}\")\n       except ValueError as err:\n           await ctx.respond(f\"Invalid quotes: {err}\")\n   ```\n\n2. **Flag and Option Parsing**:\n   ```python\n   async def scan_cmd(ctx):\n       flags = {arg for arg in ctx.args if arg.startswith(\"-\")}\n       params = [arg for arg in ctx.args if not arg.startswith(\"-\")]\n       silent = \"-s\" in flags or \"--silent\" in flags\n       verbose = \"-v\" in flags or \"--verbose\" in flags\n       target = params[0] if params else \"default\"\n       await ctx.respond(f\"Scan target: {target} (silent={silent}, verbose={verbose})\")\n   ```"
+    id: 'manifest',
+    title: 'Module manifest',
+    summary: 'The HOTARU dictionary, the first-statement rule, and every supported field.',
+    content: `A module is a Python file with the \`.hmod\` extension. The loader parses it with \`ast\` before any bytecode runs, so the manifest is read without executing the module.
+
+### The first-statement rule
+
+The file must begin with an assignment to \`HOTARU\` holding a literal mapping. Any statement before it, a non-literal value, or a mapping that is not a dictionary is a \`ModuleValidationError\`.
+
+\`\`\`python
+HOTARU = {
+    "id": "clock",
+    "version": "1.0.0",
+    "commands": ["utc"],
+    "capabilities": [],
+}
+\`\`\`
+
+### Required fields
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| \`id\` | string | Non-empty, at most 128 characters, no slash or NUL. |
+| \`version\` | string | Non-empty. |
+| \`commands\` | list of strings | No empty entries and no whitespace inside a command. |
+| \`capabilities\` | list of strings | Names from the capability registry. |
+
+### Optional fields
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| \`name\` | string | Display name. Defaults to \`id\`. |
+| \`watchers\` | list of strings | Watcher entry points the runtime subscribes. |
+| \`tasks\` | dict | Background tasks. Each entry may set \`interval\` (seconds, default 60) and \`autostart\`. |
+| \`aliases\` | dict | Alternative command names mapped to existing commands. |
+| \`config_schema\` | dict | Settings the module exposes to the runtime settings editor. |
+| \`lexicon\` | dict | Localized strings per language code, with \`description\` and \`commands\`. |
+| \`requires\` | list of strings | Modules that must be present. |
+| \`after\` | list of strings | Modules to activate after this one. |
+| \`inline_commands\` | list of strings | Inline query entry points. |
+| \`rise\` | string | Handler called right after activation. |
+| \`fade\` | string | Handler called before unload, reload, or shutdown. |
+| \`template_fields\` | dict | Fields published to other modules. At most 64. |
+| \`banner\` | string | URL of a banner image, http or https. |
+| \`bot_commands\` | list of strings | Commands registered with the auxiliary bot. |
+
+### Validation
+
+The loader checks identifiers, versions, command lists, configuration schemas, translation tables, published template fields, banner URLs, and dependency lists. A translation may only describe commands and inline commands that the module actually declares. The \`hotaru\` template namespace is reserved.`,
   },
   {
-    "id": "lifecycle-and-tasks",
-    "title": "4. Lifecycle Hooks & Supervised Background Tasks",
-    "summary": "Startup and shutdown hooks (rise/fade) and persistent background loops with supervisor recovery.",
-    "content": "Hotaru provides a resilient lifecycle and supervision engine. Modules can execute asynchronous initialization upon load, clean up resources on shutdown, and run persistent background loops supervised by Hotaru's task supervisor.\n\n### Startup & Shutdown Hooks (rise & fade)\n\nLifecycle hooks are declared directly in the `HOTARU` dictionary:\n- `rise`: Coroutine executed inside the module immediately after activation and capability binding.\n- `fade`: Coroutine executed during module unload (`.ul`), before hot reload (`.rl`), or during system shutdown.\n\n```python\nHOTARU = {\n    \"id\": \"session_logger\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\"],\n    \"commands\": {\n        \"sessions\": \"sessions_cmd\",\n    },\n    \"rise\": \"on_startup\",\n    \"fade\": \"on_shutdown\",\n}\n\nasync def on_startup(ctx):\n    start = int(ctx.uptime)\n    await ctx.state.set(\"session_started\", start)\n    history = await ctx.state.get(\"history\", [])\n    history.append({\"event\": \"rise\", \"time\": start})\n    await ctx.state.set(\"history\", history[-50:])\n\nasync def on_shutdown(ctx):\n    start = await ctx.state.get(\"session_started\", int(ctx.uptime))\n    duration = int(ctx.uptime) - start\n    history = await ctx.state.get(\"history\", [])\n    history.append({\"event\": \"fade\", \"duration\": duration, \"time\": int(ctx.uptime)})\n    await ctx.state.set(\"history\", history[-50:])\n\nasync def sessions_cmd(ctx):\n    history = await ctx.state.get(\"history\", [])\n    if not history:\n        await ctx.respond(\"No session records found.\")\n        return\n    lines = [f\"• {item['event'].upper()}: time={item.get('time')}s (duration={item.get('duration', 'N/A')}s)\" for item in history]\n    await ctx.respond(\"<b>Session History:</b>\\n\" + \"\\n\".join(lines))\n```\n\n### Pattern 1: Supervised Interval Tasks (`HOTARU[\"tasks\"]`)\n\nThe recommended declarative way to run background periodic work is declaring tasks in `HOTARU[\"tasks\"]`:\n\n```python\nHOTARU = {\n    \"id\": \"metrics_exporter\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\", \"net\"],\n    \"commands\": {},\n    \"tasks\": {\n        \"sync_metrics\": {\n            \"interval\": 60.0,   # Seconds between iterations\n            \"autostart\": True,  # Automatically start on load\n        },\n    },\n}\n\nimport json\n\n# Handler name MUST be task_<task_name>\nasync def task_sync_metrics(ctx):\n    pulse = await ctx.state.get(\"pulse\", 0)\n    await ctx.state.set(\"pulse\", pulse + 1)\n    payload = json.dumps({\"uptime\": ctx.uptime, \"pulse\": pulse})\n    \n    # Send metrics over network\n    await ctx.net(\"https://httpbin.org/post\", method=\"POST\", data=payload, timeout=10)\n```\n\n**How the Supervisor Manages Tasks**:\n1. **Periodic Execution**: The supervisor calls `task_sync_metrics(ctx)`, awaits its completion, then sleeps for `interval` seconds (here 60s) before invoking it again.\n2. **Crash Resilience**: If an unhandled exception is raised inside your task function, the supervisor catches it, logs it to observatory logs (`sanctuary/logs/`), and sleeps `interval` seconds before retrying. Hotaru and the userbot remain completely unaffected and do NOT crash.\n3. **Clean Teardown**: When the module is unloaded (`.ul`) or reloaded (`.rl`), the supervisor automatically cancels the task via `asyncio.CancelledError`.\n\n### Pattern 2: Continuous Custom Loops in `rise`\n\nIf your task requires custom polling frequency, streaming websockets, or event-driven workers, launch a background coroutine inside the `rise` hook:\n\n```python\nHOTARU = {\n    \"id\": \"stream_listener\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"net\"],\n    \"commands\": {},\n    \"rise\": \"start_streaming\",\n}\n\nimport asyncio\n\nasync def start_streaming(ctx):\n    asyncio.create_task(_stream_worker(ctx))\n\nasync def _stream_worker(ctx):\n    while not ctx.is_stopping:\n        try:\n            # Custom work or event streaming\n            await asyncio.sleep(5)\n        except asyncio.CancelledError:\n            break\n        except Exception as exc:\n            ctx.logs.error(f\"Stream error: {exc}\")\n            await asyncio.sleep(5)\n```\n\n### The `ctx.is_stopping` Flag\n\nWhen a module is scheduled for unloading or reloading, `ctx.is_stopping` is set to `True`.\n- For custom loops, always check `while not ctx.is_stopping:`.\n- Sliced sleeps (`for _ in range(N): if ctx.is_stopping: break; await asyncio.sleep(1)`) ensure immediate responsiveness during reloads."
+    id: 'capabilities',
+    title: 'Capabilities and security',
+    summary: 'The eight capability gates, the firewall rules, and the denylist.',
+    content: `A module receives only what its manifest asks for.
+
+### The capability gates
+
+| Capability | Grants |
+| --- | --- |
+| \`mt\` | Raw MTProto calls through \`ctx.tg.call\`. |
+| \`state\` | Persistent key-value storage in the module namespace. |
+| \`net\` | Outbound network access over http, https, ws, wss, tcp, tls and udp. |
+| \`files\` | Read and write inside the module workspace. |
+| \`shell\` | Command execution in the workspace. |
+| \`inline\` | Query and drive inline bots. |
+| \`modules\` | Load, unload, reload and inspect installed modules. |
+| \`assets\` | The hidden assets storage. |
+
+\`logs\` and \`fetch\` are always granted: \`logs\` writes to the observatory log, \`fetch\` reads messages, entities and reply resolution.
+
+### The firewall
+
+While a module is running, an audit hook blocks three things:
+
+- Opening a path that resolves inside the protected storage, or any file ending in \`.vault\` or \`.session\`. The error is \`PermissionError: module access to Telegram session storage is denied\`.
+- Importing \`goygram\`, \`hotaru\` or \`relay\` directly. Modules use the context proxies instead.
+- Opening a socket directly. Network access goes through the \`net\` capability, or Telegram through the \`mt\` capability.
+
+### The denylist
+
+\`my.telegram.org\` is denied and read-only. Peer \`777000\` is protected and read-only: read calls return an empty result, and write calls are refused. Payload inspection walks nested structures, including encoded blobs, up to a complexity limit.
+
+### What the mt gate still refuses
+
+Even with \`mt\`, the \`auth.\` and \`phone.\` namespaces are blocked, every \`payments.\` and \`wallet.\` method is blocked, and account-security operations such as \`account.deleteAccount\`, \`account.resetAuthorizations\` and \`account.getPassword\` are refused. Modules cannot interact with Telegram consent screens.`,
   },
   {
-    "id": "watchers-and-templates",
-    "title": "5. Event Watchers & Dynamic Template Fields",
-    "summary": "Passive message interceptors without command prefixes and publishing dynamic placeholders.",
-    "content": "Hotaru allows modules to passively observe chat interactions without requiring user commands and publish dynamic variables into the core formatting engine.\n\n### Event Watchers (`HOTARU[\"watchers\"]`)\n\nWatchers are coroutines invoked on every incoming and outgoing Telegram message event. Unlike commands, watchers do not require a dot prefix or specific trigger name.\n\n```python\nHOTARU = {\n    \"id\": \"anti_invite_link\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [],\n    \"commands\": {},\n    \"watchers\": [\"link_watcher\"],\n}\n\nimport re\n\nLINK_REGEX = re.compile(r\"(t\\.me/joinchat/|t\\.me/\\+[a-zA-Z0-9_-]+)\", re.IGNORECASE)\n\nasync def link_watcher(ctx):\n    # Only inspect incoming messages from other users\n    if ctx.out:\n        return\n\n    text = ctx.message.text or \"\"\n    if LINK_REGEX.search(text):\n        try:\n            # Delete spam message\n            await ctx.delete()\n            # Issue warning\n            warn_msg = await ctx.reply(\"⚠️ Invite links are prohibited in this group.\")\n            # Auto-delete warning after 5 seconds\n            import asyncio\n            await asyncio.sleep(5)\n            await ctx.delete_message(id=warn_msg.id)\n        except Exception:\n            pass\n```\n\n### Essential Rules for Writing Watchers\n\n1. **Direction Filtering**:\n   Always check `if ctx.out: return` unless you specifically intend to monitor or modify your own outgoing messages.\n2. **Infinite Loop Protection**:\n   Never send a message inside a watcher that triggers the same watcher on the userbot itself without checking `if ctx.is_me: return`. This prevents infinite self-reply loops.\n3. **Low Latency & Non-Blocking Execution**:\n   Watchers run in the event dispatch loop of the worker process. Never execute blocking synchronous code or slow unbounded HTTP requests inside watchers. If an external API call is required, use `ctx.net` with strict timeouts (`timeout=3`).\n\n### Dynamic Template Fields (`HOTARU[\"template_fields\"]`)\n\nTemplate fields enable your module to provide dynamic placeholders (such as `{disk_usage}`, `{battery}`, `{music_track}`) that can be embedded into status messages, bio tickers, and auto-reply templates:\n\n```python\nHOTARU = {\n    \"id\": \"system_stats\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [],\n    \"commands\": {},\n    \"template_fields\": {\n        \"cpu_load\": {\n            \"scope\": \"global\",\n            \"provider\": \"cpu_load_provider\",\n        },\n        \"free_mem_mb\": {\n            \"scope\": \"global\",\n            \"provider\": \"free_mem_provider\",\n        },\n    },\n}\n\nimport os\n\nasync def cpu_load_provider(ctx):\n    try:\n        load = os.getloadavg()[0]\n        return f\"{load:.2f}\"\n    except Exception:\n        return \"N/A\"\n\nasync def free_mem_provider(ctx):\n    try:\n        with open(\"/proc/meminfo\", \"r\") as f:\n            for line in f:\n                if line.startswith(\"MemAvailable:\"):\n                    kb = int(line.split()[1])\n                    return f\"{kb // 1024}MB\"\n        return \"Unknown\"\n    except Exception:\n        return \"N/A\"\n```\n\n### Template Field Scopes\n\n• `private`: Available only within commands and handlers declared by the same module.\n• `shared`: Available to modules explicitly permitted in configuration.\n• `global`: Available across all userbot modules, status line templates, and custom formats."
+    id: 'context',
+    title: 'The module context',
+    summary: 'What ctx exposes: messaging, state, files, screens, templates and diagnostics.',
+    content: `The context is the only object a module receives. It is created per command invocation.
+
+### Messaging
+
+| Member | Purpose |
+| --- | --- |
+| \`ctx.respond(content)\` | Send a reply to the current chat. |
+| \`ctx.smart_respond(content)\` | Reply, splitting long text and falling back to a file when needed. |
+| \`ctx.send_file(file, caption)\` | Send a file by path or bytes. |
+| \`ctx.upload_file(source)\` | Upload a file and return its Telegram reference. |
+| \`ctx.read_attachment_text(reply=True)\` | Read the text of the replied-to attachment. |
+| \`ctx.download(attachment, destination)\` | Download an attachment to disk. |
+| \`ctx.edit(text)\` | Edit the message that triggered the command. |
+| \`ctx.paginate(content, page, limit)\` | Send a page of long content with navigation. |
+
+### State and configuration
+
+\`ctx.state\` is a namespace over SQLite. \`get\`, \`set\`, \`delete\`, \`keys\` and \`pointer\` work on values scoped to the module. \`ctx.config\` exposes the runtime settings editor, and \`ctx.modules\` lists the installed modules.
+
+### Templates and language
+
+\`ctx.render_template(key, **values)\` renders a published template field. \`ctx.t(key, default, **params)\` resolves a string from the active lexicon, falling back to the supplied default.
+
+### Diagnostics
+
+\`ctx.check_restrictions()\` reports what the current account may not do, such as premium-only features. \`ctx.classify_error(exc)\` turns an exception into a structured diagnosis. \`ctx.premium()\` and \`ctx.is_premium()\` report the premium state.
+
+### Module management
+
+\`ctx.load_module(source)\` and \`ctx.unload_module(module_id, purge=True)\` manage other modules. Both require the \`modules\` capability.`,
   },
   {
-    "id": "state-and-network",
-    "title": "6. Persistent State (ctx.state) & Sandboxed Network (ctx.net)",
-    "summary": "Isolated SQLite storage per module and sandboxed outbound network calls.",
-    "content": "Hotaru isolates storage and network access via fine-grained capability enforcement. When your module declares `state` or `net`, the core provisions dedicated sandboxed interfaces on `ctx`.\n\n### Persistent Key-Value Storage (`ctx.state`)\n\nDeclare `\"capabilities\": [\"state\"]` in your manifest. Hotaru creates a dedicated, isolated SQLite database for each module at `sanctuary/modules/<id>.db`. Databases use WAL (Write-Ahead Logging) mode with transactional atomicity:\n\n```python\nHOTARU = {\n    \"id\": \"tag_storage\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\"],\n    \"commands\": {\n        \"settag\": \"settag_cmd\",\n        \"gettag\": \"gettag_cmd\",\n        \"deltag\": \"deltag_cmd\",\n        \"alltags\": \"alltags_cmd\",\n    },\n}\n\nasync def settag_cmd(ctx):\n    if len(ctx.args) < 2:\n        await ctx.respond(\"Usage: .settag <key> <value>\")\n        return\n    key = ctx.args[0].lower()\n    val = \" \".join(ctx.args[1:])\n    tags = await ctx.state.get(\"tags\", {})\n    tags[key] = val\n    await ctx.state.set(\"tags\", tags)\n    await ctx.respond(f\"Saved tag <code>{key}</code>.\")\n\nasync def gettag_cmd(ctx):\n    if not ctx.args:\n        await ctx.respond(\"Usage: .gettag <key>\")\n        return\n    key = ctx.args[0].lower()\n    tags = await ctx.state.get(\"tags\", {})\n    if key in tags:\n        await ctx.respond(f\"Tag <b>{key}</b>: {tags[key]}\")\n    else:\n        await ctx.respond(f\"Tag <code>{key}</code> not found.\")\n\nasync def deltag_cmd(ctx):\n    if not ctx.args:\n        await ctx.respond(\"Usage: .deltag <key>\")\n        return\n    key = ctx.args[0].lower()\n    tags = await ctx.state.get(\"tags\", {})\n    if key in tags:\n        del tags[key]\n        await ctx.state.set(\"tags\", tags)\n        await ctx.respond(f\"Deleted tag <code>{key}</code>.\")\n    else:\n        await ctx.respond(\"Tag does not exist.\")\n\nasync def alltags_cmd(ctx):\n    tags = await ctx.state.get(\"tags\", {})\n    if not tags:\n        await ctx.respond(\"No tags stored.\")\n        return\n    lines = [f\"• <code>{k}</code>: {v}\" for k, v in tags.items()]\n    await ctx.respond(\"<b>Stored Tags:</b>\\n\" + \"\\n\".join(lines))\n```\n\n### Complete State API\n\n• `await ctx.state.get(key: str, default: Any = None) -> Any`:\n  Retrieves a stored value. Returns `default` if the key does not exist.\n• `await ctx.state.set(key: str, value: Any) -> None`:\n  Stores any JSON-serializable value (`dict`, `list`, `int`, `float`, `str`, `bool`, `None`).\n• `await ctx.state.delete(key: str) -> bool`:\n  Removes the specified key from storage. Returns `True` if found and deleted.\n• `await ctx.state.clear() -> None`:\n  Deletes all keys and values in the module's database.\n• `await ctx.state.all() -> dict[str, Any]`:\n  Returns a snapshot dictionary of all stored key-value pairs.\n\n### Sandboxed Outbound Network Requests (`ctx.net` & `ctx.stream`)\n\nDeclare `\"capabilities\": [\"net\"]` in your manifest. Hotaru routes outbound HTTP/HTTPS requests through a verified TLS gateway with DNS rebinding protection and configurable timeouts:\n\n```python\nHOTARU = {\n    \"id\": \"weather_lookup\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"net\"],\n    \"commands\": {\n        \"weather\": \"weather_cmd\",\n    },\n}\n\nimport json\n\nasync def weather_cmd(ctx):\n    city = ctx.raw_args.strip() or \"London\"\n    url = f\"https://wttr.in/{city}?format=j1\"\n    response = await ctx.net(url, timeout=10)\n    if response.status_code == 200:\n        data = json.loads(response.text)\n        current = data[\"current_condition\"][0]\n        temp = current[\"temp_C\"]\n        desc = current[\"weatherDesc\"][0][\"value\"]\n        humidity = current[\"humidity\"]\n        await ctx.respond(\n            f\"Weather in <b>{city}</b>:\\n\"\n            f\"• Temperature: <b>{temp}°C</b>\\n\"\n            f\"• Conditions: <b>{desc}</b>\\n\"\n            f\"• Humidity: <b>{humidity}%</b>\"\n        )\n    else:\n        await ctx.respond(f\"Failed to fetch weather data (HTTP {response.status_code}).\")\n```\n\n### Response Object Methods & Attributes\n\n• `response.status_code` (int): HTTP response code (e.g. 200, 404).\n• `response.text` (str): Decoded unicode text content.\n• `response.content` (bytes): Raw binary bytes of response body.\n• `response.headers` (dict): HTTP response headers.\n• `response.json()` (Any): Decodes JSON body into Python objects.\n\n### Streaming Large Payloads (`ctx.stream`)\n\nFor files exceeding 10MB (such as video archives or system backups), use `ctx.stream` to consume chunks asynchronously without loading the entire payload into RAM:\n\n```python\nasync def download_large_file(ctx, file_url, save_path):\n    async for chunk in ctx.stream(file_url, chunk_size=65536):\n        with open(save_path, \"ab\") as f:\n            f.write(chunk)\n```"
+    id: 'screens',
+    title: 'Screens and forms',
+    summary: 'The Kit primitives that build interactive menus, pagers and input forms.',
+    content: `\`ctx.screens\` builds interactive screens: a message with inline buttons, a paginator, or an input request. A press is routed back to the handler that created it.
+
+### Primitives
+
+| Call | Result |
+| --- | --- |
+| \`ctx.screens.button(text, fn)\` | Neutral button. |
+| \`ctx.screens.primary(text, fn)\` | Accent button for the main action. |
+| \`ctx.screens.success(text, fn)\` | Confirmation button. |
+| \`ctx.screens.danger(text, fn)\` | Destructive button. |
+| \`ctx.screens.input(text, fn, placeholder)\` | Button that asks for text. |
+| \`ctx.screens.copy(text, value)\` | Button that copies a value. |
+| \`ctx.screens.url(text, link)\` | External link. |
+| \`ctx.screens.webapp(text, link)\` | Telegram Mini App link. |
+| \`ctx.screens.close()\` | Button that removes the screen. |
+| \`ctx.screens.back(fn, text)\` | Button that returns to the previous screen. |
+
+### Showing a screen
+
+\`\`\`python
+async def panel_cmd(ctx, invocation):
+    k = ctx.screens
+
+    async def on_refresh(ctx, nav):
+        await render()
+
+    async def render():
+        rows = [[k.primary("Refresh", on_refresh), k.close()]]
+        await ctx.screens.show(k.screen("<b>Gateway</b> online", rows))
+
+    await render()
+\`\`\`
+
+\`ctx.screens.screen(text, rows)\` builds the screen, and \`await ctx.screens.show(screen)\` sends it. A button handler receives the context and a navigation object; \`nav.answer(text)\` replies to the press and \`nav.ref().edit(screen)\` replaces the screen in place.
+
+### Paging and layout
+
+\`ctx.screens.pager(fn, page, pages)\` builds the page controls, \`ctx.screens.grid(items, columns)\` arranges buttons, and \`ctx.screens.footer(back)\` closes the row. \`ctx.screens.table(rows)\` renders a monospaced table, \`ctx.screens.radio\` and \`ctx.screens.check\` mark choices, and \`ctx.screens.icon\` and \`ctx.screens.module_icon\` resolve icons.`,
   },
   {
-    "id": "ctx-messaging",
-    "title": "7. Messaging & Media: Everyday ctx Methods",
-    "summary": "Everyday methods for sending, editing, replying, sending files, photos, audio, and reactions.",
-    "content": "The `ModuleContext` object provides high-level asynchronous methods for composing messages, uploading rich multimedia, applying reactions, and managing chat history.\n\n### Message Manipulation Methods\n\n• `await ctx.respond(text: str, parse_mode: str = \"html\")`:\n  The primary response method in Hotaru. If the command was sent by the userbot account (`ctx.is_me`), it seamlessly edits the original message in place. If the command was sent by another user, it sends a new reply message.\n\n• `await ctx.reply(text: str, parse_mode: str = \"html\")`:\n  Always creates and sends a new message replying directly to the triggering message.\n\n• `await ctx.edit(text: str, parse_mode: str = \"html\")`:\n  Edits the current triggering message. Raises an exception if the message was authored by another user.\n\n• `await ctx.delete(revoke: bool = True)`:\n  Deletes the triggering message. When `revoke=True`, deletes it for all chat participants.\n\n• `await ctx.react(emoji: str)`:\n  Places a native animated emoji reaction on the triggering message (e.g. `await ctx.react(\"👍\")`).\n\n• `await ctx.pin(silent: bool = False)`:\n  Pins the triggering message in the current conversation.\n\n• `await ctx.unpin()`:\n  Unpins the message.\n\n• `await ctx.forward_to(peer_id: int)`:\n  Forwards the triggering message to another chat or user, preserving the original forward header.\n\n• `await ctx.copy_to(peer_id: int)`:\n  Sends a duplicate copy of the triggering message to another chat without forward headers.\n\n• `await ctx.save()`:\n  Saves the message directly into your private Telegram Saved Messages chat.\n\n• `await ctx.typing(action: str = \"typing\")`:\n  Broadcasts a temporary action status to the chat. Available actions: `\"typing\"`, `\"upload_photo\"`, `\"record_video\"`, `\"upload_document\"`.\n\n### Multimedia Sending Methods\n\n```python\nHOTARU = {\n    \"id\": \"media_demo\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"net\", \"files\"],\n    \"commands\": {\n        \"sendpic\": \"pic_cmd\",\n        \"senddoc\": \"doc_cmd\",\n        \"sendvoice\": \"voice_cmd\",\n        \"dice\": \"dice_cmd\",\n    },\n}\n\nasync def pic_cmd(ctx):\n    # Accepts URL, file path, or bytes\n    url = \"https://picsum.photos/800/600\"\n    res = await ctx.net(url)\n    await ctx.reply_photo(res.content, caption=\"Random landscape photo.\")\n\nasync def doc_cmd(ctx):\n    content = b\"Hotaru Userbot Configuration Export\\nVersion: 1.0.0\"\n    await ctx.reply_file(content, filename=\"config.txt\", caption=\"System configuration.\")\n\nasync def voice_cmd(ctx):\n    # Sends an audio voice note in OGG Opus format\n    with open(\"assets/audio.ogg\", \"rb\") as f:\n        await ctx.reply_voice(f.read())\n\nasync def dice_cmd(ctx):\n    # Sends animated Telegram dice (emoji can be 🎲, 🎯, 🏀, ⚽, 🎰, 🎳)\n    await ctx.reply_dice(emoji=\"🎰\")\n```\n\n### Downloading Media Attachments (`ctx.download`)\n\nHotaru allows you to download documents, photos, audio tracks, and voice notes into memory or onto disk:\n\n```python\nasync def analyze_cmd(ctx):\n    if not ctx.reply_to or not ctx.reply_to.media:\n        await ctx.respond(\"Reply to a photo or file with .analyze\")\n        return\n\n    await ctx.respond(\"Downloading attachment for inspection...\")\n    file_bytes = await ctx.download(ctx.reply_to.media)\n    size_kb = len(file_bytes) // 1024\n    await ctx.respond(f\"Downloaded attachment: <b>{size_kb} KB</b>.\")\n```\n\n### HTML Formatting Support (`hotaru/markup.py`)\n\nHotaru messages use HTML formatting by default. The following tags are supported:\n- Bold: `<b>text</b>` or `<strong>text</strong>`\n- Italic: `<i>text</i>` or `<em>text</em>`\n- Code: `<code>inline code</code>`\n- Preformatted: `<pre>multiline code block</pre>`\n- Underline: `<u>underlined text</u>`\n- Strikethrough: `<s>strikethrough</s>`\n- Spoiler: `<tg-spoiler>hidden text</tg-spoiler>`\n- Blockquote: `<blockquote>quoted text</blockquote>`\n- Custom Links: `<a href=\"https://github.com\">link text</a>`"
+    id: 'tasks',
+    title: 'Tasks and lifecycle',
+    summary: 'rise and fade, supervised background tasks, and the limits the runtime enforces.',
+    content: `### rise and fade
+
+\`rise\` runs immediately after activation and capability binding. \`fade\` runs before an unload, a reload, or a shutdown. Both name a coroutine in the module.
+
+### Supervised tasks
+
+A task is declared in the manifest and its handler is named \`task_<task_name>\`.
+
+\`\`\`python
+HOTARU = {
+    "id": "metrics_exporter",
+    "version": "1.0.0",
+    "capabilities": ["state", "net"],
+    "commands": [],
+    "tasks": {
+        "sync_metrics": {
+            "interval": 60.0,
+            "autostart": True,
+        },
+    },
+}
+
+async def task_sync_metrics(ctx):
+    pulse = await ctx.state.get("pulse", 0)
+    await ctx.state.set("pulse", pulse + 1)
+\`\`\`
+
+The supervisor calls the handler, waits for it, then sleeps for \`interval\`. If the handler raises, the failure is logged once, the loop continues, and the runtime keeps running.
+
+### Limits
+
+The task supervisor allows 128 tasks in total and 16 per module. Exceeding either limit raises \`TaskLimitError\` and the coroutine is closed. Unloading a module cancels its tasks and waits up to five seconds for them to finish. Shutdown cancels everything and closes the supervisor.
+
+### Long-running work
+
+Work that does not fit the interval model can start a coroutine inside \`rise\`. The \`fade\` handler is the place to cancel it: the runtime calls \`fade\` before an unload, a reload or a shutdown.`,
   },
   {
-    "id": "interactive-screens",
-    "title": "8. Interactive Screens & Form Engine",
-    "summary": "Building Telegram inline button menus, paginated lists, and interactive forms via ctx.screens.",
-    "content": "The Hotaru Screens engine (`ctx.screens`) enables userbots to construct rich interactive menus with inline buttons, paginated catalogs, and multi-step dialog forms directly in Telegram.\n\n### Architecture of Userbot Screens\n\nIn userbot mode, accounts typically cannot send arbitrary inline callback keyboards directly. Hotaru solves this seamlessly:\n1. It binds an auxiliary lightweight Telegram bot token or utilizes GoyGram's inline query codec (`hotaru/callback_codec.py`).\n2. Callback payloads are hashed into short 8-character signatures mapped to Python coroutine closures in memory with a 24-hour expiration window.\n3. When a user presses a button, the callback routes back to your handler closure with an active `handle` object.\n\n### Building an Interactive Control Panel\n\n```python\nHOTARU = {\n    \"id\": \"panel_demo\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\"],\n    \"commands\": {\n        \"panel\": \"panel_cmd\",\n    },\n}\n\nasync def panel_cmd(ctx):\n    async def on_toggle_shield(handle):\n        current = await ctx.state.get(\"shield_active\", False)\n        await ctx.state.set(\"shield_active\", not current)\n        await render_screen()\n\n    async def on_refresh(handle):\n        await render_screen()\n\n    def build_buttons(shield_active):\n        toggle_label = \"Shield: ACTIVE [ON]\" if shield_active else \"Shield: INACTIVE [OFF]\"\n        return [\n            [ctx.screens.primary(\"Refresh Status\", on_refresh)],\n            [ctx.screens.success(toggle_label, on_toggle_shield) if shield_active else ctx.screens.danger(toggle_label, on_toggle_shield)],\n            [ctx.screens.close()],\n        ]\n\n    async def render_screen():\n        shield_active = await ctx.state.get(\"shield_active\", False)\n        status_text = \"ENABLED (Protecting chats)\" if shield_active else \"DISABLED (Idle)\"\n        body = (\n            f\"<b>Security Control Center</b>\\n\\n\"\n            f\"• State: <code>{status_text}</code>\\n\"\n            f\"• Core Uptime: <code>{int(ctx.uptime)}s</code>\"\n        )\n        await ctx.screens.show(\"Security Hub\", body, buttons=build_buttons(shield_active))\n\n    await render_screen()\n```\n\n### Screen Button Primitives\n\n• `ctx.screens.button(text: str, callback: Callable)`: Standard neutral button.\n• `ctx.screens.primary(text: str, callback: Callable)`: Highlighted accent button.\n• `ctx.screens.danger(text: str, callback: Callable)`: Destructive action button with red styling.\n• `ctx.screens.success(text: str, callback: Callable)`: Affirmative action button with green styling.\n• `ctx.screens.close()`: Standard dismiss button that deletes or hides the active screen.\n\n### Paginated Catalogs (`ctx.screens.pager`)\n\nFor browsing long lists (such as logs, module catalogs, or message databases), use the built-in paginator component:\n\n```python\nasync def list_items_cmd(ctx):\n    ITEMS = [f\"Item #{i:03d} - Data Record\" for i in range(1, 46)]\n    PAGE_SIZE = 5\n    TOTAL_PAGES = (len(ITEMS) + PAGE_SIZE - 1) // PAGE_SIZE\n\n    async def show_page(page_idx):\n        start = page_idx * PAGE_SIZE\n        end = start + PAGE_SIZE\n        slice_items = ITEMS[start:end]\n        body = f\"<b>Catalog Records (Page {page_idx + 1}/{TOTAL_PAGES})</b>\\n\\n\" + \"\\n\".join(f\"• {it}\" for it in slice_items)\n\n        async def on_page_change(target_page):\n            await show_page(target_page)\n\n        buttons = [\n            ctx.screens.pager(current=page_idx, total=TOTAL_PAGES, callback=on_page_change),\n            [ctx.screens.close()],\n        ]\n        await ctx.screens.show(\"Catalog Browser\", body, buttons=buttons)\n\n    await show_page(0)\n```\n\n### Monospaced ASCII Tables (`ctx.screens.table`)\n\nTo render clean tabular metrics, `ctx.screens.table` formats columns automatically:\n\n```python\ntable_str = ctx.screens.table(\n    headers=[\"MODULE\", \"VER\", \"STATUS\"],\n    rows=[\n        [\"shield\", \"1.0\", \"OK\"],\n        [\"logger\", \"1.2\", \"RUNNING\"],\n        [\"executor\", \"2.0\", \"IDLE\"],\n    ]\n)\nawait ctx.respond(f\"<pre>{table_str}</pre>\")\n```"
+    id: 'methods',
+    title: 'The 292 contextual methods',
+    summary: 'How the contextual Telegram operations resolve their arguments and where the boundary sits.',
+    content: `The context exposes 292 Telegram operations that need no capability at all. They are the contextual routes: the runtime fills in the current peer, the current message and the account, so a module writes one line instead of assembling a raw request.
+
+\`\`\`python
+await ctx.set_checklist_completed(completed=[1], incompleted=[])
+\`\`\`
+
+### Argument resolution
+
+The gateway substitutes three values before the call reaches Telegram:
+
+| Placeholder | Resolves to |
+| --- | --- |
+| \`$peer\` | The current dialog. |
+| \`$message\` | The current message. |
+| \`$self\` | The account running the module. |
+
+A parameter marked required has no kernel default, so the module must pass it.
+
+### The boundary
+
+The contextual route does not bypass the rest of the system. Telegram's own ACL applies, the denylist applies, premium-only features still need premium, media and assets still need their capabilities, and outbound network still needs \`net\`. The \`mt\` capability is only needed for raw calls through \`ctx.tg.call\`, and even then the policy in the capabilities chapter applies.
+
+The full list, with signatures, parameter types and required flags, is in the Methods tab.`,
   },
   {
-    "id": "catalog-methods",
-    "title": "9. Extended MTProto Methods (All 292 Operations)",
-    "summary": "How extended MTProto methods work, parameter defaults, and category overviews.",
-    "content": "The `ctx` object provides 292 built-in Telegram methods covering every chat operation — managing participants, forum topics, stories, polls, permissions, and settings.\n\n**Key Rule: All 292 methods work out of the box and do NOT require the `\"mt\"` capability!**\nYou can use them in any module with `\"capabilities\": []`. Hotaru automatically fills in the current chat (`$peer`), message ID (`$message`), and your account ID (`$self`), keeping your code clean and concise. The `\"mt\"` capability is strictly reserved for rare, low-level raw Telegram API queries made via `ctx.tg.call(...)`.\n\n### Contextual Default Parameter Binding\n\nHotaru's RPC gateway automatically substitutes context parameters when omitted by the caller:\n- `$peer`: Resolves automatically to the current conversation ID (`ctx.peer_id`).\n- `$message`: Resolves automatically to the triggering message ID (`ctx.message.id`).\n- `$self`: Resolves automatically to your userbot's Telegram user ID.\n\n```python\n# Automatically blocks user in the current chat without passing peer_id explicitly\nawait ctx.block_peer(id=123456789)\n\n# Automatically operates on current chat\nawait ctx.set_slow_mode(seconds=10)\n\n# Posts story using your account ID\nawait ctx.post_story(media=photo_bytes, caption=\"Story update\")\n```\n\n### Major Method Categories Available on `ctx`\n\n1. **Users & Contacts (42 Methods)**:\n   - `block_peer(id)`: Blocks a user or chat.\n   - `unblock_peer(id)`: Unblocks a user or chat.\n   - `blocked_peers(limit, offset)`: Lists blocked users.\n   - `user_details(user_id)`: Fetches comprehensive profile details and bio.\n   - `contact_statuses()`: Returns online/offline statuses of contact list.\n   - `import_contacts(phones)`: Imports phone numbers into contact book.\n   - `delete_contacts(ids)`: Removes contacts.\n\n2. **Channels & Supergroups (68 Methods)**:\n   - `channel_details(channel)`: Detailed channel statistics, participant counts, usernames.\n   - `channel_members(channel, filter, limit, offset)`: Retrieves member rosters.\n   - `set_slow_mode(seconds)`: Configures message delay interval.\n   - `set_antispam(enabled)`: Enables native Telegram aggressive anti-spam filter.\n   - `set_channel_admin(user_id, rights)`: Grants admin permissions.\n   - `kick_channel_member(user_id)`: Removes user from channel/group.\n   - `ban_channel_member(user_id, until_date)`: Bans user temporarily or permanently.\n\n3. **Forum Topics (24 Methods)**:\n   - `create_forum_topic(title, icon_color, icon_emoji_id)`: Creates a new forum thread.\n   - `edit_forum_topic(topic_id, title, icon_emoji_id)`: Updates title or icon.\n   - `set_forum_topic_pinned(topic_id, pinned)`: Pins/unpins thread.\n   - `remove_forum_topic(topic_id)`: Deletes thread and its messages.\n   - `reopen_forum_topic(topic_id)`: Reopens a closed thread.\n\n4. **Stories Subsystem (18 Methods)**:\n   - `post_story(media, caption, privacy)`: Publishes photo/video story.\n   - `delete_stories(story_ids)`: Removes stories.\n   - `activate_story_stealth()`: Activates Telegram Premium stealth mode.\n   - `read_stories(user_id, max_id)`: Marks user stories as read.\n\n5. **Polls, Quizzes & Tasks (16 Methods)**:\n   - `send_poll(question, options, multiple_choice, quiz_mode)`: Creates interactive poll.\n   - `send_todo(title, items)`: Sends checklist item.\n   - `set_checklist_completed(message_id, item_index, completed)`: Toggles checklist state.\n\n### Security Boundary: The Relay Firewall (`relay/firewall.py`)\n\nHotaru protects user security by filtering destructive MTProto methods at the relay boundary. The following calls are strictly forbidden and raise `SecurityViolationError` if invoked by any third-party `.hmod`:\n- `auth.resetAuthorizations`: Disconnecting other active sessions.\n- `account.deleteAccount`: Self-destruction of Telegram account.\n- `auth.exportAuthorization`: Exporting login tokens or session keys.\n- `messages.deleteAllHistory`: Nuking entire chat history across all dialogs.\n\nUse the dedicated **All 292 Methods** tab in the documentation view to search every method by signature, return type, and parameter list."
+    id: 'modules',
+    title: 'The shipped modules',
+    summary: 'The fifteen modules in the constellations directory, with their commands and capabilities.',
+    content: `Each module is a manifest in \`constellations/\`. The commands and capability lists below are read from those manifests.
+
+| Module | Version | Commands | Capabilities |
+| --- | --- | --- | --- |
+| accounts | 2.0.0 | account, addaccount, accounts | mt |
+| acl | 3.0.0 | perms, perm, whois, owadd, owrm, owls, sgls, sg, sgnew, sgdel, sgadd, sgrm, rule, rulerm, ruleclr | mt |
+| backups | 1.2.0 | backup, restore | mt, state, files, modules |
+| catalyst | 1.3.0 | ld, ul, rl, ex, resetdb | modules |
+| executor | 3.4.0 | sh, py, kill | mt, files, net, state, assets |
+| genesis | 1.1.0 | none, bot commands only | mt, state |
+| help | 2.0.0 | help | mt |
+| info | 2.2.0 | info, ping | mt, state |
+| logger | 1.2.0 | logs, loglevel | mt, state |
+| power | 1.5.0 | restart, stop, resume | mt |
+| settings | 3.1.0 | config, alias, rmalias, lsalias, prefix | mt, state |
+| shield | 1.0.0 | shield, suspend_api | mt, state |
+| singularity | 2.0.1 | dash | mt |
+| translations | 2.2.0 | language, translate, loadlex, rmlex | mt, net, files, state |
+| updater | 2.0.0 | upd, updlog, updoff, updon | net, mt |
+
+### Lifecycle details worth knowing
+
+- \`power\` aliases \`unpause\` to \`resume\`.
+- \`backups\` autostarts the \`send\` task every 60 seconds.
+- \`logger\` autostarts the \`pump\` task every 2 seconds and hooks up on rise, unhooks on fade.
+- \`updater\` autostarts the \`poller\` task every 300 seconds and calls \`afterglow\` on rise.
+- \`genesis\` registers the bot commands \`start\` and \`github\`.
+- \`shield\` describes itself as API flood and rate limit protection.
+
+### The daily commands
+
+| Command | Action |
+| --- | --- |
+| \`.help\` | Open the interactive module catalog and help cards. |
+| \`.ping\` | Check MTProto gateway latency and connection health. |
+| \`.dash\` | Generate the Singularity panel link and open the Mini App. |
+| \`.addaccount\` | Add another account to the supervisor pool. |
+| \`.shield\` | View API call rates and adjust the flood protection. |
+| \`.config\` | Open the interactive runtime settings editor. |
+| \`.backup\` | Create an encrypted archive of state and sessions. |
+| \`.restart\` | Reload the kernel processes and active modules. |`,
   },
   {
-    "id": "blueprints",
-    "title": "10. Production Blueprints to Load via .ld",
-    "summary": "Complete, working .hmod modules you can save and load immediately into Hotaru.",
-    "content": "The following production-ready modules demonstrate best practices for capabilities, error handling, persistent state, and interactive screens. Save any blueprint as a `.hmod` file and load it via `.ld` in Telegram.\n\n### Blueprint 1: Advanced QR Code Generator (`qr_tool.hmod`)\n\nDemonstrates outbound network requests (`ctx.net`), sending photos (`ctx.reply_photo`), and multi-language lexicons (`ctx.t`):\n\n```python\nHOTARU = {\n    \"id\": \"qr_tool\",\n    \"version\": \"1.1.0\",\n    \"commands\": {\n        \"qr\": \"qr_command\",\n    },\n    \"capabilities\": [\"net\"],\n    \"lexicon\": {\n        \"en\": {\n            \"empty\": \"Please provide text or reply to a message after .qr\",\n            \"generating\": \"Generating QR code...\",\n            \"caption\": \"QR Code for: <code>{query}</code>\",\n            \"error\": \"Failed to generate QR code: {reason}\",\n        },\n        \"ru\": {\n            \"empty\": \"Укажите текст или ответьте на сообщение после .qr\",\n            \"generating\": \"Генерация QR-кода...\",\n            \"caption\": \"QR-код для: <code>{query}</code>\",\n            \"error\": \"Не удалось сгенерировать QR-код: {reason}\",\n        },\n    },\n}\n\nimport urllib.parse\n\nasync def qr_command(ctx):\n    text = ctx.raw_args.strip()\n    if not text and ctx.reply_to and ctx.reply_to.text:\n        text = ctx.reply_to.text.strip()\n\n    if not text:\n        await ctx.respond(ctx.t(\"empty\"))\n        return\n\n    await ctx.respond(ctx.t(\"generating\"))\n    safe_query = urllib.parse.quote(text[:500])\n    api_url = f\"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={safe_query}\"\n\n    try:\n        res = await ctx.net(api_url, timeout=12)\n        if res.status_code == 200:\n            preview = text[:40] + (\"...\" if len(text) > 40 else \"\")\n            caption = ctx.t(\"caption\", query=preview)\n            await ctx.reply_photo(res.content, caption=caption)\n            await ctx.delete()\n        else:\n            await ctx.respond(ctx.t(\"error\", reason=f\"HTTP {res.status_code}\"))\n    except Exception as err:\n        await ctx.respond(ctx.t(\"error\", reason=str(err)))\n```\n\n### Blueprint 2: Persistent Notes Manager (`notes_mgr.hmod`)\n\nDemonstrates SQLite key-value persistence (`ctx.state`), list formatting, and HTML message formatting:\n\n```python\nHOTARU = {\n    \"id\": \"notes_mgr\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"note\": \"note_command\",\n        \"notes\": \"notes_list_command\",\n        \"delnote\": \"delnote_command\",\n    },\n    \"capabilities\": [\"state\"],\n    \"lexicon\": {\n        \"en\": {\n            \"saved\": \"Saved note <b>{name}</b>.\",\n            \"deleted\": \"Deleted note <b>{name}</b>.\",\n            \"not_found\": \"Note <b>{name}</b> does not exist.\",\n            \"empty_list\": \"No notes stored yet.\",\n        },\n        \"ru\": {\n            \"saved\": \"Заметка <b>{name}</b> успешно сохранена.\",\n            \"deleted\": \"Заметка <b>{name}</b> удалена.\",\n            \"not_found\": \"Заметка <b>{name}</b> не найдена.\",\n            \"empty_list\": \"Список заметок пуст.\",\n        },\n    },\n}\n\nasync def note_command(ctx):\n    args = ctx.args\n    if not args:\n        await ctx.respond(\"Usage: <code>.note <name> <content></code> or <code>.note <name></code> to fetch.\")\n        return\n\n    name = args[0].lower()\n    notes = await ctx.state.get(\"notes\", {})\n\n    if len(args) == 1:\n        if name in notes:\n            await ctx.respond(f\"<b>{name}:</b>\\n{notes[name]}\")\n        else:\n            await ctx.respond(ctx.t(\"not_found\", name=name))\n        return\n\n    content = \" \".join(args[1:])\n    notes[name] = content\n    await ctx.state.set(\"notes\", notes)\n    await ctx.respond(ctx.t(\"saved\", name=name))\n\nasync def notes_list_command(ctx):\n    notes = await ctx.state.get(\"notes\", {})\n    if not notes:\n        await ctx.respond(ctx.t(\"empty_list\"))\n        return\n    lines = [f\"• <b>{k}</b> ({len(v)} chars)\" for k, v in sorted(notes.items())]\n    await ctx.respond(\"<b>Stored Notes:</b>\\n\" + \"\\n\".join(lines))\n\nasync def delnote_command(ctx):\n    if not ctx.args:\n        await ctx.respond(\"Usage: <code>.delnote <name></code>\")\n        return\n    name = ctx.args[0].lower()\n    notes = await ctx.state.get(\"notes\", {})\n    if name in notes:\n        del notes[name]\n        await ctx.state.set(\"notes\", notes)\n        await ctx.respond(ctx.t(\"deleted\", name=name))\n    else:\n        await ctx.respond(ctx.t(\"not_found\", name=name))\n```\n\n### Blueprint 3: Anti-Raid Chat Guardian (`chat_guard.hmod`)\n\nDemonstrates passive message interception via `watchers`, in-memory frequency analysis, and automated message cleanup:\n\n```python\nHOTARU = {\n    \"id\": \"chat_guard\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"guard\": \"guard_toggle_cmd\",\n    },\n    \"capabilities\": [\"state\"],\n    \"watchers\": [\"raid_watcher\"],\n}\n\nimport time\n\nUSER_HISTORY = {}\n\nasync def guard_toggle_cmd(ctx):\n    active = await ctx.state.get(\"active\", True)\n    await ctx.state.set(\"active\", not active)\n    status = \"ENABLED\" if not active else \"DISABLED\"\n    await ctx.respond(f\"Chat Guard protection is now <b>{status}</b>.\")\n\nasync def raid_watcher(ctx):\n    if ctx.out:\n        return\n\n    active = await ctx.state.get(\"active\", True)\n    if not active:\n        return\n\n    sender = ctx.sender_id\n    if not sender:\n        return\n\n    now = time.time()\n    history = USER_HISTORY.setdefault(sender, [])\n    # Keep timestamps within last 5 seconds\n    history = [t for t in history if now - t < 5.0]\n    history.append(now)\n    USER_HISTORY[sender] = history\n\n    # If sender posts more than 5 messages in 5 seconds\n    if len(history) > 5:\n        try:\n            await ctx.delete()\n        except Exception:\n            pass\n```\n\n### Blueprint 4: Raw MTProto Inspector (`raw_mtproto.hmod`)\n\nDemonstrates when the `\"mt\"` capability IS actually required: invoking raw, uncurated MTProto methods directly via `ctx.tg.call`:\n\n```python\nHOTARU = {\n    \"id\": \"raw_mtproto\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"dc\": \"get_dc_cmd\",\n    },\n    \"capabilities\": [\"mt\"],  # Required ONLY because ctx.tg.call is invoked directly\n}\n\nasync def get_dc_cmd(ctx):\n    # Raw MTProto call using ctx.tg.call (requires mt capability)\n    res = await ctx.tg.call(\"help.getNearestDc\")\n    country = res.get(\"country\", \"Unknown\")\n    this_dc = res.get(\"this_dc\", 0)\n    nearest_dc = res.get(\"nearest_dc\", 0)\n    await ctx.respond(\n        f\"<b>Telegram Data Center Info (Raw MTProto):</b>\\n\"\n        f\"• Country: <code>{country}</code>\\n\"\n        f\"• Current DC: <code>DC{this_dc}</code>\\n\"\n        f\"• Nearest DC: <code>DC{nearest_dc}</code>\"\n    )\n```"
-  }
+    id: 'dashboard',
+    title: 'The dashboard',
+    summary: 'Singularity, the web panel and the Telegram Mini App.',
+    content: `Singularity is the embedded interface. The frontend is a Vite and React app that renders a live black hole and lets you fly the camera to four points of interest: the event horizon, the accretion disk, the photon ring and the Einstein ring.
+
+### Running it
+
+The panel serves on port 8787 and exposes system metrics, the observatory log tail, and module management. The bundle is rebuilt on every start, so a stale backend never serves an old panel.
+
+### Opening it in Telegram
+
+Hotaru can open a Cloudflare Horizon tunnel and register the panel with BotFather. From there the dashboard opens as a native Mini App inside Telegram.
+
+### Access
+
+The dashboard is owner-only. A request carries the Telegram \`initData\`, and the backend validates its HMAC-SHA256 signature against the bot token before any data is returned. Secrets are never logged.
+
+### The captured panel
+
+The image below is the running Singularity frontend, captured from the upstream build.
+
+![The Singularity panel: a ray-marched black hole with its accretion disk](media/singularity-panel.png)`,
+  },
+  {
+    id: 'skill',
+    title: 'The agent skill',
+    summary: 'SKILL.md, the reference an agent reads to write modules against the real API.',
+    content: `\`SKILL.md\` is the guide written for an AI agent that has to produce working modules. It is a single file, and it is the same file the download button serves.
+
+### What it contains
+
+- The contract for a module and the boundary between an external module and a built-in one.
+- The manifest and its entry points, with the exact source file map.
+- The catalogue of the 292 contextual operations, with signatures, positional order, parameter types and required flags.
+- The 76 exports of the tools helper, grouped by purpose.
+- The security model, the capability delegation rules, and the checks a module must pass.
+- A minimal template for an external module and a final acceptance list.
+
+### Where it comes from
+
+The method cards are generated from the upstream sources rather than written by hand, and each card carries the SHA-256 of the file it was derived from. When the snapshot changes, the hashes change with it, so the reader can tell whether the reference still matches the code.
+
+### Language
+
+The guide is written in Russian, which is the language of the upstream project. The interface here keeps the same split: this documentation in the language you chose, the agent guide in the language it was written in.`,
+  },
 ];
 
 export const DOCS_RU = [
   {
-    "id": "quickstart",
-    "title": "1. Быстрый старт: Создание и загрузка через .ld",
-    "summary": "Пошаговый процесс написания .hmod файла, отправки в Telegram и мгновенной загрузки через .ld.",
-    "content": "Hotaru позволяет разрабатывать собственные модули на языке Python 3.13 и мгновенно загружать их на лету прямо внутри любого чата Telegram без перезапуска основного процесса юзербота. В отличие от устаревших юзерботов, где сторонний код выполняется в одном адресном пространстве с ключами авторизации Telegram, Hotaru запускает модули в изолированной песочнице с контролем разрешений (capabilities).\n\n### Шаг 1: Создание первого файла .hmod\n\nМодуль Hotaru - это стандартный файл Python, сохраняемый с расширением `.hmod`. В Hotaru действует строгое правило первой строки (First-Statement Rule): объявление словаря манифеста `HOTARU = { ... }` обязано быть самым первым исполняемым выражением в файле.\n\nСоздайте файл `hello_world.hmod`:\n\n```python\nHOTARU = {\n    \"id\": \"hello_world\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"hello\": \"hello_cmd\",\n        \"greet\": \"hello_cmd\",\n    },\n    \"capabilities\": [],\n    \"lexicon\": {\n        \"ru\": {\n            \"greet\": \"Привет от кастомного модуля! Аптайм ядра: {uptime}с\",\n            \"reply_greet\": \"Привет, <b>{name}</b>! Рад знакомству.\",\n        },\n        \"en\": {\n            \"greet\": \"Hello from custom module! Kernel uptime: {uptime}s\",\n            \"reply_greet\": \"Hello, <b>{name}</b>! Nice to meet you.\",\n        },\n    },\n}\n\nasync def hello_cmd(ctx):\n    if ctx.reply_to and ctx.reply_to.sender:\n        name = ctx.reply_to.sender.first_name or \"Друг\"\n        text = ctx.t(\"reply_greet\", name=name)\n    else:\n        text = ctx.t(\"greet\", uptime=int(ctx.uptime))\n    await ctx.respond(text)\n```\n\n### Шаг 2: Отправка и загрузка через .ld в Telegram\n\n1. Откройте любой чат Telegram (Избранное / Saved Messages, личную группу или диалог).\n2. Прикрепите файл `hello_world.hmod` как документ и отправьте в чат.\n3. Ответьте на отправленное сообщение с файлом командой:\n   `.ld`\n4. Hotaru перехватывает команду, проводит статический анализ AST, запускает изолированный воркер с пространствами имен Linux (`CLONE_NEWNS`, `CLONE_NEWIPC`, `CLONE_NEWUTS`, `CLONE_NEWNET`), создает изолированную файловую систему tmpfs и регистрирует команды.\n5. Юзербот присылает карточку успешной активации (стандартные сообщения не требуют привилегий, поэтому указан `capabilities: []`).\n6. Напишите `.hello` или `.greet` в любом чате для проверки работы!\n\nЗагрузка также поддерживается напрямую по публичной ссылке:\n```\n.ld https://raw.githubusercontent.com/HotaruProject/modules/main/tools/calc.hmod\n```\n\n### Что происходит при выполнении .ld\n\nКогда вы отвечаете командой `.ld` на файл модуля, Hotaru делает всё автоматически:\n\n1. **Быстрая проверка**: Проверяется, что манифест `HOTARU` объявлен в начале файла и задает понятное имя модуля (`id`) и список команд.\n2. **Контроль разрешений**: Анализируется список `capabilities`. Если разрешений не требуется (`capabilities: []`), модуль активируется мгновенно. Специальные права (например, интернет `net`) проверяются перед запуском.\n3. **Безопасная песочница**: Модуль запускается в изолированном процессе. Сторонний код никогда не имеет доступа к вашим сессиям Telegram, ключам шифрования или файлам системы.\n4. **Мгновенная регистрация**: Команды модуля сразу становятся доступны в чате без перезапуска юзербота.\n5. **Запуск**: Если объявлен стартовый хук `rise`, он автоматически выполняется.\n\n### Основные команды управления модулями\n\n• `.ld` (ответ на документ или URL): Загрузка нового модуля в песочницу.\n• `.rl <id>`: Горячая перезагрузка модуля с диска. Воркер пересоздается, состояние подтягивается из базы данных SQLite, ядро юзербота не перезапускается.\n• `.ul <id>`: Выгрузка модуля. Корректно завершает фоновые задачи, вызывает хук `fade`, снимает команды с регистрации и останавливает процесс воркера.\n• `.ex <id>`: Экспорт модуля. Отправляет исходный файл `.hmod` из `sanctuary/modules/<id>.hmod` документом обратно в текущий чат.\n• `.resetdb <id>`: Полная очистка локальной базы данных SQLite этого модуля (`sanctuary/modules/<id>.db`).\n• `.modules` или `.mods`: Открывает интерактивное меню со списком всех активных модулей, их версиями и потреблением памяти.\n\n### Диагностика и обработка ошибок\n\nЕсли в коде `.hmod` допущена синтаксическая ошибка или нарушена схема манифеста, Hotaru отклоняет загрузку и отправляет сообщение с точным указанием строки и символа ошибки. Основной процесс юзербота остается полностью стабильным."
+    id: 'overview',
+    title: 'Обзор',
+    summary: 'Hotaru — среда выполнения Telegram-юзербота, которая загружает модули .hmod в изолированные песочницы.',
+    content: `![Баннер юзербота Hotaru из upstream-проекта](media/hotaru-banner.png)
+
+Hotaru — Telegram-юзербот на базе GoyGram, асинхронного Python-клиента MTProto с нативной криптографией на Rust. Среда выполнения владеет сессией аккаунта; модули — это сторонний код, который среда загружает, контролирует и изолирует.
+
+### Что даёт среда выполнения
+
+- **Изоляция namespaces.** Каждый модуль работает в собственных namespaces Linux (\`CLONE_NEWNS\`, \`CLONE_NEWIPC\`, \`CLONE_NEWUTS\`, \`CLONE_NEWNET\`), на личной tmpfs, под uid 65534 (\`nobody\`). С ядром модуль говорит через UNIX pipe, а не через сокет.
+- **Явные владения.** Модуль объявляет нужное в манифесте: \`mt\`, \`state\`, \`net\`, \`files\`, \`shell\`, \`inline\`, \`modules\`, \`assets\`. \`logs\` и \`fetch\` выдаются всегда.
+- **Зашифрованное хранилище.** Строки сессии, записи баз и ключи авторизации лежат в \`sanctuary/hotaru.vault\`, зашифрованные AES-GCM. Единственный читатель — ядро.
+- **Защита от флудвейта.** Модуль \`shield\` снимает частоту вызовов API и приостанавливает их до того, как Telegram применит флудвейт.
+- **Супервизор нескольких аккаунтов.** Один экземпляр ведёт несколько аккаунтов одновременно, у каждого своя сессия MTProto и изолированное состояние.
+- **Веб-панель.** Singularity работает на Node.js и Vite, отдаёт метрики системы, логи и управление модулями на порту 8787. Панель также открывается как Mini App в Telegram через туннель Cloudflare Horizon.
+
+### Устройство среды
+
+Ядро стартует, активирует модули из каталога \`constellations/\` и передаёт каждому объект контекста. Контекст — единственная поверхность, которую видит модуль: помощники для сообщений, хранилище состояния, экраны и контекстные операции Telegram.
+
+### Основа
+
+Hotaru наследует транспорт и криптографию от GoyGram.
+
+![Знак GoyGram](media/goygram-mark.png)
+
+На графике ниже — бенчмарк TL-кодек GoyGram из upstream-репозитория, переведённый здесь в оттенки серого, чтобы встать в ряд с остальным интерфейсом.
+
+![Бенчмарк TL-кодек GoyGram: 351270 операций в секунду на serialize sendMessage](media/goygram-codec.png)`,
   },
   {
-    "id": "manifest-schema",
-    "title": "2. Схема манифеста HOTARU и правило первой строки",
-    "summary": "Подробное описание всех полей словаря HOTARU, проверка структуры через AST и правила объявления.",
-    "content": "Каждый модуль Hotaru обязан объявлять словарь `HOTARU` в самом начале исходного файла. Этот словарь служит манифестом расширения, декларируя его имя (id), требуемые права доступа, сопоставление команд, фоновые задачи, хуки жизненного цикла и схему настроек.\n\n### Правило первой строки (First-Statement Rule)\n\nЯдро Hotaru анализирует код модуля с помощью встроенного модуля `ast` (абстрактное синтаксическое дерево) до компиляции байткода и выполнения:\n- Присваивание `HOTARU = { ... }` должно быть самым первым исполняемым выражением в файле.\n- Любые импорты, вызовы функций или объявления переменных перед словарем `HOTARU` вызывают фатальную ошибку `ModuleValidationError`.\n- Это гарантирует детерминированную проверку прав, зависимостей и безопасности до передачи управления коду модуля.\n\n### Полная схема манифеста\n\n```python\nHOTARU = {\n    \"id\": \"vault_sync\",\n    \"version\": \"1.2.0\",\n    \"commands\": {\n        \"sync\": \"sync_command\",\n        \"status\": \"status_command\",\n    },\n    \"capabilities\": [\"net\", \"state\"],\n    \"watchers\": [\"message_watcher\"],\n    \"tasks\": {\n        \"sync_loop\": {\n            \"interval\": 300.0,\n            \"autostart\": True,\n        },\n    },\n    \"aliases\": {\n        \"vstatus\": \"status\",\n        \"vsync\": \"sync\",\n    },\n    \"config_schema\": {\n        \"remote_endpoint\": {\n            \"type\": \"string\",\n            \"default\": \"https://api.vault.internal/sync\",\n            \"description\": \"Адрес сервера синхронизации\",\n            \"category\": \"Сеть\",\n            \"min_len\": 5,\n            \"max_len\": 200,\n        },\n        \"sync_interval\": {\n            \"type\": \"int\",\n            \"default\": 300,\n            \"min\": 30,\n            \"max\": 86400,\n            \"description\": \"Интервал синхронизации (секунды)\",\n            \"category\": \"Тайминги\",\n            \"requires_restart\": True,\n        },\n        \"auto_notify\": {\n            \"type\": \"bool\",\n            \"default\": True,\n            \"description\": \"Уведомление в чат при успешной синхронизации\",\n            \"category\": \"Уведомления\",\n        },\n        \"sync_mode\": {\n            \"type\": \"select\",\n            \"options\": [\"fast\", \"deep\", \"stealth\"],\n            \"default\": \"fast\",\n            \"description\": \"Алгоритм синхронизации\",\n            \"category\": \"Движок\",\n        },\n        \"api_token\": {\n            \"type\": \"string\",\n            \"secret\": True,\n            \"default\": \"\",\n            \"description\": \"Приватный токен авторизации\",\n            \"category\": \"Безопасность\",\n        },\n    },\n    \"lexicon\": {\n        \"en\": {\n            \"syncing\": \"Synchronizing vault with remote...\",\n            \"done\": \"Vault sync completed in {duration}ms.\",\n            \"error\": \"Sync failed: {reason}\",\n        },\n        \"ru\": {\n            \"syncing\": \"Синхронизация хранилища с сервером...\",\n            \"done\": \"Синхронизация завершена за {duration}мс.\",\n            \"error\": \"Ошибка синхронизации: {reason}\",\n        },\n    },\n    \"requires\": [\"common_crypto\"],\n    \"after\": [\"accounts\", \"shield\"],\n    \"inline_commands\": [\"vault_query\"],\n    \"rise\": \"on_startup\",\n    \"fade\": \"on_shutdown\",\n    \"template_fields\": {\n        \"vault_health\": {\n            \"scope\": \"global\",\n            \"provider\": \"vault_health_provider\",\n        },\n    },\n    \"banner\": \"https://raw.githubusercontent.com/HotaruProject/assets/main/banners/vault.png\",\n    \"bot_commands\": [\"sync\", \"status\"],\n}\n```\n\n### Подробный разбор полей манифеста\n\n1. `id` (str, обязательно) — **Имя модуля**:\n   - Уникальный идентификатор и системное имя вашего модуля (например `\"calc\"`, `\"notes\"`, `\"vault_sync\"`).\n   - Под этим именем модуль управляется прямо в Telegram:\n     • `.rl <id>` — горячая перезагрузка модуля после правок в коде (например `.rl notes`)\n     • `.ul <id>` — выгрузка и деактивация модуля (`.ul notes`)\n     • `.ex <id>` — экспорт `.hmod` файла обратно в чат (`.ex notes`)\n     • `.config <id>` — открытие интерактивного меню настроек (`.config notes`)\n     • `.resetdb <id>` — сброс и очистка базы данных модуля (`.resetdb notes`)\n   - Отображается в общем списке модулей `.mods` и задает имя файла изолированной БД SQLite (`sanctuary/modules/<id>.db`).\n\n2. `version` (str, обязательно) — **Версия модуля**:\n   - Строка семантического версионирования (например `\"1.0.0\"`, `\"2.1.0\"`). Отображается в `.mods` и заголовках экспорта.\n\n3. `commands` (dict | list, обязательно) — **Команды чата**:\n   - Сопоставление триггеров команд чата с асинхронными функциями-корутинами.\n   - Словарь: `{\"calc\": \"calc_cmd\", \"c\": \"calc_cmd\"}` означает, что отправка `.calc` или `.c` вызовет `async def calc_cmd(ctx):`.\n   - Список: `[\"calc\", \"help\"]` автоматически сопоставит триггеры с функциями `calc_command` или похожими именами.\n\n4. `capabilities` (list[str], обязательно) — **Права доступа**:\n   - Объявляет привилегированные права доступа (сеть, персистентность, файлы, шелл).\n   - **Принцип наименьших привилегий**: Стандартные операции с сообщениями (`ctx.respond`, `ctx.reply`, `ctx.edit`, `ctx.delete`, `ctx.react`), медиа-ответы (`ctx.reply_photo`, `ctx.reply_file`), интерактивные экраны (`ctx.screens`), HTML-форматирование (`ctx.html`) и **все 292 расширенных метода MTProto** на объекте `ctx` **НЕ требуют прав доступа** (`\"capabilities\": []`).\n   - Поддерживаемые capabilities в Hotaru:\n     • `\"mt\"`: Прямой вызов сырых методов MTProto через `ctx.tg.call(method, kwargs)` или `mt(...)`. Защищен фаерволом Relay. (НЕ требуется для 292 стандартных методов на `ctx`!).\n     • `\"state\"`: Персистентное хранилище ключ-значение в изолированной SQLite БД модуля через `ctx.state` (`get`, `set`, `delete`, `keys`, `pointer`).\n     • `\"net\"`: Исходящие сетевые запросы HTTP/HTTPS и потоки через `ctx.net` и `ctx.stream` (с защитой от SSRF).\n     • `\"files\"`: Чтение и запись файлов в изолированной рабочей директории tmpfs (`ctx.files`).\n     • `\"shell\"`: Выполнение shell-команд в изолированном окружении (`ctx.shell`).\n     • `\"inline\"`: Взаимодействие с инлайн-ботами Telegram (`ctx.inline`).\n     • `\"modules\"`: Управление другими модулями (`ctx.modules` - загрузка, выгрузка, перезагрузка).\n     • `\"assets\"`: Доступ к зашифрованному хранилищу ассетов (`ctx.assets`, `ctx.download_file`).\n   - Встроенные возможности (всегда доступны без объявления):\n     • `\"logs\"`: Структурированное логирование в обсерваторию (`ctx.logs`).\n     • `\"fetch\"`: Чтение сообщений, сущностей и реплаев.\n\n5. `tasks` (dict, опционально) — **Фоновые задачи и периодические циклы**:\n   - В Hotaru встроен супервизор задач, который запускает фоновые воркеры периодически и надежно.\n   - Формат объявления: `{\"<имя_задачи>\": {\"interval\": 30.0, \"autostart\": True}}`.\n   - **Параметры задачи**:\n     • `interval` (float | int, по умолчанию `60.0`): Период в секундах между итерациями задачи. Супервизор вызывает ваш обработчик, дожидается его завершения и делает паузу на `interval` секунд перед следующим вызовом.\n     • `autostart` (bool, по умолчанию `False`): Если `True`, задача автоматически запускается при загрузке/активации модуля. Если `False`, задача ждет явного ручного запуска.\n   - **Функция-обработчик**:\n     • Функция в коде модуля ОБЯЗАНА называться `task_<имя_задачи>(ctx)`. Например, для задачи `\"sync_loop\"` функция называется `async def task_sync_loop(ctx):`.\n     • Получает стандартный `ctx` со всеми возможностями модуля.\n   - **Устойчивость супервизора**:\n     • Супервизор перехватывает любые необработанные исключения внутри `task_<имя>`. При ошибке запись пишется в логи обсерватории, задача не крашит Hotaru и юзербота, а спокойно повторяется на следующем тике через `interval` секунд.\n     • При выгрузке (`.ul`) или перезагрузке (`.rl`) модуля супервизор автоматически и безопасно отменяет фоновую задачу через `asyncio.CancelledError`.\n\n6. `config_schema` (dict, опционально) — **Пользовательские настройки (в Telegram)**:\n   - **ВАЖНО: Это НЕ для веб-панели!** (Веб-панель Singularity предназначена исключительно для мониторинга телеметрии — CPU, RAM, Uptime, логов; в ней конфигурация модулей не редактируется).\n   - Настройки модуля настраиваются прямо внутри Telegram через команду `.config <id>` (или `.settings`) с помощью интерактивных экранов с инлайн-кнопками (`ctx.screens`), переключателями и вводом текста.\n   - **Чтение настроек в коде модуля**:\n     ```python\n     endpoint = ctx.config.get(\"remote_endpoint\", \"https://api.default.org\")\n     # или\n     interval = ctx.config[\"sync_interval\"]\n     ```\n   - **Поддерживаемые типы данных (`type`)**:\n     • `\"bool\"` / `\"boolean\"`: Логический переключатель (Да/Нет). В Telegram UI отображается интерактивными кнопками переключения `[ВКЛ / ВЫКЛ]`.\n     • `\"int\"` / `\"integer\"`: Целое число. Поддерживает ограничения `min` (или `minimum`) и `max` (или `maximum`). В Telegram UI позволяет вводить число или регулировать его.\n     • `\"float\"`: Вещественное число с плавающей точкой. Также поддерживает `min` / `max`.\n     • `\"str\"` / `\"string\"`: Текстовая строка. Поддерживает ограничения длины `min_len` / `min_length`, `max_len` / `max_length` и регулярное выражение `regex` для валидации.\n     • `\"choice\"` / `\"select\"`: Выбор одного варианта из списка. Требует поле `options: [\"val1\", \"val2\", ...]`. В Telegram UI отображается в виде кнопок с вариантами.\n     • `\"series\"` / `\"list\"`: Список значений. Поддерживает `item` (схему валидации элементов, по умолчанию `{\"type\": \"str\"}`), `separator` (разделитель, по умолчанию `\",\"`), `min_items` и `max_items`.\n   - **Атрибуты параметров настройки**:\n     • `default`: Значение по умолчанию, если пользователь еще не менял настройку.\n     • `description`: Понятное описание или лейбл, отображаемый рядом с параметром в окне `.config`.\n     • `category`: Имя вкладки или категории в меню настроек Telegram (по умолчанию `\"General\"`).\n     • `doc`: Расширенная справка или подсказка, показываемая при детальном просмотре параметра.\n     • `secret` (bool, по умолчанию `False`): Если `True`, значение маскируется в Telegram как `••••••••` для защиты паролей и API-токенов.\n     • `requires_restart` (bool, по умолчанию `False`): Если `True`, Telegram покажет индикатор, что после изменения значения требуется перезагрузить модуль (`.rl <id>`).\n     • `min` / `max`: Границы диапазона для числовых типов (`int`, `float`).\n     • `min_len` / `max_len`: Границы длины текста для `str`.\n     • `regex`: Регулярное выражение для проверки корректности текстового ввода.\n     • `options`: Список допустимых строковых значений для `choice` / `select`.\n\n7. `watchers` (list[str], опционально):\n   - Список имен сопрограмм, вызываемых на каждое входящее и исходящее сообщение без командного префикса.\n\n8. `aliases` (dict[str, str], опционально):\n   - Дополнительные синонимы команд в формате `{\"синоним\": \"основная_команда\"}`.\n\n9. `lexicon` (dict, опционально):\n   - Словарь локализации по кодам языков (`ru`, `en`, `uk`, `ja`, `kz`, `zh`).\n   - Получение строк в коде: `ctx.t(\"ключ\", **параметры)`. При отсутствии ключа на текущем языке используется английский.\n\n10. `requires` (list[str], опционально):\n    - Список ID других модулей, которые должны быть загружены заранее.\n\n11. `after` (list[str], опционально):\n    - Очередность инициализации относительно других модулей ядра.\n\n12. `rise` (str | Callable, опционально):\n    - Асинхронный хук, вызываемый сразу после активации модуля и запуска воркера.\n\n13. `fade` (str | Callable, опционально):\n    - Асинхронный хук, вызываемый перед выгрузкой или горячей перезагрузкой воркера.\n\n14. `template_fields` (dict, опционально):\n    - Регистрация динамических подстановок (например `{vault_health}`) для системных шаблонов и экранов статуса.\n\n15. `bot_commands` (list[str], опционально):\n    - Публикация команд в меню автодополнения Telegram.\n\n16. `banner` (str, опционально):\n    - URL или путь к изображению-баннеру для экранов `.help` и `.config`."
+    id: 'install',
+    title: 'Установка',
+    summary: 'Требования, скрипт установки, ручная сборка и контейнеры.',
+    content: `### Требования
+
+- Linux на x86_64 или aarch64
+- Python 3.13 или новее
+- Telegram API ID и API Hash с my.telegram.org
+- Токен бота от @BotFather — для inline-интерфейса и Mini App
+- Пакетный менеджер \`uv\`, который ставит установочный скрипт
+
+### Интерактивная установка
+
+\`\`\`bash
+curl -fsSL https://raw.githubusercontent.com/HotaruProject/Hotaru/main/install.sh | bash
+\`\`\`
+
+Скрипт ставит системные пакеты, спрашивает учётные данные Telegram и предлагает способ развёртывания: systemd-сервис на хосте, Docker Compose или контейнер Proxmox LXC.
+
+### Docker Compose
+
+\`\`\`bash
+git clone -b develop https://github.com/HotaruProject/Hotaru.git
+cd Hotaru
+docker compose run --rm hotaru
+docker compose up -d
+\`\`\`
+
+### Proxmox VE и LXC
+
+\`\`\`bash
+git clone -b develop https://github.com/HotaruProject/Hotaru.git
+cd Hotaru
+bash lxc/create.sh
+\`\`\`
+
+### Ручная сборка через uv
+
+\`\`\`bash
+git clone -b develop https://github.com/HotaruProject/Hotaru.git
+cd Hotaru
+uv sync
+uv run python -m hotaru
+\`\`\`
+
+Держите \`sanctuary/\` и ключ \`hotaru.vault\` в тайне: в них активные сессии и главные секреты шифрования.`,
   },
   {
-    "id": "optional-typing",
-    "title": "3. Обработчики команд и опциональная типизация",
-    "summary": "Создание функций команд, получение аргументов, поля контекста и опциональность аннотаций типов.",
-    "content": "Гибкость разработки - один из главных принципов Hotaru. Несмотря на то что типизация полностью поддерживается для разработчиков в современных IDE (BasedPyright, Mypy, PyLance), аннотации типов строго опциональны. Среда выполнения Python 3.13 динамически исполняет типизированный и нетипизированный код с абсолютно одинаковой производительностью.\n\n### Нетипизированный обработчик команды\n\n```python\nHOTARU = {\n    \"id\": \"calc_tool\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"calc\": \"calc_command\",\n    },\n    \"capabilities\": [],\n}\n\nasync def calc_command(ctx):\n    args = ctx.args\n    if not args:\n        await ctx.respond(\"Использование: .calc <выражение>\")\n        return\n    expr = ctx.raw_args.strip()\n    try:\n        allowed_chars = set(\"0123456789+-*/(). \")\n        if not all(c in allowed_chars for c in expr):\n            await ctx.respond(\"Ошибка: Недопустимые символы в выражении.\")\n            return\n        result = eval(expr, {\"__builtins__\": None}, {})\n        await ctx.respond(f\"Выражение: <code>{expr}</code>\\nРезультат: <b>{result}</b>\")\n    except Exception as e:\n        await ctx.respond(f\"Ошибка вычисления: <code>{e}</code>\")\n```\n\n### Строго типизированный обработчик\n\n```python\nfrom __future__ import annotations\nfrom typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from hotaru.response import ModuleContext\n\nHOTARU = {\n    \"id\": \"calc_tool_typed\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"calc\": \"calc_command\",\n    },\n    \"capabilities\": [],\n}\n\nasync def calc_command(ctx: ModuleContext) -> None:\n    args: list[str] = ctx.args\n    if not args:\n        await ctx.respond(\"Использование: .calc <выражение>\")\n        return\n    expr: str = ctx.raw_args.strip()\n    try:\n        allowed_chars = set(\"0123456789+-*/(). \")\n        if not all(c in allowed_chars for c in expr):\n            await ctx.respond(\"Ошибка: Недопустимые символы в выражении.\")\n            return\n        result = eval(expr, {\"__builtins__\": None}, {})\n        await ctx.respond(f\"Выражение: <code>{expr}</code>\\nРезультат: <b>{result}</b>\")\n    except Exception as e:\n        await ctx.respond(f\"Ошибка вычисления: <code>{e}</code>\")\n```\n\n### Полный справочник атрибутов ModuleContext (`ctx`)\n\nПри вызове команды ядро передает в обработчик объект `ModuleContext` (`hotaru/response.py`):\n\n• `ctx.args` (list[str]):\n  Список аргументов команды, разделенных пробелами (сам триггер команды исключен).\n  Пример: Для сообщения `.ban 12345 спам` список `ctx.args` равен `['12345', 'спам']`.\n\n• `ctx.raw_args` (str):\n  Необработанная строка текста после имени команды с сохранением пробелов и переносов строк.\n  Пример: Для строки `.say   привет\\nмир` значение `ctx.raw_args` будет `'   привет\\nмир'`.\n\n• `ctx.message` (Any):\n  Полный объект сообщения Telegram. Предоставляет поля `.id`, `.text`, `.date`, `.media`, `.entities` и `.reactions`.\n\n• `ctx.reply_to` (Any | None):\n  Если команда вызвана ответом на другое сообщение, `ctx.reply_to` содержит объект целевого сообщения. Если ответа нет, значение равно `None`.\n\n• `ctx.peer_id` (int):\n  Уникальный 64-битный числовой идентификатор текущего диалога, группы или канала.\n\n• `ctx.sender_id` (int):\n  Числовой идентификатор пользователя, отправившего сообщение с командой.\n\n• `ctx.is_me` (bool):\n  Значение `True`, если команда отправлена владельцем аккаунта юзербота.\n\n• `ctx.out` (bool):\n  Синоним `ctx.is_me`. Используется для быстрой проверки исходящих сообщений.\n\n• `ctx.prefix` (str):\n  Символ префикса команд (по умолчанию точка `.`).\n\n• `ctx.command` (str):\n  Точное имя триггера, по которому был вызван данный обработчик.\n\n• `ctx.uptime` (float):\n  Время непрерывной работы ядра Hotaru в секундах.\n\n• `ctx.user_id` (int):\n  Идентификатор аккаунта пользователя в Telegram.\n\n• `ctx.chat_id` (int):\n  Идентификатор текущего чата.\n\n### Паттерны разбора аргументов\n\n1. **Разбор аргументов в кавычках**:\n   Для строк с пробелами внутри кавычек (например `.tag \"Важная заметка\" текст`) используйте модуль `shlex`:\n   ```python\n   import shlex\n\n   async def tag_cmd(ctx):\n       try:\n           parts = shlex.split(ctx.raw_args)\n           if len(parts) < 2:\n               await ctx.respond(\"Использование: .tag <название> <содержимое>\")\n               return\n           title, content = parts[0], parts[1]\n           await ctx.respond(f\"Тег: <b>{title}</b> -> {content}\")\n       except ValueError as err:\n           await ctx.respond(f\"Ошибка кавычек: {err}\")\n   ```\n\n2. **Разбор флагов и ключей**:\n   ```python\n   async def scan_cmd(ctx):\n       flags = {arg for arg in ctx.args if arg.startswith(\"-\")}\n       params = [arg for arg in ctx.args if not arg.startswith(\"-\")]\n       silent = \"-s\" in flags or \"--silent\" in flags\n       verbose = \"-v\" in flags or \"--verbose\" in flags\n       target = params[0] if params else \"default\"\n       await ctx.respond(f\"Сканирование: {target} (тихий={silent}, подробный={verbose})\")\n   ```"
+    id: 'manifest',
+    title: 'Манифест модуля',
+    summary: 'Словарь HOTARU, правило первого оператора и все поддерживаемые поля.',
+    content: `Модуль — это Python-файл с расширением \`.hmod\`. Загрузчик разбирает его через \`ast\` до запуска байткода, поэтому манифест читается без исполнения модуля.
+
+### Правило первого оператора
+
+Файл должен начинаться с присваивания \`HOTARU\`, которому задаётся литеральный словарь. Любой оператор до него, нелитеральное значение или не словарь приводят к \`ModuleValidationError\`.
+
+\`\`\`python
+HOTARU = {
+    "id": "clock",
+    "version": "1.0.0",
+    "commands": ["utc"],
+    "capabilities": [],
+}
+\`\`\`
+
+### Обязательные поля
+
+| Поле | Тип | Правило |
+| --- | --- | --- |
+| \`id\` | строка | Не пусто, не длиннее 128 символов, без слэша и NUL. |
+| \`version\` | строка | Не пусто. |
+| \`commands\` | список строк | Без пустых записей и без пробелов внутри команды. |
+| \`capabilities\` | список строк | Имена из реестра владений. |
+
+### Необязательные поля
+
+| Поле | Тип | Значение |
+| --- | --- | --- |
+| \`name\` | строка | Отображаемое имя. По умолчанию равно \`id\`. |
+| \`watchers\` | список строк | Точки входа наблюдателей, на которые подписывается среда. |
+| \`tasks\` | словарь | Фоновые задачи. У каждой можно задать \`interval\` (секунды, по умолчанию 60) и \`autostart\`. |
+| \`aliases\` | словарь | Другие имена команд, отображаемые на существующие. |
+| \`config_schema\` | словарь | Настройки модуля для редактора настроек среды. |
+| \`lexicon\` | словарь | Локализованные строки по кодам языков, с \`description\` и \`commands\`. |
+| \`requires\` | список строк | Модули, которые должны быть на месте. |
+| \`after\` | список строк | Модули, активируемые после этого. |
+| \`inline_commands\` | список строк | Точки входа inline-запросов. |
+| \`rise\` | строка | Обработчик, вызываемый сразу после активации. |
+| \`fade\` | строка | Обработчик перед выгрузкой, перезагрузкой или остановкой. |
+| \`template_fields\` | словарь | Поля, публикуемые другим модулям. Не больше 64. |
+| \`banner\` | строка | URL баннера, http или https. |
+| \`bot_commands\` | список строк | Команды, регистрируемые у вспомогательного бота. |
+
+### Проверки
+
+Загрузчик проверяет идентификаторы, версии, списки команд, схемы конфигурации, таблицы переводов, публикуемые поля шаблонов, URL баннеров и списки зависимостей. Перевод может описывать только те команды и inline-команды, которые модуль действительно объявляет. Пространство шаблонов \`hotaru\` зарезервировано.`,
   },
   {
-    "id": "lifecycle-and-tasks",
-    "title": "4. Жизненный цикл и фоновые задачи супервизора",
-    "summary": "Хуки запуска и остановки (rise/fade) и бесконечные фоновые задачи с авто-перезапуском.",
-    "content": "Hotaru предоставляет надежный движок управления жизненным циклом и супервизор задач. Модули могут выполнять асинхронную инициализацию при запуске, освобождать ресурсы при завершении и запускать непрерывные фоновые циклы под присмотром супервизора задач.\n\n### Хуки запуска и завершения (rise и fade)\n\nХуки жизненного цикла объявляются прямо в словаре `HOTARU`:\n- `rise`: Асинхронная корутина, выполняемая сразу после активации модуля и связывания прав доступа.\n- `fade`: Асинхронная корутина, выполняемая перед выгрузкой модуля (`.ul`), горячей перезагрузкой (`.rl`) или завершением юзербота.\n\n```python\nHOTARU = {\n    \"id\": \"session_logger\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\"],\n    \"commands\": {\n        \"sessions\": \"sessions_cmd\",\n    },\n    \"rise\": \"on_startup\",\n    \"fade\": \"on_shutdown\",\n}\n\nasync def on_startup(ctx):\n    start = int(ctx.uptime)\n    await ctx.state.set(\"session_started\", start)\n    history = await ctx.state.get(\"history\", [])\n    history.append({\"event\": \"rise\", \"time\": start})\n    await ctx.state.set(\"history\", history[-50:])\n\nasync def on_shutdown(ctx):\n    start = await ctx.state.get(\"session_started\", int(ctx.uptime))\n    duration = int(ctx.uptime) - start\n    history = await ctx.state.get(\"history\", [])\n    history.append({\"event\": \"fade\", \"duration\": duration, \"time\": int(ctx.uptime)})\n    await ctx.state.set(\"history\", history[-50:])\n\nasync def sessions_cmd(ctx):\n    history = await ctx.state.get(\"history\", [])\n    if not history:\n        await ctx.respond(\"История сессий пуста.\")\n        return\n    lines = [f\"• {item['event'].upper()}: time={item.get('time')}s (duration={item.get('duration', 'N/A')}s)\" for item in history]\n    await ctx.respond(\"<b>История сессий:</b>\\n\" + \"\\n\".join(lines))\n```\n\n### Паттерн 1: Задачи супервизора (`HOTARU[\"tasks\"]`)\n\nРекомендуемый декларативный способ выполнения периодической фоновой работы — объявление задач в словаре `HOTARU[\"tasks\"]`:\n\n```python\nHOTARU = {\n    \"id\": \"metrics_exporter\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\", \"net\"],\n    \"commands\": {},\n    \"tasks\": {\n        \"sync_metrics\": {\n            \"interval\": 60.0,   # Интервал между итерациями в секундах\n            \"autostart\": True,  # Автоматический запуск при загрузке\n        },\n    },\n}\n\nimport json\n\n# Имя функции ОБЯЗАНО иметь формат task_<имя_задачи>\nasync def task_sync_metrics(ctx):\n    pulse = await ctx.state.get(\"pulse\", 0)\n    await ctx.state.set(\"pulse\", pulse + 1)\n    payload = json.dumps({\"uptime\": ctx.uptime, \"pulse\": pulse})\n    \n    # Отправка телеметрии по сети\n    await ctx.net(\"https://httpbin.org/post\", method=\"POST\", data=payload, timeout=10)\n```\n\n**Как супервизор управляет задачами**:\n1. **Периодический запуск**: Супервизор вызывает `task_sync_metrics(ctx)`, дожидается завершения, делает паузу на `interval` секунд (в примере 60с) и запускает снова.\n2. **Защита от сбоев**: Если внутри вашей функции произойдет необработанное исключение, супервизор перехватит его, запишет подробный трейсбек в логи обсерватории (`sanctuary/logs/`) и подождет `interval` секунд перед повтором. Сам Hotaru и остальные модули продолжают работать без сбоев.\n3. **Чистая выгрузка**: При выгрузке (`.ul`) или перезагрузке (`.rl`) модуля супервизор автоматически отменяет выполняющуюся задачу через стандартный `asyncio.CancelledError`.\n\n### Паттерн 2: Непрерывные циклы в хуке `rise`\n\nЕсли для задачи требуется непрерывная обработка событий, постоянное чтение потока или кастомный цикл, запустите задачу в хуке `rise`:\n\n```python\nHOTARU = {\n    \"id\": \"stream_listener\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"net\"],\n    \"commands\": {},\n    \"rise\": \"start_streaming\",\n}\n\nimport asyncio\n\nasync def start_streaming(ctx):\n    asyncio.create_task(_stream_worker(ctx))\n\nasync def _stream_worker(ctx):\n    while not ctx.is_stopping:\n        try:\n            # Непрерывная работа или слушатель потока\n            await asyncio.sleep(5)\n        except asyncio.CancelledError:\n            break\n        except Exception as exc:\n            ctx.logs.error(f\"Ошибка потока: {exc}\")\n            await asyncio.sleep(5)\n```\n\n### Флаг `ctx.is_stopping`\n\nКогда модуль готовится к выгрузке или перезагрузке, флаг `ctx.is_stopping` устанавливается в `True`.\n- Для самодельных циклов всегда проверяйте условие `while not ctx.is_stopping:`.\n- Используйте нарезанные паузы (`for _ in range(N): if ctx.is_stopping: break; await asyncio.sleep(1)`), чтобы модуль перезагружался мгновенно, не дожидаясь окончания длинного таймера."
+    id: 'capabilities',
+    title: 'Владения и безопасность',
+    summary: 'Восемь ворот доступа, правила файрвола и список запрещённых целей.',
+    content: `Модуль получает только то, что запросил в манифесте.
+
+### Ворота доступа
+
+| Владение | Что даёт |
+| --- | --- |
+| \`mt\` | Прямые вызовы MTProto через \`ctx.tg.call\`. |
+| \`state\` | Постоянное хранилище «ключ — значение» в пространстве модуля. |
+| \`net\` | Исходящая сеть по http, https, ws, wss, tcp, tls и udp. |
+| \`files\` | Чтение и запись внутри рабочего каталога модуля. |
+| \`shell\` | Выполнение команд в рабочем каталоге. |
+| \`inline\` | Запрос и управление inline-ботами. |
+| \`modules\` | Загрузка, выгрузка, перезагрузка и просмотр модулей. |
+| \`assets\` | Скрытое хранилище ресурсов. |
+
+\`logs\` и \`fetch\` выдаются всегда: \`logs\` пишет в журнал обсерватории, \`fetch\` читает сообщения, сущности и разрешает ответы.
+
+### Файрвол
+
+Пока модуль работает, аудит-хук блокирует три вещи:
+
+- Открытие пути, который попадает в защищённое хранилище, или любого файла с окончанием \`.vault\` или \`.session\`. Ошибка: \`PermissionError: module access to Telegram session storage is denied\`.
+- Прямой импорт \`goygram\`, \`hotaru\` или \`relay\`. Вместо них модуль использует прокси контекста.
+- Прямое открытие сокета. Сеть идёт через владение \`net\`, Telegram — через \`mt\`.
+
+### Список запрещённых целей
+
+\`my.telegram.org\` запрещён и доступен только для чтения. Peer \`777000\` защищён и доступен только для чтения: чтение возвращает пустой результат, запись отклоняется. Проверка payload обходит вложенные структуры, включая закодированные блобы, с ограничением на сложность.
+
+### Что \`mt\` всё равно не пропускает
+
+Даже с \`mt\` пространства имён \`auth.\` и \`phone.\` заблокированы, все методы \`payments.\` и \`wallet.\` заблокированы, а операции безопасности аккаунта — \`account.deleteAccount\`, \`account.resetAuthorizations\`, \`account.getPassword\` — отклоняются. Модули не могут взаимодействовать с экранами согласия Telegram.`,
   },
   {
-    "id": "watchers-and-templates",
-    "title": "5. Перехватчики сообщений и динамические шаблоны",
-    "summary": "Пассивный мониторинг чатов без командных префиксов и публикация переменных в шаблоны.",
-    "content": "Hotaru предоставляет возможность пассивно отслеживать входящие и исходящие события чатов без вызова команд, а также публиковать динамические переменные в систему шаблонизации юзербота.\n\n### Перехватчики сообщений (`HOTARU[\"watchers\"]`)\n\nПерехватчик (watcher) - это асинхронная функция, вызываемая ядром на каждое сообщение Telegram. В отличие от команд, перехватчикам не нужен командный префикс или имя триггера.\n\n```python\nHOTARU = {\n    \"id\": \"anti_invite_link\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [],\n    \"commands\": {},\n    \"watchers\": [\"link_watcher\"],\n}\n\nimport re\nimport asyncio\n\nLINK_REGEX = re.compile(r\"(t\\.me/joinchat/|t\\.me/\\+[a-zA-Z0-9_-]+)\", re.IGNORECASE)\n\nasync def link_watcher(ctx):\n    # Игнорируем собственные исходящие сообщения\n    if ctx.out:\n        return\n\n    text = ctx.message.text or \"\"\n    if LINK_REGEX.search(text):\n        try:\n            # Удаляем спам-сообщение\n            await ctx.delete()\n            # Отправляем предупреждение\n            warn_msg = await ctx.reply(\"⚠️ Пригласительные ссылки запрещены в этой группе.\")\n            # Удаляем предупреждение через 5 секунд\n            await asyncio.sleep(5)\n            await ctx.delete_message(id=warn_msg.id)\n        except Exception:\n            pass\n```\n\n### Правила разработки перехватчиков\n\n1. **Фильтрация направления**:\n   Всегда проверяйте `if ctx.out: return`, если не требуется анализировать собственные исходящие сообщения.\n2. **Защита от зацикливания**:\n   Никогда не отправляйте в чат сообщения из перехватчика без строгой проверки отправителя, иначе возникнет бесконечный цикл ответов бота на свои же сообщения.\n3. **Быстродействие и неблокирующий код**:\n   Перехватчики вызываются на высокой частоте. Не используйте тяжелые блокирующие функции или медленные сетевые вызовы без таймаутов (`timeout=3`).\n\n### Динамические переменные шаблонов (`HOTARU[\"template_fields\"]`)\n\nПеременные шаблонов позволяют модулю предоставлять собственные теги подстановки (например `{cpu_load}`, `{free_mem_mb}`, `{music_track}`), доступные в системных статусах и автоответах:\n\n```python\nHOTARU = {\n    \"id\": \"system_stats\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [],\n    \"commands\": {},\n    \"template_fields\": {\n        \"cpu_load\": {\n            \"scope\": \"global\",\n            \"provider\": \"cpu_load_provider\",\n        },\n        \"free_mem_mb\": {\n            \"scope\": \"global\",\n            \"provider\": \"free_mem_provider\",\n        },\n    },\n}\n\nimport os\n\nasync def cpu_load_provider(ctx):\n    try:\n        load = os.getloadavg()[0]\n        return f\"{load:.2f}\"\n    except Exception:\n        return \"N/A\"\n\nasync def free_mem_provider(ctx):\n    try:\n        with open(\"/proc/meminfo\", \"r\") as f:\n            for line in f:\n                if line.startswith(\"MemAvailable:\"):\n                    kb = int(line.split()[1])\n                    return f\"{kb // 1024}MB\"\n        return \"N/A\"\n    except Exception:\n        return \"N/A\"\n```\n\n### Области видимости переменных (scope)\n\n• `private`: Переменная доступна только внутри команд этого же модуля.\n• `shared`: Переменная доступна списку модулей, указанных в конфигурации.\n• `global`: Переменная доступна во всех модулях, строках статуса и глобальных шаблонах."
+    id: 'context',
+    title: 'Контекст модуля',
+    summary: 'Что доступно в ctx: сообщения, состояние, файлы, экраны, шаблоны и диагностика.',
+    content: `Контекст — единственный объект, который получает модуль. Он создаётся на каждый вызов команды.
+
+### Сообщения
+
+| Член | Назначение |
+| --- | --- |
+| \`ctx.respond(content)\` | Ответить в текущий чат. |
+| \`ctx.smart_respond(content)\` | Ответить, разбив длинный текст и при необходимости отдав файл. |
+| \`ctx.send_file(file, caption)\` | Отправить файл по пути или байтам. |
+| \`ctx.upload_file(source)\` | Загрузить файл и вернуть ссылку Telegram. |
+| \`ctx.read_attachment_text(reply)\` | Прочитать текст вложения, на которое вы ответили. |
+| \`ctx.download(attachment, destination)\` | Скачать вложение на диск. |
+| \`ctx.edit(text)\` | Отредактировать сообщение, вызвавшее команду. |
+| \`ctx.paginate(content, page, limit)\` | Отправить страницу длинного содержимого с навигацией. |
+
+### Состояние и конфигурация
+
+\`ctx.state\` — пространство имён поверх SQLite. Методы \`get\`, \`set\`, \`delete\`, \`keys\` и \`pointer\` работают со значениями в области модуля. \`ctx.config\` открывает редактор настроек среды, \`ctx.modules\` показывает установленные модули.
+
+### Шаблоны и язык
+
+\`ctx.render_template(key, **values)\` отрисовывает опубликованное поле шаблона. \`ctx.t(key, default, **params)\` берёт строку из активного лексикона, а при отсутствии — переданное значение по умолчанию.
+
+### Диагностика
+
+\`ctx.check_restrictions()\` сообщает, что текущий аккаунт делать не может, например функции только для Premium. \`ctx.classify_error(exc)\` превращает исключение в структурированный разбор. \`ctx.premium()\` и \`ctx.is_premium()\` отвечают про состояние Premium.
+
+### Управление модулями
+
+\`ctx.load_module(source)\` и \`ctx.unload_module(module_id, purge=True)\` управляют другими модулями. Для обоих нужно владение \`modules\`.`,
   },
   {
-    "id": "state-and-network",
-    "title": "6. Изолированная база SQLite и сетевые запросы",
-    "summary": "Хранилище ключ-значение ctx.state и сетевой шлюз ctx.net для исходящих HTTP-запросов.",
-    "content": "Hotaru изолирует базу данных и сетевой доступ модулей через строгий механизм capabilities. При объявлении `state` или `net` ядро предоставляет модулю защищенные интерфейсы в объекте `ctx`.\n\n### Постоянное хранилище ключ-значение (`ctx.state`)\n\nУкажите `\"capabilities\": [\"state\"]`. Для каждого модуля создается отдельная база данных SQLite по пути `sanctuary/modules/<id>.db`. Базы функционируют в режиме WAL (Write-Ahead Logging) с поддержкой атомарных транзакций:\n\n```python\nHOTARU = {\n    \"id\": \"tag_storage\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\"],\n    \"commands\": {\n        \"settag\": \"settag_cmd\",\n        \"gettag\": \"gettag_cmd\",\n        \"deltag\": \"deltag_cmd\",\n        \"alltags\": \"alltags_cmd\",\n    },\n}\n\nasync def settag_cmd(ctx):\n    if len(ctx.args) < 2:\n        await ctx.respond(\"Использование: .settag <ключ> <значение>\")\n        return\n    key = ctx.args[0].lower()\n    val = \" \".join(ctx.args[1:])\n    tags = await ctx.state.get(\"tags\", {})\n    tags[key] = val\n    await ctx.state.set(\"tags\", tags)\n    await ctx.respond(f\"Тег <code>{key}</code> сохранен.\")\n\nasync def gettag_cmd(ctx):\n    if not ctx.args:\n        await ctx.respond(\"Использование: .gettag <ключ>\")\n        return\n    key = ctx.args[0].lower()\n    tags = await ctx.state.get(\"tags\", {})\n    if key in tags:\n        await ctx.respond(f\"Тег <b>{key}</b>: {tags[key]}\")\n    else:\n        await ctx.respond(f\"Тег <code>{key}</code> не найден.\")\n\nasync def deltag_cmd(ctx):\n    if not ctx.args:\n        await ctx.respond(\"Использование: .deltag <ключ>\")\n        return\n    key = ctx.args[0].lower()\n    tags = await ctx.state.get(\"tags\", {})\n    if key in tags:\n        del tags[key]\n        await ctx.state.set(\"tags\", tags)\n        await ctx.respond(f\"Тег <code>{key}</code> удален.\")\n    else:\n        await ctx.respond(\"Тег не найден.\")\n\nasync def alltags_cmd(ctx):\n    tags = await ctx.state.get(\"tags\", {})\n    if not tags:\n        await ctx.respond(\"Список тегов пуст.\")\n        return\n    lines = [f\"• <code>{k}</code>: {v}\" for k, v in tags.items()]\n    await ctx.respond(\"<b>Сохраненные теги:</b>\\n\" + \"\\n\".join(lines))\n```\n\n### Полный API работы с базой `ctx.state`\n\n• `await ctx.state.get(key: str, default: Any = None) -> Any`:\n  Возвращает сохраненное значение или `default`, если ключ не найден.\n• `await ctx.state.set(key: str, value: Any) -> None`:\n  Сохраняет любое JSON-сериализуемое значение (`dict`, `list`, `int`, `float`, `str`, `bool`, `None`).\n• `await ctx.state.delete(key: str) -> bool`:\n  Удаляет указанный ключ. Возвращает `True` при успешном удалении.\n• `await ctx.state.clear() -> None`:\n  Полностью очищает все ключи в базе данных модуля.\n• `await ctx.state.all() -> dict[str, Any]`:\n  Возвращает словарь всех хранящихся пар ключ-значение.\n\n### Сетевые запросы (`ctx.net` и `ctx.stream`)\n\nУкажите `\"capabilities\": [\"net\"]`. Все исходящие запросы направляются через безопасный шлюз с принудительной проверкой сертификатов TLS:\n\n```python\nHOTARU = {\n    \"id\": \"weather_lookup\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"net\"],\n    \"commands\": {\n        \"weather\": \"weather_cmd\",\n    },\n}\n\nimport json\n\nasync def weather_cmd(ctx):\n    city = ctx.raw_args.strip() or \"Moscow\"\n    url = f\"https://wttr.in/{city}?format=j1\"\n    response = await ctx.net(url, timeout=10)\n    if response.status_code == 200:\n        data = json.loads(response.text)\n        current = data[\"current_condition\"][0]\n        temp = current[\"temp_C\"]\n        desc = current[\"weatherDesc\"][0][\"value\"]\n        humidity = current[\"humidity\"]\n        await ctx.respond(\n            f\"Погода в <b>{city}</b>:\\n\"\n            f\"• Температура: <b>{temp}°C</b>\\n\"\n            f\"• Состояние: <b>{desc}</b>\\n\"\n            f\"• Влажность: <b>{humidity}%</b>\"\n        )\n    else:\n        await ctx.respond(f\"Не удалось получить погоду (код {response.status_code}).\")\n```\n\n### Свойства объекта ответа\n\n• `response.status_code` (int): Числовой код ответа HTTP (200, 404, 500).\n• `response.text` (str): Тело ответа в виде текста Unicode.\n• `response.content` (bytes): Сырые бинарные байты тела ответа.\n• `response.headers` (dict): Заголовки ответа сервера.\n• `response.json()` (Any): Автоматический парсинг JSON в структуры Python.\n\n### Потоковая загрузка (`ctx.stream`)\n\nДля скачивания больших файлов (от 10MB) используйте потоковый генератор `ctx.stream`, чтобы не переполнять оперативную память воркера:\n\n```python\nasync def download_file(ctx, url, path):\n    async for chunk in ctx.stream(url, chunk_size=65536):\n        with open(path, \"ab\") as f:\n            f.write(chunk)\n```"
+    id: 'screens',
+    title: 'Экраны и формы',
+    summary: 'Примитивы Kit для интерактивных меню, пагинаторов и запросов ввода.',
+    content: `\`ctx.screens\` собирает интерактивные экраны: сообщение с inline-кнопками, пагинатор или запрос ввода. Нажатие возвращается в обработчик, который создал экран.
+
+### Примитивы
+
+| Вызов | Результат |
+| --- | --- |
+| \`ctx.screens.button(text, fn)\` | Нейтральная кнопка. |
+| \`ctx.screens.primary(text, fn)\` | Акцентная кнопка главного действия. |
+| \`ctx.screens.success(text, fn)\` | Кнопка подтверждения. |
+| \`ctx.screens.danger(text, fn)\` | Кнопка разрушительного действия. |
+| \`ctx.screens.input(text, fn, placeholder)\` | Кнопка, запрашивающая текст. |
+| \`ctx.screens.copy(text, value)\` | Кнопка, копирующая значение. |
+| \`ctx.screens.url(text, link)\` | Внешняя ссылка. |
+| \`ctx.screens.webapp(text, link)\` | Ссылка на Mini App. |
+| \`ctx.screens.close()\` | Кнопка, удаляющая экран. |
+| \`ctx.screens.back(fn, text)\` | Кнопка возврата к предыдущему экрану. |
+
+### Показ экрана
+
+\`\`\`python
+async def panel_cmd(ctx, invocation):
+    k = ctx.screens
+
+    async def on_refresh(ctx, nav):
+        await render()
+
+    async def render():
+        rows = [[k.primary("Refresh", on_refresh), k.close()]]
+        await ctx.screens.show(k.screen("<b>Gateway</b> online", rows))
+
+    await render()
+\`\`\`
+
+\`ctx.screens.screen(text, rows)\` собирает экран, а \`await ctx.screens.show(screen)\` отправляет его. Обработчик кнопки получает контекст и объект навигации: \`nav.answer(text)\` отвечает на нажатие, а \`nav.ref().edit(screen)\` перерисовывает экран на месте.
+
+### Пагинация и вёрстка
+
+\`ctx.screens.pager(fn, page, pages)\` собирает переключатель страниц, \`ctx.screens.grid(items, columns)\` раскладывает кнопки, \`ctx.screens.footer(back)\` закрывает ряд. \`ctx.screens.table(rows)\` рисует моноширинную таблицу, \`ctx.screens.radio\` и \`ctx.screens.check\` отмечают выбор, \`ctx.screens.icon\` и \`ctx.screens.module_icon\` возвращают иконки.`,
   },
   {
-    "id": "ctx-messaging",
-    "title": "7. Сообщения и медиа: Основные методы ctx",
-    "summary": "Методы отправки, редактирования, реакций, пересылки и работы с фото, видео, аудио и файлами.",
-    "content": "Объект `ModuleContext` предоставляет высокоуровневые асинхронные методы для отправки текстовых сообщений, медиафайлов, реакций и управления историей переписки.\n\n### Методы работы с сообщениями\n\n• `await ctx.respond(text: str, parse_mode: str = \"html\")`:\n  Основной метод ответа в Hotaru. Если команду вызвал владелец юзербота (`ctx.is_me`), он автоматически редактирует исходное сообщение. Если команду вызвал другой пользователь в чате, отправляется новое ответное сообщение.\n\n• `await ctx.reply(text: str, parse_mode: str = \"html\")`:\n  Всегда создает и отправляет новое сообщение ответом на текущее.\n\n• `await ctx.edit(text: str, parse_mode: str = \"html\")`:\n  Редактирует текущее сообщение команды. Вызывает ошибку, если сообщение принадлежит другому пользователю.\n\n• `await ctx.delete(revoke: bool = True)`:\n  Удаляет текущее сообщение команды. При `revoke=True` удаляет его для всех участников чата.\n\n• `await ctx.react(emoji: str)`:\n  Устанавливает нативное анимированное эмодзи-реакцию на сообщение (например `await ctx.react(\"🔥\")`).\n\n• `await ctx.pin(silent: bool = False)`:\n  Закрепляет сообщение в текущем диалоге или группе.\n\n• `await ctx.unpin()`:\n  Открепляет сообщение.\n\n• `await ctx.forward_to(peer_id: int)`:\n  Пересылает сообщение в другой чат с сохранением заголовка пересылки.\n\n• `await ctx.copy_to(peer_id: int)`:\n  Отправляет копию сообщения в другой чат без плашки пересылки.\n\n• `await ctx.save()`:\n  Сохраняет сообщение в Избранное (Saved Messages).\n\n• `await ctx.typing(action: str = \"typing\")`:\n  Показывает в чате статус действия (`\"typing\"`, `\"upload_photo\"`, `\"record_video\"`, `\"upload_document\"`).\n\n### Методы отправки медиафайлов\n\n```python\nHOTARU = {\n    \"id\": \"media_demo\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"net\", \"files\"],\n    \"commands\": {\n        \"sendpic\": \"pic_cmd\",\n        \"senddoc\": \"doc_cmd\",\n        \"sendvoice\": \"voice_cmd\",\n        \"dice\": \"dice_cmd\",\n    },\n}\n\nasync def pic_cmd(ctx):\n    # Принимает URL, путь к файлу или байты\n    url = \"https://picsum.photos/800/600\"\n    res = await ctx.net(url)\n    await ctx.reply_photo(res.content, caption=\"Случайная фотография.\")\n\nasync def doc_cmd(ctx):\n    content = b\"Hotaru Userbot Configuration Export\\nVersion: 1.0.0\"\n    await ctx.reply_file(content, filename=\"config.txt\", caption=\"Конфигурация.\")\n\nasync def voice_cmd(ctx):\n    # Отправляет голосовое сообщение в формате OGG Opus\n    with open(\"assets/audio.ogg\", \"rb\") as f:\n        await ctx.reply_voice(f.read())\n\nasync def dice_cmd(ctx):\n    # Отправляет анимированный кубик (эмодзи: 🎲, 🎯, 🏀, ⚽, 🎰, 🎳)\n    await ctx.reply_dice(emoji=\"🎰\")\n```\n\n### Скачивание медиавложений (`ctx.download`)\n\nHotaru позволяет скачивать документы, фото, голосовые заметки и видео из сообщений в память или на диск:\n\n```python\nasync def analyze_cmd(ctx):\n    if not ctx.reply_to or not ctx.reply_to.media:\n        await ctx.respond(\"Ответьте на фото или файл командой .analyze\")\n        return\n\n    await ctx.respond(\"Скачивание файла для анализа...\")\n    file_bytes = await ctx.download(ctx.reply_to.media)\n    size_kb = len(file_bytes) // 1024\n    await ctx.respond(f\"Файл успешно скачан: <b>{size_kb} КБ</b>.\")\n```\n\n### Форматирование HTML (`hotaru/markup.py`)\n\nHotaru использует разметку HTML по умолчанию. Поддерживаются следующие теги:\n- Жирный: `<b>текст</b>` или `<strong>текст</strong>`\n- Курсив: `<i>текст</i>` или `<em>текст</em>`\n- Моноширинный код: `<code>код</code>`\n- Блок кода: `<pre>многострочный код</pre>`\n- Подчеркивание: `<u>подчеркнутый текст</u>`\n- Зачеркивание: `<s>зачеркнутый текст</s>`\n- Спойлер: `<tg-spoiler>скрытый текст</tg-spoiler>`\n- Цитата: `<blockquote>цитата</blockquote>`\n- Ссылки: `<a href=\"https://github.com\">текст ссылки</a>`"
+    id: 'tasks',
+    title: 'Задачи и жизненный цикл',
+    summary: 'rise и fade, фоновые задачи под надзором и пределы, которые держит среда.',
+    content: `### rise и fade
+
+\`rise\` выполняется сразу после активации и привязки владений. \`fade\` — перед выгрузкой, перезагрузкой или остановкой. Оба имени называют корутину модуля.
+
+### Задачи под надзором
+
+Задача объявляется в манифесте, а её обработчик называется \`task_<task_name>\`.
+
+\`\`\`python
+HOTARU = {
+    "id": "metrics_exporter",
+    "version": "1.0.0",
+    "capabilities": ["state", "net"],
+    "commands": [],
+    "tasks": {
+        "sync_metrics": {
+            "interval": 60.0,
+            "autostart": True,
+        },
+    },
+}
+
+async def task_sync_metrics(ctx):
+    pulse = await ctx.state.get("pulse", 0)
+    await ctx.state.set("pulse", pulse + 1)
+\`\`\`
+
+Супервизор вызывает обработчик, ждёт его и затем спит \`interval\` секунд. Если обработчик бросает исключение, ошибка пишется в журнал один раз, цикл продолжается, а среда выполнения остаётся рабочей.
+
+### Пределы
+
+Супервизор допускает 128 задач всего и 16 на модуль. Превышение любого предела поднимает \`TaskLimitError\`, а корутина закрывается. При выгрузке модуля его задачи отменяются, и супервизор ждёт их до пяти секунд. При остановке отменяется всё, супервизор закрывается.
+
+### Долгая работа
+
+Работа, которая не укладывается в интервальную модель, запускается корутиной внутри \`rise\`. Отменять её нужно в обработчике \`fade\`: среда вызывает его перед выгрузкой, перезагрузкой или остановкой.`,
   },
   {
-    "id": "interactive-screens",
-    "title": "8. Интерактивные экраны и формы",
-    "summary": "Создание меню с кнопками, пагинацией и обработкой нажатий через движок ctx.screens.",
-    "content": "Движок экранов Hotaru (`ctx.screens`) позволяет юзерботу создавать интерактивные меню с кнопками, многостраничные списки и формы прямо в чатах Telegram.\n\n### Архитектура экранов юзербота\n\nОбычные аккаунты пользователей Telegram не могут напрямую прикреплять инлайн-кнопки к своим сообщениям. Hotaru решает эту задачу нативно:\n1. Система использует привязанного вспомогательного бота либо кодек инлайн-запросов GoyGram (`hotaru/callback_codec.py`).\n2. Состояние кнопок и обработчики хэшируются в 8-символьные идентификаторы, хранящиеся в памяти воркера с временем жизни 24 часа.\n3. При нажатии пользователем на кнопку событие маршрутизируется в вашу функцию-обработчик с объектом `handle`.\n\n### Создание интерактивной панели управления\n\n```python\nHOTARU = {\n    \"id\": \"panel_demo\",\n    \"version\": \"1.0.0\",\n    \"capabilities\": [\"state\"],\n    \"commands\": {\n        \"panel\": \"panel_cmd\",\n    },\n}\n\nasync def panel_cmd(ctx):\n    async def on_toggle_shield(handle):\n        current = await ctx.state.get(\"shield_active\", False)\n        await ctx.state.set(\"shield_active\", not current)\n        await render_screen()\n\n    async def on_refresh(handle):\n        await render_screen()\n\n    def build_buttons(shield_active):\n        toggle_label = \"Защита: ВКЛ\" if shield_active else \"Защита: ВЫКЛ\"\n        return [\n            [ctx.screens.primary(\"Обновить статус\", on_refresh)],\n            [ctx.screens.success(toggle_label, on_toggle_shield) if shield_active else ctx.screens.danger(toggle_label, on_toggle_shield)],\n            [ctx.screens.close()],\n        ]\n\n    async def render_screen():\n        shield_active = await ctx.state.get(\"shield_active\", False)\n        status_text = \"АКТИВНА (Чат защищен)\" if shield_active else \"ОТКЛЮЧЕНА (Режим ожидания)\"\n        body = (\n            f\"<b>Центр безопасности</b>\\n\\n\"\n            f\"• Состояние: <code>{status_text}</code>\\n\"\n            f\"• Аптайм ядра: <code>{int(ctx.uptime)}с</code>\"\n        )\n        await ctx.screens.show(\"Security Hub\", body, buttons=build_buttons(shield_active))\n\n    await render_screen()\n```\n\n### Типы инлайн-кнопок\n\n• `ctx.screens.button(text: str, callback: Callable)`: Стандартная нейтральная кнопка.\n• `ctx.screens.primary(text: str, callback: Callable)`: Акцентная кнопка действия.\n• `ctx.screens.danger(text: str, callback: Callable)`: Кнопка опасного действия (красный акцент).\n• `ctx.screens.success(text: str, callback: Callable)`: Кнопка подтверждения (зеленый акцент).\n• `ctx.screens.close()`: Кнопка закрытия, удаляющая активный экран.\n\n### Многостраничные каталоги (`ctx.screens.pager`)\n\nДля навигации по длинным спискам записей используйте встроенный компонент пагинатора:\n\n```python\nasync def list_items_cmd(ctx):\n    ITEMS = [f\"Запись #{i:03d} - Данные лога\" for i in range(1, 46)]\n    PAGE_SIZE = 5\n    TOTAL_PAGES = (len(ITEMS) + PAGE_SIZE - 1) // PAGE_SIZE\n\n    async def show_page(page_idx):\n        start = page_idx * PAGE_SIZE\n        end = start + PAGE_SIZE\n        slice_items = ITEMS[start:end]\n        body = f\"<b>Каталог данных (Стр. {page_idx + 1}/{TOTAL_PAGES})</b>\\n\\n\" + \"\\n\".join(f\"• {it}\" for it in slice_items)\n\n        async def on_page_change(target_page):\n            await show_page(target_page)\n\n        buttons = [\n            ctx.screens.pager(current=page_idx, total=TOTAL_PAGES, callback=on_page_change),\n            [ctx.screens.close()],\n        ]\n        await ctx.screens.show(\"Просмотр записей\", body, buttons=buttons)\n\n    await show_page(0)\n```\n\n### Форматированные таблицы (`ctx.screens.table`)\n\nФункция `ctx.screens.table` автоматически форматирует моноширинные колонки ASCII:\n\n```python\ntable_str = ctx.screens.table(\n    headers=[\"МОДУЛЬ\", \"ВЕРСИЯ\", \"СТАТУС\"],\n    rows=[\n        [\"shield\", \"1.0\", \"АКТИВЕН\"],\n        [\"logger\", \"1.2\", \"В РАБОТЕ\"],\n        [\"executor\", \"2.0\", \"ОЖИДАНИЕ\"],\n    ]\n)\nawait ctx.respond(f\"<pre>{table_str}</pre>\")\n```"
+    id: 'methods',
+    title: '292 контекстных метода',
+    summary: 'Как контекстные операции Telegram подставляют аргументы и где проходит граница.',
+    content: `В контексте доступны 292 операции Telegram, которым не нужно ни одного владения. Это контекстные маршруты: среда подставляет текущий диалог, текущее сообщение и аккаунт, поэтому модуль пишет одну строку вместо сборки сырого запроса.
+
+\`\`\`python
+await ctx.set_checklist_completed(completed=[1], incompleted=[])
+\`\`\`
+
+### Подстановка аргументов
+
+Шлюз подставляет три значения до того, как вызов уйдёт в Telegram:
+
+| Подстановка | Что означает |
+| --- | --- |
+| \`$peer\` | Текущий диалог. |
+| \`$message\` | Текущее сообщение. |
+| \`$self\` | Аккаунт, от имени которого работает модуль. |
+
+Параметр, помеченный обязательным, не имеет умолчания ядра, поэтому модуль обязан передать его сам.
+
+### Граница
+
+Контекстный маршрут не обходит остальную систему. Действуют собственные права Telegram, список запрещённых целей, функции только для Premium по-прежнему требуют Premium, медиа и ресурсы требуют своих владений, а исходящая сеть — владения \`net\`. Владение \`mt\` нужно только для сырых вызовов через \`ctx.tg.call\`, и даже там действует политика из главы о владениях.
+
+Полный список с сигнатурами, типами параметров и отметками обязательности — во вкладке «Методы».`,
   },
   {
-    "id": "catalog-methods",
-    "title": "9. Расширенные методы MTProto (Все 292 метода)",
-    "summary": "Принцип работы расширенных методов MTProto, авто-подстановки аргументов и обзор категорий.",
-    "content": "В объекте `ctx` доступно 292 готовых метода Telegram на все случаи жизни — управление участниками, темы форумов, истории, опросы, права и настройки чатов.\n\n**Главное правило: эти 292 метода работают сразу и НЕ требуют права `\"mt\"`!**\nВы можете вызывать их в любом модуле с `\"capabilities\": []`. Hotaru сама подставит текущий чат (`$peer`), сообщение (`$message`) и ваш аккаунт (`$self`), поэтому код получается коротким и понятным. Право `\"mt\"` необходимо **только** если вы хотите вручную отправлять нестандартные сырые вызовы через `ctx.tg.call(...)`.\n\n### Автоматическая подстановка контекстных аргументов\n\nШлюз RPC автоматически подставляет аргументы вызова из текущего окружения:\n- `$peer`: Автоматически заменяется на ID текущего диалога (`ctx.peer_id`).\n- `$message`: Автоматически заменяется на ID текущего сообщения (`ctx.message.id`).\n- `$self`: Автоматически заменяется на Telegram ID вашего аккаунта.\n\n```python\n# Блокирует пользователя по ID\nawait ctx.block_peer(id=123456789)\n\n# Устанавливает медленный режим в текущем чате\nawait ctx.set_slow_mode(seconds=10)\n\n# Публикует историю от имени вашего аккаунта\nawait ctx.post_story(media=photo_bytes, caption=\"Обновление статуса\")\n```\n\n### Основные категории методов на объекте `ctx`\n\n1. **Пользователи и контакты (42 метода)**:\n   - `block_peer(id)`: Блокирует пользователя или чат.\n   - `unblock_peer(id)`: Разблокирует пользователя.\n   - `blocked_peers(limit, offset)`: Возвращает список заблокированных.\n   - `user_details(user_id)`: Получает полную информацию о профиле и биографию.\n   - `contact_statuses()`: Возвращает сетевые статусы списка контактов.\n   - `import_contacts(phones)`: Импортирует телефоны в контакты.\n   - `delete_contacts(ids)`: Удаляет контакты.\n\n2. **Каналы и супергруппы (68 методов)**:\n   - `channel_details(channel)`: Статистика канала, число участников, юзернеймы.\n   - `channel_members(channel, filter, limit, offset)`: Запрашивает список участников.\n   - `set_slow_mode(seconds)`: Настраивает задержку сообщений (медленный режим).\n   - `set_antispam(enabled)`: Включает встроенный агрессивный антиспам Telegram.\n   - `set_channel_admin(user_id, rights)`: Назначает администратора с правами.\n   - `kick_channel_member(user_id)`: Исключает пользователя из группы.\n   - `ban_channel_member(user_id, until_date)`: Блокирует пользователя.\n\n3. **Темы форумов (24 метода)**:\n   - `create_forum_topic(title, icon_color, icon_emoji_id)`: Создает новую тему.\n   - `edit_forum_topic(topic_id, title, icon_emoji_id)`: Переименовывает тему.\n   - `set_forum_topic_pinned(topic_id, pinned)`: Закрепляет тему в форуме.\n   - `remove_forum_topic(topic_id)`: Удаляет тему и все сообщения в ней.\n   - `reopen_forum_topic(topic_id)`: Открывает ранее закрытую тему.\n\n4. **Истории (18 методов)**:\n   - `post_story(media, caption, privacy)`: Публикует фото- или видео-историю.\n   - `delete_stories(story_ids)`: Удаляет истории.\n   - `activate_story_stealth()`: Включает режим невидимки Telegram Premium.\n   - `read_stories(user_id, max_id)`: Отмечает истории прочитанными.\n\n5. **Опросы, викторины и списки (16 методов)**:\n   - `send_poll(question, options, multiple_choice, quiz_mode)`: Создает опрос или тест.\n   - `send_todo(title, items)`: Отправляет интерактивный список задач.\n   - `set_checklist_completed(message_id, item_index, completed)`: Отмечает пункт списка.\n\n### Граница безопасности: Фаервол Relay (`relay/firewall.py`)\n\nДля защиты аккаунта ядро Hotaru блокирует опасные деструктивные методы. Любой сторонний модуль, попытавшийся вызвать следующие методы, получит исключение `SecurityViolationError`:\n- `auth.resetAuthorizations`: Сброс других активных сессий пользователя.\n- `account.deleteAccount`: Удаление аккаунта Telegram.\n- `auth.exportAuthorization`: Экспорт ключей авторизации.\n- `messages.deleteAllHistory`: Удаление всей истории переписки во всех чатах.\n\nПолный список всех 292 методов доступен во вкладке документации **Все 292 метода** с возможностью поиска по сигнатуре и типам."
+    id: 'modules',
+    title: 'Штатные модули',
+    summary: 'Пятнадцать модулей каталога constellations с их командами и владениями.',
+    content: `Каждый модуль — это манифест в каталоге \`constellations/\`. Команды и списки владений ниже прочитаны прямо из этих манифестов.
+
+| Модуль | Версия | Команды | Владения |
+| --- | --- | --- | --- |
+| accounts | 2.0.0 | account, addaccount, accounts | mt |
+| acl | 3.0.0 | perms, perm, whois, owadd, owrm, owls, sgls, sg, sgnew, sgdel, sgadd, sgrm, rule, rulerm, ruleclr | mt |
+| backups | 1.2.0 | backup, restore | mt, state, files, modules |
+| catalyst | 1.3.0 | ld, ul, rl, ex, resetdb | modules |
+| executor | 3.4.0 | sh, py, kill | mt, files, net, state, assets |
+| genesis | 1.1.0 | none, bot commands only | mt, state |
+| help | 2.0.0 | help | mt |
+| info | 2.2.0 | info, ping | mt, state |
+| logger | 1.2.0 | logs, loglevel | mt, state |
+| power | 1.5.0 | restart, stop, resume | mt |
+| settings | 3.1.0 | config, alias, rmalias, lsalias, prefix | mt, state |
+| shield | 1.0.0 | shield, suspend_api | mt, state |
+| singularity | 2.0.1 | dash | mt |
+| translations | 2.2.0 | language, translate, loadlex, rmlex | mt, net, files, state |
+| updater | 2.0.0 | upd, updlog, updoff, updon | net, mt |
+
+### Детали жизненного цикла, о которых стоит знать
+
+- \`power\` связывает \`unpause\` с \`resume\`.
+- \`backups\` сам запускает задачу \`send\` каждые 60 секунд.
+- \`logger\` сам запускает задачу \`pump\` каждые 2 секунды, подписывается на rise и отписывается на fade.
+- \`updater\` сам запускает задачу \`poller\` каждые 300 секунд и вызывает \`afterglow\` на rise.
+- \`genesis\` регистрирует команды бота \`start\` и \`github\`.
+- \`shield\` описывает себя как защиту от флудвейта и перегрузки API.
+
+### Ежедневные команды
+
+| Команда | Действие |
+| --- | --- |
+| \`.help\` | Открыть интерактивный каталог модулей и карточки помощи. |
+| \`.ping\` | Проверить задержку шлюза MTProto и состояние соединения. |
+| \`.dash\` | Получить ссылку на панель Singularity и открыть Mini App. |
+| \`.addaccount\` | Добавить ещё один аккаунт в пул супервизора. |
+| \`.shield\` | Посмотреть частоту вызовов API и настроить защиту от флуда. |
+| \`.config\` | Открыть интерактивный редактор настроек среды. |
+| \`.backup\` | Создать зашифрованный архив состояния и сессий. |
+| \`.restart\` | Перезагрузить процессы ядра и активные модули. |`,
   },
   {
-    "id": "blueprints",
-    "title": "10. Готовые шаблоны модулей для загрузки через .ld",
-    "summary": "Рабочие примеры модулей, которые можно сохранить в .hmod и сразу загрузить в Hotaru.",
-    "content": "Представленные готовые к продакшену модули демонстрируют лучшие практики объявления прав, обработки ошибок, сохранения состояния и работы с медиафайлами. Сохраните любой шаблон в файл с расширением `.hmod` и отправьте в Telegram через `.ld`.\n\n### Шаблон 1: Генератор QR-кодов (`qr_tool.hmod`)\n\nДемонстрирует сетевые запросы (`ctx.net`), отправку фото (`ctx.reply_photo`) и мультиязычный лексикон (`ctx.t`):\n\n```python\nHOTARU = {\n    \"id\": \"qr_tool\",\n    \"version\": \"1.1.0\",\n    \"commands\": {\n        \"qr\": \"qr_command\",\n    },\n    \"capabilities\": [\"net\"],\n    \"lexicon\": {\n        \"ru\": {\n            \"empty\": \"Укажите текст или ответьте на сообщение после .qr\",\n            \"generating\": \"Генерация QR-кода...\",\n            \"caption\": \"QR-код для: <code>{query}</code>\",\n            \"error\": \"Не удалось создать QR-код: {reason}\",\n        },\n        \"en\": {\n            \"empty\": \"Please provide text or reply to a message after .qr\",\n            \"generating\": \"Generating QR code...\",\n            \"caption\": \"QR Code for: <code>{query}</code>\",\n            \"error\": \"Failed to generate QR code: {reason}\",\n        },\n    },\n}\n\nimport urllib.parse\n\nasync def qr_command(ctx):\n    text = ctx.raw_args.strip()\n    if not text and ctx.reply_to and ctx.reply_to.text:\n        text = ctx.reply_to.text.strip()\n\n    if not text:\n        await ctx.respond(ctx.t(\"empty\"))\n        return\n\n    await ctx.respond(ctx.t(\"generating\"))\n    safe_query = urllib.parse.quote(text[:500])\n    api_url = f\"https://api.qrserver.com/v1/create-qr-code/?size=350x350&data={safe_query}\"\n\n    try:\n        res = await ctx.net(api_url, timeout=12)\n        if res.status_code == 200:\n            preview = text[:40] + (\"...\" if len(text) > 40 else \"\")\n            caption = ctx.t(\"caption\", query=preview)\n            await ctx.reply_photo(res.content, caption=caption)\n            await ctx.delete()\n        else:\n            await ctx.respond(ctx.t(\"error\", reason=f\"HTTP {res.status_code}\"))\n    except Exception as err:\n        await ctx.respond(ctx.t(\"error\", reason=str(err)))\n```\n\n### Шаблон 2: Менеджер заметок (`notes_mgr.hmod`)\n\nДемонстрирует персистентное хранилище SQLite (`ctx.state`), форматирование списков и HTML-разметку:\n\n```python\nHOTARU = {\n    \"id\": \"notes_mgr\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"note\": \"note_command\",\n        \"notes\": \"notes_list_command\",\n        \"delnote\": \"delnote_command\",\n    },\n    \"capabilities\": [\"state\"],\n    \"lexicon\": {\n        \"ru\": {\n            \"saved\": \"Заметка <b>{name}</b> успешно сохранена.\",\n            \"deleted\": \"Заметка <b>{name}</b> удалена.\",\n            \"not_found\": \"Заметка <b>{name}</b> не найдена.\",\n            \"empty_list\": \"Список заметок пока пуст.\",\n        },\n        \"en\": {\n            \"saved\": \"Saved note <b>{name}</b>.\",\n            \"deleted\": \"Deleted note <b>{name}</b>.\",\n            \"not_found\": \"Note <b>{name}</b> does not exist.\",\n            \"empty_list\": \"No notes stored yet.\",\n        },\n    },\n}\n\nasync def note_command(ctx):\n    args = ctx.args\n    if not args:\n        await ctx.respond(\"Использование: <code>.note <имя> <текст></code> или <code>.note <имя></code> для просмотра.\")\n        return\n\n    name = args[0].lower()\n    notes = await ctx.state.get(\"notes\", {})\n\n    if len(args) == 1:\n        if name in notes:\n            await ctx.respond(f\"<b>{name}:</b>\\n{notes[name]}\")\n        else:\n            await ctx.respond(ctx.t(\"not_found\", name=name))\n        return\n\n    content = \" \".join(args[1:])\n    notes[name] = content\n    await ctx.state.set(\"notes\", notes)\n    await ctx.respond(ctx.t(\"saved\", name=name))\n\nasync def notes_list_command(ctx):\n    notes = await ctx.state.get(\"notes\", {})\n    if not notes:\n        await ctx.respond(ctx.t(\"empty_list\"))\n        return\n    lines = [f\"• <b>{k}</b> ({len(v)} символов)\" for k, v in sorted(notes.items())]\n    await ctx.respond(\"<b>Сохраненные заметки:</b>\\n\" + \"\\n\".join(lines))\n\nasync def delnote_command(ctx):\n    if not ctx.args:\n        await ctx.respond(\"Использование: <code>.delnote <имя></code>\")\n        return\n    name = ctx.args[0].lower()\n    notes = await ctx.state.get(\"notes\", {})\n    if name in notes:\n        del notes[name]\n        await ctx.state.set(\"notes\", notes)\n        await ctx.respond(ctx.t(\"deleted\", name=name))\n    else:\n        await ctx.respond(ctx.t(\"not_found\", name=name))\n```\n\n### Шаблон 3: Страж чата от спам-рейдов (`chat_guard.hmod`)\n\nДемонстрирует перехват входящих сообщений через `watchers`, подсчет частоты отправки и удаление спама:\n\n```python\nHOTARU = {\n    \"id\": \"chat_guard\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"guard\": \"guard_toggle_cmd\",\n    },\n    \"capabilities\": [\"state\"],\n    \"watchers\": [\"raid_watcher\"],\n}\n\nimport time\n\nUSER_HISTORY = {}\n\nasync def guard_toggle_cmd(ctx):\n    active = await ctx.state.get(\"active\", True)\n    await ctx.state.set(\"active\", not active)\n    status = \"ВКЛЮЧЕНА\" if not active else \"ОТКЛЮЧЕНА\"\n    await ctx.respond(f\"Защита чата теперь <b>{status}</b>.\")\n\nasync def raid_watcher(ctx):\n    if ctx.out:\n        return\n\n    active = await ctx.state.get(\"active\", True)\n    if not active:\n        return\n\n    sender = ctx.sender_id\n    if not sender:\n        return\n\n    now = time.time()\n    history = USER_HISTORY.setdefault(sender, [])\n    # Оставляем только сообщения за последние 5 секунд\n    history = [t for t in history if now - t < 5.0]\n    history.append(now)\n    USER_HISTORY[sender] = history\n\n    # Если пользователь отправляет более 5 сообщений за 5 секунд\n    if len(history) > 5:\n        try:\n            await ctx.delete()\n        except Exception:\n            pass\n```\n\n### Шаблон 4: Инспектор прямого MTProto (`raw_mtproto.hmod`)\n\nДемонстрирует, когда право `\"mt\"` действительно необходимо: прямой вызов сырых методов через `ctx.tg.call`:\n\n```python\nHOTARU = {\n    \"id\": \"raw_mtproto\",\n    \"version\": \"1.0.0\",\n    \"commands\": {\n        \"dc\": \"get_dc_cmd\",\n    },\n    \"capabilities\": [\"mt\"],  # Требуется ТОЛЬКО из-за прямого вызова ctx.tg.call\n}\n\nasync def get_dc_cmd(ctx):\n    # Прямой вызов MTProto через ctx.tg.call (требует право mt)\n    res = await ctx.tg.call(\"help.getNearestDc\")\n    country = res.get(\"country\", \"Неизвестно\")\n    this_dc = res.get(\"this_dc\", 0)\n    nearest_dc = res.get(\"nearest_dc\", 0)\n    await ctx.respond(\n        f\"<b>Дата-центр Telegram (Сырой MTProto):</b>\\n\"\n        f\"• Страна: <code>{country}</code>\\n\"\n        f\"• Текущий ДЦ: <code>DC{this_dc}</code>\\n\"\n        f\"• Ближайший ДЦ: <code>DC{nearest_dc}</code>\"\n    )\n```"
-  }
+    id: 'dashboard',
+    title: 'Панель управления',
+    summary: 'Singularity: веб-панель и Mini App в Telegram.',
+    content: `Singularity — встроенный интерфейс. Фронтенд на Vite и React рисует живую чёрную дыру и позволяет подвести камеру к четырём точкам: горизонт событий, аккреционный диск, фотонное кольцо и кольцо Эйнштейна.
+
+### Как запускается
+
+Панель отдаёт метрики системы, хвост журнала обсерватории и управление модулями на порту 8787. Бандл пересобирается при каждом старте, поэтому устаревший бэкенд не отдаёт старую панель.
+
+### Открытие в Telegram
+
+Hotaru может поднять туннель Cloudflare Horizon и зарегистрировать панель у BotFather. После этого дашборд открывается как нативное Mini App внутри Telegram.
+
+### Доступ
+
+Панель доступна только владельцу. Запрос несёт Telegram \`initData\`, а бэкенд проверяет его подпись HMAC-SHA256 токеном бота, прежде чем вернуть хоть какие-то данные. Секреты не пишутся в журнал.
+
+### Захваченная панель
+
+На изображении ниже — работающий фронтенд Singularity, снятый с upstream-сборки.
+
+![Панель Singularity: чёрная дыра с аккреционным диском, отрисованная реймарчем](media/singularity-panel.png)`,
+  },
+  {
+    id: 'skill',
+    title: 'Скилл для агента',
+    summary: 'SKILL.md — справочник, по которому агент пишет модули по настоящему API.',
+    content: `\`SKILL.md\` — руководство, написанное для ИИ-агента, которому нужно писать рабочие модули. Это один файл, и именно его отдаёт кнопка скачивания.
+
+### Что внутри
+
+- Контракт модуля и граница между внешним модулем и встроенным.
+- Манифест и точки входа с точной картой исходников.
+- Каталог 292 контекстных операций с сигнатурами, порядком позиционных аргументов, типами параметров и отметками обязательности.
+- 76 экспортов помощника tools, сгруппированных по назначению.
+- Модель безопасности, правила делегирования владений и проверки, которые модуль обязан пройти.
+- Минимальный шаблон внешнего модуля и финальный список приёмки.
+
+### Откуда это взято
+
+Карточки методов генерируются из исходников upstream, а не пишутся вручную, и каждая карточка несёт SHA-256 файла, из которого получена. Когда снимок меняется, меняются и хеши, поэтому читатель понимает, совпадает ли справочник с кодом.
+
+### Язык
+
+Руководство написано по-русски — на языке самого проекта. Здесь разделение такое же: эта документация на выбранном вами языке, руководство для агента на языке, на котором оно написано.`,
+  },
 ];

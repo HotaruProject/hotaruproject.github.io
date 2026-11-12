@@ -18,17 +18,11 @@ export function LangSwitch({ lang, setLang }) {
 export function Navbar({ lang, setLang, content, onOpenDocs }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileClosing, setMobileClosing] = useState(false);
-  const [section, setSection] = useState('');
   const headRef = useRef(null);
   const progressRef = useRef(null);
   const menuOpen = useRef(false);
   const closeTimer = useRef(0);
   const t = content.nav;
-
-  const links = [
-    { id: 'architecture', label: t.architecture },
-    { id: 'modules', label: t.modules },
-  ];
 
   const openMenu = () => {
     window.clearTimeout(closeTimer.current);
@@ -78,37 +72,15 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
     if (mobileOpen && head) head.classList.remove('nav-head--hidden');
   }, [mobileOpen]);
 
-  useEffect(() => {
-    const ids = ['architecture', 'modules', 'documentation', 'skill'];
-    const nodes = ids.map((id) => document.getElementById(id)).filter(Boolean);
-    if (!nodes.length || typeof IntersectionObserver === 'undefined') return undefined;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setSection(visible.target.id);
-      },
-      { rootMargin: '-45% 0px -45% 0px', threshold: [0, 0.2, 0.6, 1] }
-    );
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
-  }, []);
-
-  const scrollTo = (id) => {
+  const scrollToTop = () => {
     closeMenu();
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDocsClick = () => {
     closeMenu();
     if (onOpenDocs) {
       onOpenDocs();
-    } else {
-      scrollTo('documentation');
     }
   };
 
@@ -121,7 +93,7 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
         <div className="nav-pill pointer-events-auto max-w-[64rem] mx-auto rounded-input min-h-[56px] pl-[var(--space-md)] pr-[var(--space-xs)] flex items-center justify-between gap-[var(--space-md)]">
           <button
             type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={scrollToTop}
             className="font-display uppercase text-lg text-ink min-h-[44px] rounded-input focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             aria-label="Hotaru, back to top"
           >
@@ -129,17 +101,6 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
           </button>
 
           <nav className="hidden md:flex items-center gap-[var(--space-2xs)]" aria-label="Primary">
-            {links.map((l) => (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => scrollTo(l.id)}
-                aria-current={section === l.id ? 'true' : undefined}
-                className="tab"
-              >
-                {l.label}
-              </button>
-            ))}
             <button type="button" onClick={handleDocsClick} className="tab inline-flex items-center gap-[var(--space-xs)]">
               <BookOpen aria-hidden="true" className="w-4 h-4" />
               <span>{t.docs}</span>
@@ -188,17 +149,6 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
         <div
           className={`nav-sheet fixed right-[var(--space-sm)] top-[calc(var(--space-sm)+64px)] z-sticky-nav w-[min(16.5rem,calc(100vw-2*var(--space-sm)))] rounded-input p-[var(--space-2xs)] flex flex-col gap-[2px] ${mobileClosing ? 'nav-sheet--closing' : ''}`}
         >
-          {links.map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              onClick={() => scrollTo(l.id)}
-              aria-current={section === l.id ? 'true' : undefined}
-              className="tab text-left min-h-[42px] px-[var(--space-sm)]"
-            >
-              {l.label}
-            </button>
-          ))}
           <button type="button" onClick={handleDocsClick} className="tab text-left min-h-[42px] px-[var(--space-sm)]">
             {t.docs}
           </button>
