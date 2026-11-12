@@ -7,13 +7,13 @@ export function Hero({ content, lang, onOpenDocs }) {
   const copyRef = useRef(null);
 
   return (
-    <section className="relative min-h-dvh flex flex-col justify-end w-full">
+    <section className="hero relative min-h-[74svh] md:min-h-dvh flex flex-col justify-end w-full">
       <div className="absolute inset-0">
         <QuasarScene lang={lang} copyRef={copyRef} />
       </div>
       <div className="hero-scrim absolute inset-0 z-base pointer-events-none" />
 
-      <div className="hero__body relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[44svh] md:pt-32 pb-24 md:pb-16 pointer-events-none">
+      <div className="hero__body relative z-raised max-w-container mx-auto w-full px-[var(--gutter)] pt-[34svh] md:pt-32 pb-10 md:pb-16 pointer-events-none">
         <div className="max-w-[46rem] min-w-0 pointer-events-auto" ref={copyRef}>
           <h1 className="wordmark font-display text-poster uppercase text-ink" data-text={t.title}>{t.title}</h1>
 

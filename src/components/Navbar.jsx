@@ -42,24 +42,13 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
 
   useEffect(() => {
-    const head = headRef.current;
     const bar = progressRef.current;
-    let last = window.scrollY;
-    let hidden = false;
     const onScroll = () => {
       const doc = document.documentElement;
       const max = doc.scrollHeight - window.innerHeight;
       const y = window.scrollY;
       if (bar) bar.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
-      const delta = y - last;
-      if (Math.abs(delta) < 6) return;
-      last = y;
       if (menuOpen.current) closeMenu();
-      const narrow = window.innerWidth < 768;
-      const next = narrow && y >= 96 && delta > 0;
-      if (next === hidden) return;
-      hidden = next;
-      if (head) head.classList.toggle('nav-head--hidden', hidden && !menuOpen.current);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
@@ -68,8 +57,6 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
 
   useEffect(() => {
     menuOpen.current = mobileOpen;
-    const head = headRef.current;
-    if (mobileOpen && head) head.classList.remove('nav-head--hidden');
   }, [mobileOpen]);
 
   const scrollToTop = () => {

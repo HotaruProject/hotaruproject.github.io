@@ -106,7 +106,7 @@ export function App() {
         content={currentContent}
         onOpenDocs={openDocs}
       />
-      <main className="flex-grow w-full">
+      <main className="flex-grow w-full flex flex-col">
         <Hero content={currentContent} lang={lang} onOpenDocs={openDocs} />
       </main>
       <Footer content={currentContent} />
