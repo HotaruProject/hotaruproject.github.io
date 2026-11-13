@@ -20,7 +20,34 @@
   --glow-md: 0 0 26px oklch(100% 0 0 / 0.20), 0 0 6px oklch(100% 0 0 / 0.12);
   --glow-lg: 0 0 44px oklch(100% 0 0 / 0.26), 0 0 10px oklch(100% 0 0 / 0.16);
   --glow-edge: inset 0 1px 0 oklch(100% 0 0 / 0.12);
+  /* the small aura that sits just outside a control's boundary: a crisp
+     one pixel ring right at the edge and a tight bloom outside it, so the
+     border itself stays sharp and readable */
+  --aura-control: 0 0 0 1px oklch(100% 0 0 / 0.11), 0 0 9px 0 oklch(100% 0 0 / 0.15);
+  --aura-control-lit: 0 0 0 1px oklch(100% 0 0 / 0.22), 0 0 14px 1px oklch(100% 0 0 / 0.24);
   --glow-text: 0 0 18px oklch(100% 0 0 / 0.32);
+  /* the text halos, in four weights. the headings carry a side aura: the
+     light spills out of the flanks of the glyphs and leaves the strokes
+     themselves crisp, the way the buttons carry a rim of light */
+  --halo-faint: 0 0 10px oklch(100% 0 0 / 0.05);
+  --halo-whisper: 0 0 8px oklch(100% 0 0 / 0.028);
+  --halo-title:
+    0 0 4px oklch(100% 0 0 / 0.46),
+    -3px 0 15px oklch(100% 0 0 / 0.30),
+    3px 0 15px oklch(100% 0 0 / 0.30),
+    0 0 40px oklch(100% 0 0 / 0.17),
+    0 0 96px oklch(100% 0 0 / 0.07);
+  --halo-doc-title:
+    0 0 3px oklch(100% 0 0 / 0.14),
+    -2px 0 11px oklch(100% 0 0 / 0.07),
+    2px 0 11px oklch(100% 0 0 / 0.07),
+    0 0 28px oklch(100% 0 0 / 0.04);
+  --halo-method:
+    0 0 4px oklch(100% 0 0 / 0.62),
+    -2px 0 12px oklch(100% 0 0 / 0.34),
+    2px 0 12px oklch(100% 0 0 / 0.34),
+    0 0 30px oklch(100% 0 0 / 0.20),
+    0 0 70px oklch(100% 0 0 / 0.08);
   --font-display: "Tektur", "Onest", ui-sans-serif, sans-serif; --font-body: "Onest", ui-sans-serif, system-ui, sans-serif; --font-outlier: "JetBrains Mono", ui-monospace, monospace;
   --text-poster: clamp(4rem, 9vw, 8.5rem);
   --radius-card: 12px; --radius-input: 12px; --radius-control: 12px; --radius-panel: 16px; --radius-pill: 999px; --rule-hair: 1px; --shadow-card: none;
