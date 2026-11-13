@@ -30,3 +30,7 @@
 @media (max-width: 61.99rem) {
   :root { --doc-head-h: 58px; }
 }
+
+@media (max-width: 47.99rem) and (max-height: 700px) {
+  :root { --space-2xl: 24px; --space-xl: 20px; --space-lg: 16px; --text-poster: 3.25rem; }
+}
