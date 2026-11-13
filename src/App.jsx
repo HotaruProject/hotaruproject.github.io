@@ -59,9 +59,9 @@ export function App() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col w-full">
+    <div className="home min-h-dvh flex flex-col w-full">
       <Navbar lang={lang} setLang={setLang} content={currentContent} onOpenDocs={openDocs} />
-      <main className="flex-grow w-full flex flex-col">
+      <main className="flex-grow min-h-0 w-full flex flex-col">
         <Hero content={currentContent} lang={lang} onOpenDocs={openDocs} />
       </main>
       <Footer content={currentContent} />
