@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { RotateCcw } from 'lucide-react';
 
 const VERT_SRC = `
@@ -17,209 +17,242 @@ precision highp float;
 precision mediump float;
 #endif
 
+// Schwarzschild black hole, rs = 1. Thin Novikov-Thorne disk from the ISCO (r = 3)
+// out to DISK_OUT, its brightness set by the disk temperature, Doppler-beamed and gravitationally
+// redshifted. Rays are integrated with an adaptive leapfrog step, so a pixel takes
+// 20 to 70 iterations instead of hundreds. The camera orbits freely, so nothing here
+// assumes the view is near the disk plane.
+
 uniform vec2 uRes;
+uniform vec2 uCenter;
+uniform float uScale;
 uniform float uTime;
 uniform vec3 uCamPos;
 uniform vec3 uCamRight;
 uniform vec3 uCamUp;
 uniform vec3 uCamFwd;
-uniform vec2 uCenter;
-uniform float uScale;
-uniform float uSteps;
+uniform sampler2D uNoise;
 
-float hash13(vec3 p3) {
-  p3 = fract(p3 * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
+const float ISCO = 3.0;
+const float DISK_OUT = 12.0;
+const float R_OUT = 17.0;
+const float B_CRIT = 2.598;      // critical impact parameter, 3 sqrt(3) / 2
+const float FLUX_NORM = 476.6;   // 1 / peak of (1 - sqrt(3/r)) / r^3, at r ~ 4.08
+const float FLOW = 12.0;         // seconds per flow cycle, see shadeDisk
+const int MAX_STEPS = 96;
+
+float noise(vec2 p) {
+  return texture2D(uNoise, p * (1.0 / 64.0)).r;
 }
 
-float hash12(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
+// Monochrome emission: the observed temperature sets brightness only. Cool gas
+// fades to grey, the hottest blueshifted gas to a hard white.
+vec3 glow(float t) {
+  float v = smoothstep(0.05, 1.35, t);
+  return vec3(mix(0.1, 1.0, v * v));
 }
 
-vec3 hash33(vec3 p3) {
-  p3 = fract(p3 * vec3(0.1031, 0.1030, 0.0973));
-  p3 += dot(p3, p3.yxz + 33.33);
-  return fract((p3.xxy + p3.yxx) * p3.zyx);
+// Turbulent streaks in co-rotating coordinates. 8 lattice cells per 64 texels, so
+// angle * 64 / 2pi * k tiles seamlessly for whole k.
+float streaks(float a, float lr, float phase) {
+  vec2 q = vec2(a * 10.186, lr * 22.0 + phase);
+  float n = noise(q) * 0.45
+    + noise(vec2(a * 20.372, lr * 54.0 - phase * 1.7)) * 0.33
+    + noise(vec2(a * 40.744, lr * 130.0 + phase * 2.3)) * 0.22;
+  return n;
 }
 
-float noise2(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  float a = hash12(i);
-  float b = hash12(i + vec2(1.0, 0.0));
-  float c = hash12(i + vec2(0.0, 1.0));
-  float d = hash12(i + vec2(1.0, 1.0));
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
+  float r = length(hit.xz);
+  if (r < ISCO * 0.98 || r > DISK_OUT) return vec4(0.0);
+
+  // Keplerian shear winds any pattern into a tight spiral within a few orbits, so
+  // two copies run half a cycle apart and crossfade: each is reset while unseen.
+  float omega = 2.2 * pow(r, -1.5);
+  float base = atan(hit.z, hit.x);
+  float lr = log(r);
+  float c1 = fract(uTime / FLOW);
+  float c2 = fract(uTime / FLOW + 0.5);
+  float n1 = streaks(base + c1 * FLOW * omega + 1.4 * lr, lr, c1 * 3.0);
+  float n2 = streaks(base + c2 * FLOW * omega + 1.4 * lr, lr, c2 * 3.0 + 11.0);
+  float n = mix(n1, n2, abs(c1 * 2.0 - 1.0));
+  float lanes = 0.12 + 1.25 * smoothstep(0.32, 0.8, n);
+  lanes = mix(lanes, 0.85, 0.35 * step(0.5, order));
+
+  float flux = (1.0 - sqrt(ISCO / max(r, ISCO))) / (r * r * r) * FLUX_NORM;
+  float temp = pow(max(flux, 0.0), 0.25);
+
+  // Orbital velocity and the full relativistic shift, gravitational and Doppler.
+  float v = inversesqrt(2.0 * (r - 1.0));
+  vec3 vel = normalize(vec3(-hit.z, 0.0, hit.x)) * v;
+  float gamma = inversesqrt(1.0 - v * v);
+  float g = sqrt(1.0 - 1.5 / r) / (gamma * (1.0 + dot(vel, dir)));
+
+  vec3 col = glow(temp * g) * flux * g * g * g * g * lanes * 2.6;
+  float inner = mix(0.35, 1.6, step(0.5, order));
+  float edge = smoothstep(ISCO, ISCO + inner, r) * smoothstep(DISK_OUT, DISK_OUT - 6.0, r);
+  // Optically thick: the near side hides what lies behind it, so the lensed
+  // underside shows only below the disk, hugging the shadow as it does in nature.
+  return vec4(col * edge, edge * mix(0.97, 0.75, step(0.5, order)));
 }
 
-float fbm2(vec2 p) {
-  float v = 0.0;
-  float amp = 0.52;
-  for (int i = 0; i < 4; i++) {
-    v += amp * noise2(p);
-    p = p * 2.15 + 7.1;
-    amp *= 0.48;
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.zyx + 31.32);
+  return fract((p.x + p.y) * p.z);
+}
+
+vec3 sky(vec3 d, float starFade) {
+  vec3 p = d * 120.0;
+  vec3 cell = floor(p);
+  vec3 f = fract(p) - 0.5;
+  float h = hash13(cell);
+  float s = 0.0;
+  if (h > 0.982) {
+    vec3 o = vec3(hash13(cell + 3.1), hash13(cell + 7.7), hash13(cell + 1.9)) - 0.5;
+    float k = (h - 0.982) * 55.6;
+    vec3 q = f - o * 0.55;
+    s = exp(-dot(q, q) * 180.0) * (0.1 + 1.6 * k * k * k);
   }
-  return v;
-}
-
-vec3 backgroundStars(vec3 dir) {
-  vec3 col = vec3(0.0003, 0.0004, 0.0008);
-
-  vec3 pStar = dir * 200.0;
-  vec3 iStar = floor(pStar);
-  vec3 fStar = fract(pStar) - 0.5;
-  float rnd = hash13(iStar);
-  if (rnd > 0.985) {
-    vec3 offset = (hash33(iStar) - 0.5) * 0.65;
-    float dist = length(fStar - offset);
-    float size = 0.045 + 0.055 * fract(rnd * 137.1);
-    float glow = exp(-dist * dist / (size * size * 0.20));
-    float twinkle = 0.75 + 0.25 * sin(uTime * 2.5 + rnd * 60.0);
-    vec3 starCol = mix(vec3(1.0), vec3(0.68, 0.68, 0.68), fract(rnd * 43.1));
-    if (fract(rnd * 89.2) > 0.85) starCol = vec3(0.86);
-    col += starCol * glow * twinkle * 2.2;
-  }
-
-  return col;
-}
-
-vec4 sampleDisk(vec3 hit, vec3 rayDir) {
-  float rad = length(hit.xz);
-  float innerR = 1.88;
-  float outerR = 7.6;
-  if (rad < innerR || rad > outerR) return vec4(0.0);
-
-  float speed = 1.55 / (sqrt(rad) + 0.25);
-  float angle = -uTime * speed;
-  float ca = cos(angle), sa = sin(angle);
-  vec2 rotP = vec2(ca * hit.x - sa * hit.z, sa * hit.x + ca * hit.z);
-
-  float turb = fbm2(rotP * 0.95);
-  float bands = 0.35 * sin(rad * 22.0 + turb * 2.8 - uTime * 0.2)
-              + 0.25 * sin(rad * 46.0)
-              + 0.20 * sin(rad * 8.5)
-              + 0.45;
-  float edgeIn = smoothstep(innerR, innerR + 0.35, rad);
-  float edgeOut = smoothstep(outerR, outerR - 1.5, rad);
-  float density = edgeIn * edgeOut * (0.35 + 0.65 * turb) * (0.5 + 0.5 * bands);
-
-  vec3 diskVelocity = normalize(vec3(-hit.z, 0.0, hit.x));
-  float doppler = dot(diskVelocity, -rayDir);
-  float dop = clamp(1.0 + 0.62 * doppler, 0.15, 2.7);
-  float dopplerFactor = dop * dop * dop * sqrt(dop);
-
-  vec3 colHot = vec3(1.42);
-  vec3 colMid = vec3(0.99);
-  vec3 colWarm = vec3(0.78);
-  vec3 colOuter = vec3(0.34);
-
-  vec3 col = mix(colOuter, colWarm, smoothstep(0.0, 0.35, density));
-  col = mix(col, colMid, smoothstep(0.3, 0.7, density));
-  col = mix(col, colHot, smoothstep(0.65, 0.98, density));
-
-  float innerGlow = smoothstep(innerR + 0.95, innerR, rad);
-  col += colHot * innerGlow * innerGlow * 2.4;
-
-  col *= dopplerFactor * 1.95;
-  float alpha = smoothstep(0.015, 0.32, density);
-  return vec4(col, alpha);
-}
-
-vec3 traceScene(vec2 uv) {
-  vec3 camPos = uCamPos;
-  vec3 fwd = uCamFwd;
-  vec3 right = uCamRight;
-  vec3 up = uCamUp;
-  float fov = 0.85;
-  vec3 dir = normalize(fwd + uv.x * fov * right + uv.y * fov * up);
-
-  vec3 pos = camPos;
-  vec3 hvec = cross(pos, dir);
-  float h2 = dot(hvec, hvec);
-  float eventR = 1.0;
-  float photonR = 1.52;
-
-  vec4 diskAccum = vec4(0.0);
-  bool captured = false;
-  float minR = 1000.0;
-  int diskCrossings = 0;
-  for (int i = 0; i < 300; i++) {
-    if (float(i) >= uSteps) break;
-    vec3 prevPos = pos;
-    float r = length(pos);
-    minR = min(minR, r);
-
-    float dt = clamp(r * 0.042, 0.005, 0.85);
-    float r2safe = max(dot(pos, pos), 0.55);
-    vec3 acc = -1.65 * h2 * pos / (r2safe * r2safe * sqrt(r2safe));
-    dir = normalize(dir + acc * dt);
-    pos += dir * dt;
-
-    if (r < eventR) {
-      captured = true;
-      break;
-    }
-
-    if (prevPos.y * pos.y < 0.0 && diskAccum.a < 0.98) {
-      float t = prevPos.y / (prevPos.y - pos.y);
-      vec3 hit = mix(prevPos, pos, t);
-      vec4 dc = sampleDisk(hit, dir);
-      if (diskCrossings >= 2) {
-        dc.rgb *= 0.35;
-        dc.a *= 0.35;
-      }
-      diskAccum.rgb += dc.rgb * dc.a * (1.0 - diskAccum.a);
-      diskAccum.a += dc.a * (1.0 - diskAccum.a);
-      diskCrossings++;
-    }
-
-    if (r > 40.0) {
-      break;
-    }
-  }
-
-  vec3 col = diskAccum.rgb;
-  if (!captured) {
-    col += backgroundStars(normalize(dir)) * (1.0 - diskAccum.a);
-    float ringGlow = exp(-abs(minR - photonR) * 22.0);
-    col += vec3(1.0) * ringGlow * 2.9;
-    float ringHalo = exp(-abs(minR - photonR) * 4.2);
-    col += vec3(0.95) * ringHalo * 0.5;
-    float halo = exp(-abs(minR - photonR) * 0.85);
-    col += vec3(0.7) * halo * 0.34;
-  }
-
-  float dScreen = length(uv);
-  float bloom = exp(-max(0.0, dScreen - 0.58) * 3.1);
-  col += vec3(0.62) * bloom * 0.17;
-
-  return col;
+  // A faint galactic band on a tilted great circle. The lens drags it around the
+  // shadow into an Einstein ring, the clearest sign that light is bent.
+  float lat = dot(d, vec3(0.28, 0.87, 0.41));
+  float dust = noise(d.xz * 9.0 + d.y * 5.0) * 0.6 + noise(d.yx * 23.0) * 0.4;
+  float band = exp(-lat * lat * 26.0) * (0.25 + 0.9 * dust * dust);
+  return vec3(s * starFade + band * 0.09);
 }
 
 void main() {
   float minDim = min(uRes.x, uRes.y);
   vec2 uv = (gl_FragCoord.xy - uCenter * uRes) / minDim * uScale;
-  vec3 col = traceScene(uv);
-  col = col / (1.0 + col);
-  col = pow(col, vec3(0.86));
-  vec2 vigUv = (gl_FragCoord.xy - 0.5 * uRes) / minDim;
-  float vig = 1.0 - 0.22 * smoothstep(0.35, 1.5, length(vigUv));
-  col *= vig;
-  gl_FragColor = vec4(col, 1.0);
+  // One pixel in impact-parameter units: widths of the thin features follow it,
+  // so the shadow rim and photon ring stay smooth at any render scale.
+  float camDist = length(uCamPos);
+  float pix = uScale / minDim * 0.9 * camDist;
+
+  vec3 dir = normalize(uCamFwd + uv.x * 0.9 * uCamRight + uv.y * 0.9 * uCamUp);
+  vec3 pos = uCamPos;
+
+  float b = dot(pos, dir);
+  float c = dot(pos, pos) - R_OUT * R_OUT;
+  float disc = b * b - c;
+  vec3 col = vec3(0.0);
+  float alpha = 0.0;
+  bool captured = false;
+  bool escaped = disc <= 0.0;
+  float impact = 100.0;
+
+  if (disc > 0.0 && -b - sqrt(disc) > 0.0) {
+    // Skip the flat space between the camera and the sphere where gravity matters.
+    pos += dir * (-b - sqrt(disc));
+    vec3 hv = cross(pos, dir);
+    float h2 = dot(hv, hv);
+    impact = sqrt(h2);
+
+    int crossings = 0;
+    for (int i = 0; i < MAX_STEPS; i++) {
+      float r2 = dot(pos, pos);
+      float r = sqrt(r2);
+      if (r < 1.0) { captured = true; break; }
+      if (r > R_OUT + 0.1 && dot(pos, dir) > 0.0) { escaped = true; break; }
+
+      // Step grows with radius; past r = 9 rays barely bend, so they take long strides.
+      // Near the photon sphere (r = 1.5) rays wind round the hole; fine steps there
+      // resolve the thin lensed rings instead of breaking them into dots.
+      float dt = max(r < 9.0 ? 0.14 * r * clamp(r - 1.1, 0.35, 1.0) : 0.35 * r, 0.02);
+      vec3 prev = pos;
+      vec3 vh = dir + (-0.75 * dt * h2 / (r2 * r2 * r)) * pos;
+      pos += dt * vh;
+      float r2n = dot(pos, pos);
+      dir = vh + (-0.75 * dt * h2 / (r2n * r2n * sqrt(r2n))) * pos;
+
+      if (prev.y * pos.y < 0.0 && crossings < 3) {
+        float t = prev.y / (prev.y - pos.y);
+        vec4 d = shadeDisk(mix(prev, pos, t), normalize(dir), float(crossings));
+        // Higher images crowd into a sliver at the shadow rim, under a pixel wide;
+        // they fade out there and the photon ring below stands in for them.
+        // The direct image is never faded: the near side of the disk crosses in front
+        // of the shadow, and cutting it there turned the shadow into a pasted-on disc.
+        float fadeW = 0.02 + 3.0 * pix;
+        if (crossings > 0) d *= smoothstep(B_CRIT + 0.03, B_CRIT + 0.03 + 2.0 * fadeW, impact);
+        crossings++;
+        col += d.rgb * (1.0 - alpha);
+        alpha += d.a * (1.0 - alpha);
+        if (alpha > 0.985) { escaped = true; break; }
+      }
+    }
+    // A ray still circling when the budget runs out sits on the photon sphere and reads as shadow.
+    if (!escaped || impact < B_CRIT) captured = true;
+  }
+
+  // Right at the rim the lens magnifies the sky so hard that neighbouring pixels
+  // sample unrelated stars and the rim turns dotted; stars fade there, the smooth band stays.
+  // The rim is antialiased over a pixel and a half; only what lies behind the hole
+  // (sky, ring) is masked, the near side of the disk keeps crossing in front.
+  float rim = smoothstep(B_CRIT - 1.5 * pix, B_CRIT, impact);
+  if (!captured || rim > 0.0) col += rim * sky(normalize(dir), smoothstep(B_CRIT + 0.05, B_CRIT + 0.7, impact)) * (1.0 - alpha);
+
+  // Photon ring: rays just outside the critical curve loop round the hole again and
+  // again, each loop another, thinner image of the disk. Summed they make a hair-thin
+  // line on the shadow rim. Its brightness is set per frame, not per ray: rays that
+  // close to the critical curve are chaotic, and sampling them made the line dotted.
+  float ringW = 0.02 + 2.0 * pix;
+  float ringX = max(impact - B_CRIT, 0.0) / ringW;
+  col += vec3(0.32) * exp(-ringX * ringX) * (1.0 - 0.8 * alpha) * rim;
+
+  // Filmic tone map; the composite pass adds bloom and grain on top.
+  col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
+  gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)), 1.0);
 }
 `;
 
-const BLIT_SRC = `
+// Bloom: the bright pass is read at quarter scale with a 4-tap box, then blurred
+// in two separable passes, so the halo costs a fraction of one scene pass.
+const BRIGHT_SRC = `
 precision mediump float;
 varying vec2 vUv;
 uniform sampler2D uTex;
+uniform vec2 uTexel;
 void main() {
-  gl_FragColor = vec4(texture2D(uTex, vUv).rgb, 1.0);
+  vec3 c = texture2D(uTex, vUv + uTexel * vec2(-1.0, -1.0)).rgb
+    + texture2D(uTex, vUv + uTexel * vec2(1.0, -1.0)).rgb
+    + texture2D(uTex, vUv + uTexel * vec2(-1.0, 1.0)).rgb
+    + texture2D(uTex, vUv + uTexel * vec2(1.0, 1.0)).rgb;
+  c *= 0.25;
+  float l = max(c.r, max(c.g, c.b));
+  gl_FragColor = vec4(c * smoothstep(0.4, 1.0, l), 1.0);
+}
+`;
+
+const BLUR_SRC = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uTex;
+uniform vec2 uDir;
+void main() {
+  vec3 c = texture2D(uTex, vUv).rgb * 0.227;
+  c += (texture2D(uTex, vUv + uDir * 1.385).rgb + texture2D(uTex, vUv - uDir * 1.385).rgb) * 0.316;
+  c += (texture2D(uTex, vUv + uDir * 3.231).rgb + texture2D(uTex, vUv - uDir * 3.231).rgb) * 0.07;
+  gl_FragColor = vec4(c, 1.0);
+}
+`;
+
+const COMPOSITE_SRC = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uScene;
+uniform sampler2D uBloom;
+uniform float uTime;
+float hash12(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+void main() {
+  vec3 c = texture2D(uScene, vUv).rgb + texture2D(uBloom, vUv).rgb * 0.9;
+  c = 1.0 - (1.0 - clamp(c, 0.0, 1.0)) * (1.0 - clamp(c - 1.0, 0.0, 1.0));
+  c += (hash12(gl_FragCoord.xy + fract(uTime) * 61.0) - 0.5) / 160.0;
+  gl_FragColor = vec4(c, 1.0);
 }
 `;
 
@@ -251,6 +284,51 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
+// A 64x64 tileable value-noise texture, built once on the CPU. Sampling it is far
+// cheaper per pixel than hashing fbm noise in the shader.
+function makeNoiseTexture(gl) {
+  const N = 64;
+  const grid = 8;
+  const lattice = new Float32Array(grid * grid);
+  let seed = 1337;
+  for (let i = 0; i < lattice.length; i++) {
+    seed = (seed * 16807) % 2147483647;
+    lattice[i] = seed / 2147483647;
+  }
+  const at = (x, y) => lattice[((y % grid) + grid) % grid * grid + (((x % grid) + grid) % grid)];
+  const fade = (t) => t * t * (3 - 2 * t);
+  const data = new Uint8Array(N * N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      let v = 0;
+      let amp = 0.5;
+      let freq = 1;
+      for (let o = 0; o < 3; o++) {
+        const fx = (x / N) * grid * freq;
+        const fy = (y / N) * grid * freq;
+        const ix = Math.floor(fx);
+        const iy = Math.floor(fy);
+        const ux = fade(fx - ix);
+        const uy = fade(fy - iy);
+        const a = at(ix, iy) * (1 - ux) + at(ix + 1, iy) * ux;
+        const b = at(ix, iy + 1) * (1 - ux) + at(ix + 1, iy + 1) * ux;
+        v += amp * (a * (1 - uy) + b * uy);
+        amp *= 0.5;
+        freq *= 2;
+      }
+      data[y * N + x] = Math.round((v / 0.875) * 255);
+    }
+  }
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, N, N, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  return tex;
+}
+
 function makeTarget(gl) {
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -276,6 +354,8 @@ function makeTarget(gl) {
   return t;
 }
 
+// The camera is a free orthonormal frame around the hole (right, up, back), so it
+// turns any way, over the poles included, without a gimbal or a pitch limit.
 const norm = (v) => {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
@@ -283,6 +363,7 @@ const norm = (v) => {
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
+// Rodrigues rotation of v about the unit axis k.
 function rotate(v, k, ang) {
   const c = Math.cos(ang);
   const s = Math.sin(ang);
@@ -290,38 +371,20 @@ function rotate(v, k, ang) {
   const d = dot(k, v) * (1 - c);
   return [v[0] * c + kv[0] * s + k[0] * d, v[1] * c + kv[1] * s + k[1] * d, v[2] * c + kv[2] * s + k[2] * d];
 }
-const DEFAULT_PITCH = 0.34;
-const DEFAULT_DIST = 26.0;
-const DIST_MIN = 15.0;
-const DIST_MAX = 33.0;
-const BRIGHT_LIFT = 16;
-
-const isWideScreen = () =>
-  typeof window !== 'undefined' && window.innerWidth >= 768;
 
 function defaultFrame() {
-  const cp = Math.cos(DEFAULT_PITCH);
-  const back = [0.0, Math.sin(DEFAULT_PITCH), -cp];
+  const yaw = 0.0;
+  const pitch = 0.2;
+  const cp = Math.cos(pitch);
+  const back = [cp * Math.sin(yaw), Math.sin(pitch), -cp * Math.cos(yaw)];
   const right = norm(cross([0, 1, 0], back));
   const up = cross(back, right);
   return { right, up, back };
 }
 
-const QUALITY = [0.8, 0.9, 1.0];
-const STEPS = [110, 190, 300];
-const COMPACT_HEIGHT = 560;
-const FIT_SPAN = 0.674;
-const TILT_BASE = 0.3986;
-const TILT_GROW = 0.4111;
-const PITCH_MIN = -0.62;
-const PITCH_MAX = 0.62;
-const SENS = 0.0036;
-const FOLLOW_TAU = 0.075;
-const VEL_TAU = 0.09;
-const GLIDE = 2.0;
-const MAX_RATE = 3.0;
-const DRIFT = 0.055;
-const DOLLY_MAX = 0.46;
+// Render scale steps: the scene is drawn at this fraction of device pixels and
+// upscaled bilinearly by the composite pass, which also smooths its edges.
+const QUALITY = [0.28, 0.36, 0.46, 0.58, 0.7, 0.82];
 
 const LABELS = {
   en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
@@ -331,116 +394,19 @@ const LABELS = {
 export function QuasarScene({ lang = 'en', copyRef = null }) {
   const labels = LABELS[lang] || LABELS.en;
   const canvasRef = useRef(null);
-  const layoutRef = useRef({ ready: false, scale: 1, eyeY: 0, room: 1, compact: false, shiftX: 0 });
-  const rectRef = useRef({ width: 0, height: 0, top: 0, left: 0 });
   const stateRef = useRef({
     ...defaultFrame(),
-    dist: DEFAULT_DIST,
+    dist: 30.0,
     isDragging: false,
     lastX: 0,
     lastY: 0,
-    lastT: 0,
     velX: 0,
     velY: 0,
-    pendingX: 0,
-    pendingY: 0,
-    fit: 1,
-    spin: 0,
     hole: { x: 0, y: 0, r: 0 },
   });
 
-  useEffect(() => {
-    const measure = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const canvasRect = canvas.getBoundingClientRect();
-      const canvasW = canvasRect.width;
-      const canvasH = canvasRect.height;
-      rectRef.current = {
-        width: canvasW,
-        height: canvasH,
-        top: canvasRect.top,
-        left: canvasRect.left,
-      };
-      const phone = canvasW < 768;
-      const compact = window.innerHeight < COMPACT_HEIGHT;
-      if (!phone && !compact) {
-        layoutRef.current = { ready: false, scale: 1, eyeY: 0, room: 1, compact: false, shiftX: 0 };
-        return;
-      }
-      const scrollY = window.scrollY;
-      const canvasDocTop = canvasRect.top + scrollY;
-      const navHead = document.querySelector('.nav-head');
-      const pill = document.querySelector('.nav-pill');
-      let plateBottom = 68;
-      if (navHead && pill) {
-        const headTop = parseFloat(getComputedStyle(navHead).top);
-        const pillH = pill.getBoundingClientRect().height;
-        plateBottom = (Number.isFinite(headTop) ? headTop : 0) + pillH;
-      }
-      const copy = copyRef ? copyRef.current : null;
-      const copyDocTop = copy
-        ? copy.getBoundingClientRect().top + scrollY
-        : canvasDocTop + canvasH * 0.44;
-      const band = Math.max(60, copyDocTop - plateBottom);
-      const gap = phone || compact ? 14 : 26;
-      const room = Math.max(46, band - gap * 2);
-      const minCss = Math.min(canvasW, canvasH);
-      const wanted = canvasW * (phone ? 0.82 : 0.80);
-      const byHeight = room / 0.76;
-      const apparent = Math.max(120, Math.min(wanted, byHeight));
-      let scale = (FIT_SPAN * minCss) / apparent;
-      if (scale > 3.4) scale = 3.4;
-      const eyeMid = plateBottom + band / 2 + BRIGHT_LIFT;
-      layoutRef.current = {
-        ready: true,
-        scale,
-        room,
-        shiftX: 0,
-        eyeY: eyeMid - canvasDocTop,
-        compact,
-      };
-    };
-    measure();
-    let wasWide = isWideScreen();
-    const onResize = () => {
-      const wide = isWideScreen();
-      if (wide !== wasWide) {
-        wasWide = wide;
-        Object.assign(stateRef.current, defaultFrame(), {
-          dist: DEFAULT_DIST,
-          velX: 0,
-          velY: 0,
-          pendingX: 0,
-          pendingY: 0,
-          spin: 0,
-        });
-      }
-      measure();
-    };
-    window.addEventListener('resize', onResize);
-    window.addEventListener('orientationchange', measure);
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (observer) {
-      if (canvasRef.current) observer.observe(canvasRef.current);
-      if (copyRef && copyRef.current) observer.observe(copyRef.current);
-    }
-    return () => {
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('orientationchange', measure);
-      if (observer) observer.disconnect();
-    };
-  }, [copyRef]);
-
   const resetCamera = useCallback(() => {
-    Object.assign(stateRef.current, defaultFrame(), {
-      dist: DEFAULT_DIST,
-      velX: 0,
-      velY: 0,
-      pendingX: 0,
-      pendingY: 0,
-      spin: 0,
-    });
+    Object.assign(stateRef.current, defaultFrame(), { dist: 30.0, velX: 0, velY: 0 });
     stateRef.current.wake?.();
   }, []);
 
@@ -460,7 +426,9 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     try {
       progs = {
         scene: createProgram(gl, VERT_SRC, FRAG_SRC),
-        blit: createProgram(gl, VERT_SRC, BLIT_SRC),
+        bright: createProgram(gl, VERT_SRC, BRIGHT_SRC),
+        blur: createProgram(gl, VERT_SRC, BLUR_SRC),
+        comp: createProgram(gl, VERT_SRC, COMPOSITE_SRC),
       };
     } catch {
       return;
@@ -475,20 +443,23 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     const loc = {};
     Object.entries(progs).forEach(([key, p]) => {
       loc[key] = {};
-      ['uRes', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uCenter', 'uScale', 'uSteps', 'uTex'].forEach((n) => {
+      ['uRes', 'uCenter', 'uScale', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uNoise', 'uTex', 'uTexel', 'uDir', 'uScene', 'uBloom'].forEach((n) => {
         loc[key][n] = gl.getUniformLocation(p, n);
       });
     });
+    const noiseTex = makeNoiseTexture(gl);
     const sceneT = makeTarget(gl);
+    const bloomA = makeTarget(gl);
+    const bloomB = makeTarget(gl);
 
-    let quality = QUALITY.length - 1;
+    // Adaptive quality: start mid, then step down when frames run long and back up
+    // when there is headroom. Frame cost is measured as the gap between rAF calls
+    // over a rolling window, and the loop is capped at 60fps on fast screens.
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    let quality = coarse ? 1 : 2;
     let frameSum = 0;
     let frameCount = 0;
     let lastDraw = 0;
-    let windowStart = performance.now();
-    canvas.dataset.quality = String(QUALITY.length - 1);
-    let frames = 0;
-    canvas.dataset.frames = '0';
     const FRAME_MIN = 1000 / 61;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -514,108 +485,74 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         animId = requestAnimationFrame(render);
         return;
       }
-      const rawDt = (now - t0) * 0.001;
-      const dt = Math.min(rawDt, 0.1);
+      const dt = Math.min((now - t0) * 0.001, 0.1);
       t0 = now;
-      frames += 1;
-      canvas.dataset.frames = String(frames);
       if (lastDraw) {
         frameSum += now - lastDraw;
         frameCount++;
-        if (frameCount >= 3 && now - windowStart > 600) {
+        if (frameCount === 20) {
           const avg = frameSum / frameCount;
-          if (avg > 45 && quality > 0) {
-            quality = avg > 200 ? Math.max(0, quality - 2)
-              : avg > 90 ? Math.max(0, quality - 1)
-                : quality - 1;
-          } else if (avg < 26 && quality < QUALITY.length - 1) {
-            quality++;
-          }
+          if (avg > 34 && quality > 1) quality -= 2;
+          else if (avg > 21 && quality > 0) quality--;
+          else if (avg < 17.5 && quality < QUALITY.length - 1) quality++;
           frameSum = 0;
           frameCount = 0;
-          windowStart = now;
-          canvas.dataset.quality = String(quality);
         }
       }
       lastDraw = now;
 
-      const rect = rectRef.current.width > 0 ? rectRef.current : canvas.getBoundingClientRect();
+      const rect = canvas.getBoundingClientRect();
       const isMobile = rect.width < 768;
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
-      const outW = Math.max(1, Math.round(rect.width * dpr));
-      const outH = Math.max(1, Math.round(rect.height * dpr));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // The composite runs at up to 1.5x CSS pixels; the expensive scene pass follows quality.
+      const outW = Math.max(1, Math.round(rect.width * Math.min(dpr, 1.5)));
+      const outH = Math.max(1, Math.round(rect.height * Math.min(dpr, 1.5)));
       const sw = Math.max(1, Math.round(rect.width * dpr * QUALITY[quality]));
       const sh = Math.max(1, Math.round(rect.height * dpr * QUALITY[quality]));
+      const bw = Math.max(1, Math.round(sw / 4));
+      const bh = Math.max(1, Math.round(sh / 4));
 
       if (canvas.width !== outW || canvas.height !== outH) {
         canvas.width = outW;
         canvas.height = outH;
       }
       sceneT.size(sw, sh);
+      bloomA.size(bw, bh);
+      bloomB.size(bw, bh);
 
       const st = stateRef.current;
-      const follow = 1 - Math.exp(-dt / FOLLOW_TAU);
-      const takeX = st.pendingX * follow;
-      const takeY = st.pendingY * follow;
-      st.pendingX -= takeX;
-      st.pendingY -= takeY;
-      if (import.meta.env.DEV) {
-        st.applied = (st.applied || 0) + takeX;
-        st.appliedGlide = (st.appliedGlide || 0) + (st.isDragging ? 0 : st.velX * dt);
-      }
-      if (st.isDragging) {
-        turn(takeX, takeY);
-      } else {
-        const damp = Math.exp(-GLIDE * dt);
+      if (!st.isDragging) {
+        // Inertia, then a slow drift around the disk axis so the scene never sits still.
+        const damp = Math.pow(0.93, dt * 60);
         st.velX *= damp;
         st.velY *= damp;
-        const yawRate = st.velX + (reduceMotion.matches ? 0 : DRIFT);
-        turn(takeX + yawRate * dt, takeY + st.velY * dt);
+        let yawRate = st.velX;
+        if (!reduceMotion.matches) yawRate += 0.06;
+        turn(yawRate * dt, st.velY * dt);
       }
-      const spinDt = Math.min(rawDt, 0.5);
-      st.spin = st.isDragging
-        ? Math.min(1, st.spin + spinDt * 1.15)
-        : Math.max(0, st.spin - spinDt * 0.55);
-      const dolly = 1 + DOLLY_MAX * st.spin;
 
-      const pos = st.back.map((v) => v * st.dist * dolly);
+      const pos = st.back.map((v) => v * st.dist);
       const fwd = st.back.map((v) => -v);
 
       let center;
       let scale;
-      const minCss = Math.min(rect.width, rect.height);
-      const layout = layoutRef.current;
-      if (isMobile || layout.compact) {
-        if (layout.ready) {
-          scale = layout.scale;
-          center = [0.5 - (layout.shiftX || 0), 1 - layout.eyeY / rect.height];
-        } else {
-          center = [0.5, 0.7];
-          scale = 1.0;
-        }
+      if (isMobile) {
+        center = [0.5, 0.7];
+        scale = 1.1 * (st.dist / 30);
       } else {
+        // Fit the hole into the space right of the hero text: the text column ends
+        // about 760px into the capped 1440px container.
         const cssW = rect.width;
-        let textRight = 760;
-        if (cssW >= 1440) textRight = (cssW - 1440) / 2 + 760;
-        else if (cssW < 1280) textRight = Math.min(760, cssW * 0.58);
-        const free = Math.max(cssW - textRight, 200);
-        scale = Math.max(0.6, Math.min(1.8, (0.52 * minCss) / free));
-        center = [(textRight + free * 0.18) / cssW, 0.47];
+        const textRight = Math.max(0, (cssW - 1440) / 2) + 760;
+        const free = Math.max(cssW - textRight, 240);
+        const reach = 0.4 * Math.min(rect.width, rect.height);
+        center = [(textRight + free / 2) / cssW, 0.5];
+        scale = Math.max(1.0, reach / (free / 2 - 32)) * (st.dist / 30);
       }
-      if ((isMobile || layout.compact) && layout.ready) {
-        const pitch = Math.asin(Math.max(-1, Math.min(1, st.back[1])));
-        const tilt = Math.abs(Math.sin(pitch));
-        const need = ((TILT_BASE + TILT_GROW * tilt) * minCss) / layout.room;
-        const target = Math.max(1, need / layout.scale);
-        st.fit += (target - st.fit) * Math.min(1, dt * 8);
-        scale *= st.fit;
-      } else {
-        st.fit = 1;
-      }
-      scale *= st.dist / DEFAULT_DIST;
-
-      const holeR = (0.37 * minCss) / scale;
-      st.hole = { x: center[0] * rect.width, y: (1 - center[1]) * rect.height, r: holeR };
+      // Where the hole sits in CSS pixels, for touch: a finger on it turns it,
+      // a finger anywhere else scrolls the page.
+      const minCss = Math.min(rect.width, rect.height);
+      st.hole = { x: center[0] * rect.width, y: (1 - center[1]) * rect.height, r: (minCss * 0.42) / scale * (30 / st.dist) };
 
       const S = loc.scene;
       pass(progs.scene, sceneT, sw, sh);
@@ -627,18 +564,32 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       gl.uniform3fv(S.uCamFwd, fwd);
       gl.uniform2f(S.uCenter, center[0], center[1]);
       gl.uniform1f(S.uScale, scale);
-      gl.uniform1f(S.uSteps, STEPS[quality]);
+      bindTex(0, noiseTex, S.uNoise);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-      pass(progs.blit, null, outW, outH);
-      bindTex(0, sceneT.tex, loc.blit.uTex);
+      pass(progs.bright, bloomA, bw, bh);
+      gl.uniform2f(loc.bright.uTexel, 1 / sw, 1 / sh);
+      bindTex(0, sceneT.tex, loc.bright.uTex);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-      const moving = st.isDragging
-        || Math.abs(st.velX) > 0.002
-        || Math.abs(st.velY) > 0.002
-        || Math.abs(st.pendingX) > 0.0001
-        || Math.abs(st.pendingY) > 0.0001;
+      for (let i = 0; i < 2; i++) {
+        pass(progs.blur, bloomB, bw, bh);
+        gl.uniform2f(loc.blur.uDir, (1 + i) / bw, 0);
+        bindTex(0, bloomA.tex, loc.blur.uTex);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        pass(progs.blur, bloomA, bw, bh);
+        gl.uniform2f(loc.blur.uDir, 0, (1 + i) / bh);
+        bindTex(0, bloomB.tex, loc.blur.uTex);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
+
+      pass(progs.comp, null, outW, outH);
+      gl.uniform1f(loc.comp.uTime, (now * 0.001) % 3600);
+      bindTex(0, sceneT.tex, loc.comp.uScene);
+      bindTex(1, bloomA.tex, loc.comp.uBloom);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      const moving = st.isDragging || Math.abs(st.velX) > 0.002 || Math.abs(st.velY) > 0.002;
       if (visible && (!reduceMotion.matches || moving)) {
         animId = requestAnimationFrame(render);
       } else {
@@ -646,6 +597,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       }
     };
 
+    // Turn the frame: a around the screen's up axis, b around its right axis.
     const turn = (a, b) => {
       const st = stateRef.current;
       let { right, up, back } = st;
@@ -660,15 +612,6 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       back = norm(back);
       right = norm(cross(up, back));
       up = cross(back, right);
-      const pitch = Math.asin(Math.max(-1, Math.min(1, back[1])));
-      if (pitch > PITCH_MAX || pitch < PITCH_MIN) {
-        const target = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch));
-        back = norm(rotate(back, right, target - pitch));
-        right = norm(cross(up, back));
-        up = cross(back, right);
-        st.velY = 0;
-        st.pendingY = 0;
-      }
       Object.assign(st, { right, up, back });
     };
 
@@ -701,46 +644,25 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       visible = false;
     };
     canvas.addEventListener('webglcontextlost', onContextLost);
-    if (import.meta.env.DEV) window.__hotaru = stateRef.current;
     start();
 
+    const SENS = 0.006;
     const dragTo = (x, y) => {
       const st = stateRef.current;
-      const now = performance.now();
       const dx = x - st.lastX;
       const dy = y - st.lastY;
-      const dt = Math.min(0.2, Math.max(0.005, (now - st.lastT) / 1000));
       st.lastX = x;
       st.lastY = y;
-      st.lastT = now;
-      st.pendingX += -dx * SENS;
-      st.pendingY += dy * SENS;
-      const k = 1 - Math.exp(-dt / VEL_TAU);
-      st.velX += (-dx * SENS / dt - st.velX) * k;
-      st.velY += (dy * SENS / dt - st.velY) * k;
-      st.velX = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velX));
-      st.velY = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velY));
-      const effort = Math.min(0.14, (Math.abs(dx) + Math.abs(dy)) * SENS * 26);
-      st.spin = Math.min(1, st.spin + effort);
+      turn(-dx * SENS, dy * SENS);
+      st.velX = -dx * SENS * 40;
+      st.velY = dy * SENS * 40;
     };
     const beginDrag = (x, y) => {
-      Object.assign(stateRef.current, {
-        isDragging: true,
-        lastX: x,
-        lastY: y,
-        lastT: performance.now(),
-        velX: 0,
-        velY: 0,
-        pendingX: 0,
-        pendingY: 0,
-      });
+      Object.assign(stateRef.current, { isDragging: true, lastX: x, lastY: y, velX: 0, velY: 0 });
       start();
     };
-    const endDrag = () => {
-      stateRef.current.isDragging = false;
-    };
     const zoomBy = (k) => {
-      stateRef.current.dist = Math.max(DIST_MIN, Math.min(DIST_MAX, stateRef.current.dist * k));
+      stateRef.current.dist = Math.max(18.0, Math.min(48.0, stateRef.current.dist * k));
       start();
     };
 
@@ -754,9 +676,11 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     };
     const onPointerUp = (e) => {
       if (e.pointerType === 'touch') return;
-      endDrag();
+      stateRef.current.isDragging = false;
     };
 
+    // Touch: one finger on the hole turns it, two fingers pinch to zoom; a finger
+    // that lands elsewhere on the hero leaves the page to scroll.
     let pinch = 0;
     const touchDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     const onTouchStart = (e) => {
@@ -799,7 +723,6 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     canvas.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('blur', endDrag);
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
     canvas.addEventListener('touchend', onTouchEnd);
@@ -815,14 +738,14 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       canvas.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('blur', endDrag);
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
       canvas.removeEventListener('touchcancel', onTouchEnd);
       canvas.removeEventListener('wheel', onWheel);
       gl.deleteBuffer(posBuf);
-      sceneT.free();
+      gl.deleteTexture(noiseTex);
+      [sceneT, bloomA, bloomB].forEach((t) => t.free());
       Object.values(progs).forEach((p) => gl.deleteProgram(p));
     };
   }, []);
