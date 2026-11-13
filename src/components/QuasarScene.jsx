@@ -25,6 +25,7 @@ uniform vec3 uCamUp;
 uniform vec3 uCamFwd;
 uniform vec2 uCenter;
 uniform float uScale;
+uniform float uSteps;
 
 float hash13(vec3 p3) {
   p3 = fract(p3 * 0.1031);
@@ -148,7 +149,11 @@ vec3 traceScene(vec2 uv) {
   float minR = 1000.0;
   int diskCrossings = 0;
 
+  // the walk through the curved space is the expensive part of the frame.
+  // the step budget is set from the outside, so a slow device spends less
+  // of it and a quick one keeps every detail
   for (int i = 0; i < 300; i++) {
+    if (float(i) >= uSteps) break;
     vec3 prevPos = pos;
     float r = length(pos);
     minR = min(minR, r);
@@ -290,8 +295,17 @@ function rotate(v, k, ang) {
   return [v[0] * c + kv[0] * s + k[0] * d, v[1] * c + kv[1] * s + k[1] * d, v[2] * c + kv[2] * s + k[2] * d];
 }
 
-const DEFAULT_PITCH = 0.18;
+// the disk opens far enough that the hole reads as a big body of light
+// reaching across the frame, rather than a thin band that leaves half
+// the page bare
+const DEFAULT_PITCH = 0.34;
 const DEFAULT_DIST = 26.0;
+// how far the eye sits below the middle of the band, to compensate for the
+// bright limb of the disk glowing above the eye point
+const BRIGHT_LIFT = 16;
+
+const isWideScreen = () =>
+  typeof window !== 'undefined' && window.innerWidth >= 768;
 
 function defaultFrame() {
   const cp = Math.cos(DEFAULT_PITCH);
@@ -302,6 +316,8 @@ function defaultFrame() {
 }
 
 const QUALITY = [0.8, 0.9, 1.0];
+// how many steps of the ray walk each quality level is allowed to take
+const STEPS = [110, 190, 300];
 const COMPACT_HEIGHT = 560;
 // the apparent width of the hole in css pixels, for a given camera scale
 const FIT_SPAN = 0.674;
@@ -326,7 +342,7 @@ const LABELS = {
 export function QuasarScene({ lang = 'en', copyRef = null }) {
   const labels = LABELS[lang] || LABELS.en;
   const canvasRef = useRef(null);
-  const layoutRef = useRef({ ready: false, scale: 1, eyeY: 0, room: 1, compact: false });
+  const layoutRef = useRef({ ready: false, scale: 1, eyeY: 0, room: 1, compact: false, shiftX: 0 });
   const rectRef = useRef({ width: 0, height: 0, top: 0, left: 0 });
   const stateRef = useRef({
     ...defaultFrame(),
@@ -357,9 +373,13 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         top: canvasRect.top,
         left: canvasRect.left,
       };
+      // a phone gets its own framing: the hole has to fit the width of the
+      // screen with a margin on both sides, however the disk happens to
+      // lean while it turns
+      const phone = canvasW < 768;
       const compact = window.innerHeight < COMPACT_HEIGHT;
-      if (canvasW >= 768 && !compact) {
-        layoutRef.current = { ready: false, scale: 1, eyeY: 0, room: 1, compact: false };
+      if (!phone && !compact) {
+        layoutRef.current = { ready: false, scale: 1, eyeY: 0, room: 1, compact: false, shiftX: 0 };
         return;
       }
       const scrollY = window.scrollY;
@@ -377,26 +397,53 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         ? copy.getBoundingClientRect().top + scrollY
         : canvasDocTop + canvasH * 0.44;
       const band = Math.max(60, copyDocTop - plateBottom);
-      const gap = compact ? 16 : 26;
+      const gap = phone || compact ? 14 : 26;
       const room = Math.max(46, band - gap * 2);
       const minCss = Math.min(canvasW, canvasH);
-      // the hole is the centerpiece: let it span almost the whole width and
-      // sit in the middle of the band that separates the plate from the copy
-      const wanted = canvasW * (compact ? 0.66 : 0.82);
+      // the hole is the centerpiece: it sits dead centre, so the disk is
+      // sized to leave the same margin on both sides of the frame
+      const wanted = canvasW * (phone ? 0.82 : 0.80);
       const byHeight = room / 0.76;
       const apparent = Math.max(120, Math.min(wanted, byHeight));
       let scale = (FIT_SPAN * minCss) / apparent;
       if (scale > 3.4) scale = 3.4;
+      // the bright limb of the disk reads a touch above the eye point, so the
+      // eye is placed a little below the middle of the band to leave the
+      // same air above and below the ring on any screen height
+      const eyeMid = plateBottom + band / 2 + BRIGHT_LIFT;
       layoutRef.current = {
         ready: true,
         scale,
         room,
-        eyeY: plateBottom + band * 0.60 - canvasDocTop,
+        // the hole sits on the centre line, so the ring reads as the
+        // subject of the frame rather than something leaning to one side
+        shiftX: 0,
+        // the ring is centred in the band, so it is neither pinned under the
+        // plate nor left adrift above the copy
+        eyeY: eyeMid - canvasDocTop,
         compact,
       };
     };
     measure();
-    window.addEventListener('resize', measure);
+    // the two layouts frame the hole differently, so a change of size
+    // across the line between them starts the camera afresh
+    let wasWide = isWideScreen();
+    const onResize = () => {
+      const wide = isWideScreen();
+      if (wide !== wasWide) {
+        wasWide = wide;
+        Object.assign(stateRef.current, defaultFrame(), {
+          dist: DEFAULT_DIST,
+          velX: 0,
+          velY: 0,
+          pendingX: 0,
+          pendingY: 0,
+          spin: 0,
+        });
+      }
+      measure();
+    };
+    window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', measure);
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (observer) {
@@ -404,7 +451,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       if (copyRef && copyRef.current) observer.observe(copyRef.current);
     }
     return () => {
-      window.removeEventListener('resize', measure);
+      window.removeEventListener('resize', onResize);
       window.removeEventListener('orientationchange', measure);
       if (observer) observer.disconnect();
     };
@@ -453,7 +500,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     const loc = {};
     Object.entries(progs).forEach(([key, p]) => {
       loc[key] = {};
-      ['uRes', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uCenter', 'uScale', 'uTex'].forEach((n) => {
+      ['uRes', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uCenter', 'uScale', 'uSteps', 'uTex'].forEach((n) => {
         loc[key][n] = gl.getUniformLocation(p, n);
       });
     });
@@ -463,6 +510,12 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     let frameSum = 0;
     let frameCount = 0;
     let lastDraw = 0;
+    let windowStart = performance.now();
+    canvas.dataset.quality = String(QUALITY.length - 1);
+    // the number of frames actually put on the screen, so a caller can
+    // wait for the scene to be on the glass instead of guessing at a delay
+    let frames = 0;
+    canvas.dataset.frames = '0';
     const FRAME_MIN = 1000 / 61;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -491,15 +544,28 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       const rawDt = (now - t0) * 0.001;
       const dt = Math.min(rawDt, 0.1);
       t0 = now;
+      frames += 1;
+      canvas.dataset.frames = String(frames);
       if (lastDraw) {
         frameSum += now - lastDraw;
         frameCount++;
-        if (frameCount === 20) {
+        // the window is a slice of time rather than a number of frames, so
+        // a weak device settles in a second or so instead of waiting for
+        // twenty slow frames to pile up
+        if (frameCount >= 3 && now - windowStart > 600) {
           const avg = frameSum / frameCount;
-          if (avg > 45 && quality > 0) quality--;
-          else if (avg < 26 && quality < QUALITY.length - 1) quality++;
+          if (avg > 45 && quality > 0) {
+            // a device far off the pace drops more than one level at once
+            quality = avg > 200 ? Math.max(0, quality - 2)
+              : avg > 90 ? Math.max(0, quality - 1)
+                : quality - 1;
+          } else if (avg < 26 && quality < QUALITY.length - 1) {
+            quality++;
+          }
           frameSum = 0;
           frameCount = 0;
+          windowStart = now;
+          canvas.dataset.quality = String(quality);
         }
       }
       lastDraw = now;
@@ -557,7 +623,9 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       if (isMobile || layout.compact) {
         if (layout.ready) {
           scale = layout.scale;
-          center = [0.5, 1 - layout.eyeY / rect.height];
+          // the bright limb of the disk leans to one side, so the whole
+          // ring is nudged back the other way to stay inside the frame
+          center = [0.5 - (layout.shiftX || 0), 1 - layout.eyeY / rect.height];
         } else {
           center = [0.5, 0.7];
           scale = 1.0;
@@ -568,8 +636,8 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         if (cssW >= 1440) textRight = (cssW - 1440) / 2 + 760;
         else if (cssW < 1280) textRight = Math.min(760, cssW * 0.58);
         const free = Math.max(cssW - textRight, 200);
-        scale = Math.max(0.9, Math.min(1.8, (0.86 * minCss) / free));
-        center = [(textRight + free / 2) / cssW, 0.46];
+        scale = Math.max(0.6, Math.min(1.8, (0.52 * minCss) / free));
+        center = [(textRight + free * 0.18) / cssW, 0.47];
       }
       if ((isMobile || layout.compact) && layout.ready) {
         const pitch = Math.asin(Math.max(-1, Math.min(1, st.back[1])));
@@ -596,6 +664,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       gl.uniform3fv(S.uCamFwd, fwd);
       gl.uniform2f(S.uCenter, center[0], center[1]);
       gl.uniform1f(S.uScale, scale);
+      gl.uniform1f(S.uSteps, STEPS[quality]);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
       pass(progs.blit, null, outW, outH);
