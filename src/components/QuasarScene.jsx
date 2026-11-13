@@ -17,11 +17,6 @@ precision highp float;
 precision mediump float;
 #endif
 
-// Schwarzschild black hole, rs = 1. Thin Novikov-Thorne disk from the ISCO (r = 3)
-// out to DISK_OUT, its brightness set by the disk temperature, Doppler-beamed and gravitationally
-// redshifted. Rays are integrated with an adaptive leapfrog step, so a pixel takes
-// 20 to 70 iterations instead of hundreds. The camera orbits freely, so nothing here
-// assumes the view is near the disk plane.
 
 uniform vec2 uRes;
 uniform vec2 uCenter;
@@ -36,24 +31,20 @@ uniform sampler2D uNoise;
 const float ISCO = 3.0;
 const float DISK_OUT = 12.0;
 const float R_OUT = 17.0;
-const float B_CRIT = 2.598;      // critical impact parameter, 3 sqrt(3) / 2
-const float FLUX_NORM = 476.6;   // 1 / peak of (1 - sqrt(3/r)) / r^3, at r ~ 4.08
-const float FLOW = 12.0;         // seconds per flow cycle, see shadeDisk
+const float B_CRIT = 2.598;
+const float FLUX_NORM = 476.6;
+const float FLOW = 12.0;
 const int MAX_STEPS = 96;
 
 float noise(vec2 p) {
   return texture2D(uNoise, p * (1.0 / 64.0)).r;
 }
 
-// Monochrome emission: the observed temperature sets brightness only. Cool gas
-// fades to grey, the hottest blueshifted gas to a hard white.
 vec3 glow(float t) {
   float v = smoothstep(0.05, 1.35, t);
   return vec3(mix(0.1, 1.0, v * v));
 }
 
-// Turbulent streaks in co-rotating coordinates. 8 lattice cells per 64 texels, so
-// angle * 64 / 2pi * k tiles seamlessly for whole k.
 float streaks(float a, float lr, float phase) {
   vec2 q = vec2(a * 10.186, lr * 22.0 + phase);
   float n = noise(q) * 0.45
@@ -66,8 +57,6 @@ vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
   float r = length(hit.xz);
   if (r < ISCO * 0.98 || r > DISK_OUT) return vec4(0.0);
 
-  // Keplerian shear winds any pattern into a tight spiral within a few orbits, so
-  // two copies run half a cycle apart and crossfade: each is reset while unseen.
   float omega = 2.2 * pow(r, -1.5);
   float base = atan(hit.z, hit.x);
   float lr = log(r);
@@ -82,7 +71,6 @@ vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
   float flux = (1.0 - sqrt(ISCO / max(r, ISCO))) / (r * r * r) * FLUX_NORM;
   float temp = pow(max(flux, 0.0), 0.25);
 
-  // Orbital velocity and the full relativistic shift, gravitational and Doppler.
   float v = inversesqrt(2.0 * (r - 1.0));
   vec3 vel = normalize(vec3(-hit.z, 0.0, hit.x)) * v;
   float gamma = inversesqrt(1.0 - v * v);
@@ -91,8 +79,6 @@ vec4 shadeDisk(vec3 hit, vec3 dir, float order) {
   vec3 col = glow(temp * g) * flux * g * g * g * g * lanes * 2.6;
   float inner = mix(0.35, 1.6, step(0.5, order));
   float edge = smoothstep(ISCO, ISCO + inner, r) * smoothstep(DISK_OUT, DISK_OUT - 6.0, r);
-  // Optically thick: the near side hides what lies behind it, so the lensed
-  // underside shows only below the disk, hugging the shadow as it does in nature.
   return vec4(col * edge, edge * mix(0.97, 0.75, step(0.5, order)));
 }
 
@@ -114,8 +100,6 @@ vec3 sky(vec3 d, float starFade) {
     vec3 q = f - o * 0.55;
     s = exp(-dot(q, q) * 180.0) * (0.1 + 1.6 * k * k * k);
   }
-  // A faint galactic band on a tilted great circle. The lens drags it around the
-  // shadow into an Einstein ring, the clearest sign that light is bent.
   float lat = dot(d, vec3(0.28, 0.87, 0.41));
   float dust = noise(d.xz * 9.0 + d.y * 5.0) * 0.6 + noise(d.yx * 23.0) * 0.4;
   float band = exp(-lat * lat * 26.0) * (0.25 + 0.9 * dust * dust);
@@ -125,8 +109,6 @@ vec3 sky(vec3 d, float starFade) {
 void main() {
   float minDim = min(uRes.x, uRes.y);
   vec2 uv = (gl_FragCoord.xy - uCenter * uRes) / minDim * uScale;
-  // One pixel in impact-parameter units: widths of the thin features follow it,
-  // so the shadow rim and photon ring stay smooth at any render scale.
   float camDist = length(uCamPos);
   float pix = uScale / minDim * 0.9 * camDist;
 
@@ -143,7 +125,6 @@ void main() {
   float impact = 100.0;
 
   if (disc > 0.0 && -b - sqrt(disc) > 0.0) {
-    // Skip the flat space between the camera and the sphere where gravity matters.
     pos += dir * (-b - sqrt(disc));
     vec3 hv = cross(pos, dir);
     float h2 = dot(hv, hv);
@@ -156,9 +137,6 @@ void main() {
       if (r < 1.0) { captured = true; break; }
       if (r > R_OUT + 0.1 && dot(pos, dir) > 0.0) { escaped = true; break; }
 
-      // Step grows with radius; past r = 9 rays barely bend, so they take long strides.
-      // Near the photon sphere (r = 1.5) rays wind round the hole; fine steps there
-      // resolve the thin lensed rings instead of breaking them into dots.
       float dt = max(r < 9.0 ? 0.14 * r * clamp(r - 1.1, 0.35, 1.0) : 0.35 * r, 0.02);
       vec3 prev = pos;
       vec3 vh = dir + (-0.75 * dt * h2 / (r2 * r2 * r)) * pos;
@@ -169,10 +147,6 @@ void main() {
       if (prev.y * pos.y < 0.0 && crossings < 3) {
         float t = prev.y / (prev.y - pos.y);
         vec4 d = shadeDisk(mix(prev, pos, t), normalize(dir), float(crossings));
-        // Higher images crowd into a sliver at the shadow rim, under a pixel wide;
-        // they fade out there and the photon ring below stands in for them.
-        // The direct image is never faded: the near side of the disk crosses in front
-        // of the shadow, and cutting it there turned the shadow into a pasted-on disc.
         float fadeW = 0.02 + 3.0 * pix;
         if (crossings > 0) d *= smoothstep(B_CRIT + 0.03, B_CRIT + 0.03 + 2.0 * fadeW, impact);
         crossings++;
@@ -181,33 +155,21 @@ void main() {
         if (alpha > 0.985) { escaped = true; break; }
       }
     }
-    // A ray still circling when the budget runs out sits on the photon sphere and reads as shadow.
     if (!escaped || impact < B_CRIT) captured = true;
   }
 
-  // Right at the rim the lens magnifies the sky so hard that neighbouring pixels
-  // sample unrelated stars and the rim turns dotted; stars fade there, the smooth band stays.
-  // The rim is antialiased over a pixel and a half; only what lies behind the hole
-  // (sky, ring) is masked, the near side of the disk keeps crossing in front.
   float rim = smoothstep(B_CRIT - 1.5 * pix, B_CRIT, impact);
   if (!captured || rim > 0.0) col += rim * sky(normalize(dir), smoothstep(B_CRIT + 0.05, B_CRIT + 0.7, impact)) * (1.0 - alpha);
 
-  // Photon ring: rays just outside the critical curve loop round the hole again and
-  // again, each loop another, thinner image of the disk. Summed they make a hair-thin
-  // line on the shadow rim. Its brightness is set per frame, not per ray: rays that
-  // close to the critical curve are chaotic, and sampling them made the line dotted.
   float ringW = 0.02 + 2.0 * pix;
   float ringX = max(impact - B_CRIT, 0.0) / ringW;
   col += vec3(0.32) * exp(-ringX * ringX) * (1.0 - 0.8 * alpha) * rim;
 
-  // Filmic tone map; the composite pass adds bloom and grain on top.
   col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
   gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)), 1.0);
 }
 `;
 
-// Bloom: the bright pass is read at quarter scale with a 4-tap box, then blurred
-// in two separable passes, so the halo costs a fraction of one scene pass.
 const BRIGHT_SRC = `
 precision mediump float;
 varying vec2 vUv;
@@ -284,8 +246,6 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
-// A 64x64 tileable value-noise texture, built once on the CPU. Sampling it is far
-// cheaper per pixel than hashing fbm noise in the shader.
 function makeNoiseTexture(gl) {
   const N = 64;
   const grid = 8;
@@ -354,8 +314,6 @@ function makeTarget(gl) {
   return t;
 }
 
-// The camera is a free orthonormal frame around the hole (right, up, back), so it
-// turns any way, over the poles included, without a gimbal or a pitch limit.
 const norm = (v) => {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
@@ -363,7 +321,6 @@ const norm = (v) => {
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-// Rodrigues rotation of v about the unit axis k.
 function rotate(v, k, ang) {
   const c = Math.cos(ang);
   const s = Math.sin(ang);
@@ -382,16 +339,16 @@ function defaultFrame() {
   return { right, up, back };
 }
 
-// Render scale steps: the scene is drawn at this fraction of device pixels and
-// upscaled bilinearly by the composite pass, which also smooths its edges.
-const QUALITY = [0.28, 0.36, 0.46, 0.58, 0.7, 0.82];
+const QUALITY = [0.2, 0.28, 0.36, 0.46, 0.58, 0.7, 0.82];
+const SCENE_PIXELS = 1100000;
+const OUT_PIXELS = 2600000;
 
 const LABELS = {
   en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
   ru: { hint: 'Тяните, чтобы повернуть в любую сторону, щипок или Ctrl и колесо для зума', reset: 'Сбросить вид' },
 };
 
-export function QuasarScene({ lang = 'en', copyRef = null }) {
+export function QuasarScene({ lang = 'en' }) {
   const labels = LABELS[lang] || LABELS.en;
   const canvasRef = useRef(null);
   const stateRef = useRef({
@@ -452,15 +409,14 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     const bloomA = makeTarget(gl);
     const bloomB = makeTarget(gl);
 
-    // Adaptive quality: start mid, then step down when frames run long and back up
-    // when there is headroom. Frame cost is measured as the gap between rAF calls
-    // over a rolling window, and the loop is capped at 60fps on fast screens.
     const coarse = window.matchMedia('(pointer: coarse)').matches;
-    let quality = coarse ? 1 : 2;
+    const weak = coarse || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+    let quality = weak ? 1 : 3;
     let frameSum = 0;
     let frameCount = 0;
     let lastDraw = 0;
-    const FRAME_MIN = 1000 / 61;
+    let frameMin = 1000 / 61;
+    let box = canvas.getBoundingClientRect();
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let visible = true;
@@ -481,7 +437,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     };
 
     const render = (now) => {
-      if (now - lastDraw < FRAME_MIN) {
+      if (now - lastDraw < frameMin) {
         animId = requestAnimationFrame(render);
         return;
       }
@@ -492,7 +448,8 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         frameCount++;
         if (frameCount === 20) {
           const avg = frameSum / frameCount;
-          if (avg > 34 && quality > 1) quality -= 2;
+          if (quality === 0 && avg > 26) frameMin = 1000 / 31;
+          else if (avg > 34 && quality > 1) quality -= 2;
           else if (avg > 21 && quality > 0) quality--;
           else if (avg < 17.5 && quality < QUALITY.length - 1) quality++;
           frameSum = 0;
@@ -501,14 +458,16 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       }
       lastDraw = now;
 
-      const rect = canvas.getBoundingClientRect();
+      const rect = box;
       const isMobile = rect.width < 768;
+      const area = Math.max(1, rect.width * rect.height);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      // The composite runs at up to 1.5x CSS pixels; the expensive scene pass follows quality.
-      const outW = Math.max(1, Math.round(rect.width * Math.min(dpr, 1.5)));
-      const outH = Math.max(1, Math.round(rect.height * Math.min(dpr, 1.5)));
-      const sw = Math.max(1, Math.round(rect.width * dpr * QUALITY[quality]));
-      const sh = Math.max(1, Math.round(rect.height * dpr * QUALITY[quality]));
+      const outK = Math.min(dpr, weak ? 1.25 : 1.5, Math.sqrt(OUT_PIXELS / area));
+      const sceneK = Math.min(dpr * QUALITY[quality], Math.sqrt(SCENE_PIXELS / area));
+      const outW = Math.max(1, Math.round(rect.width * outK));
+      const outH = Math.max(1, Math.round(rect.height * outK));
+      const sw = Math.max(1, Math.round(rect.width * sceneK));
+      const sh = Math.max(1, Math.round(rect.height * sceneK));
       const bw = Math.max(1, Math.round(sw / 4));
       const bh = Math.max(1, Math.round(sh / 4));
 
@@ -522,7 +481,6 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
 
       const st = stateRef.current;
       if (!st.isDragging) {
-        // Inertia, then a slow drift around the disk axis so the scene never sits still.
         const damp = Math.pow(0.93, dt * 60);
         st.velX *= damp;
         st.velY *= damp;
@@ -540,8 +498,6 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         center = [0.5, 0.7];
         scale = 1.1 * (st.dist / 30);
       } else {
-        // Fit the hole into the space right of the hero text: the text column ends
-        // about 760px into the capped 1440px container.
         const cssW = rect.width;
         const textRight = Math.max(0, (cssW - 1440) / 2) + 760;
         const free = Math.max(cssW - textRight, 240);
@@ -549,8 +505,6 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
         center = [(textRight + free / 2) / cssW, 0.5];
         scale = Math.max(1.0, reach / (free / 2 - 32)) * (st.dist / 30);
       }
-      // Where the hole sits in CSS pixels, for touch: a finger on it turns it,
-      // a finger anywhere else scrolls the page.
       const minCss = Math.min(rect.width, rect.height);
       st.hole = { x: center[0] * rect.width, y: (1 - center[1]) * rect.height, r: (minCss * 0.42) / scale * (30 / st.dist) };
 
@@ -597,7 +551,6 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       }
     };
 
-    // Turn the frame: a around the screen's up axis, b around its right axis.
     const turn = (a, b) => {
       const st = stateRef.current;
       let { right, up, back } = st;
@@ -629,6 +582,11 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       if (visible) start();
     });
     observer.observe(canvas);
+    const resizer = new ResizeObserver(() => {
+      box = canvas.getBoundingClientRect();
+      start();
+    });
+    resizer.observe(canvas);
     reduceMotion.addEventListener('change', start);
 
     const onVisibility = () => {
@@ -679,8 +637,6 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       stateRef.current.isDragging = false;
     };
 
-    // Touch: one finger on the hole turns it, two fingers pinch to zoom; a finger
-    // that lands elsewhere on the hero leaves the page to scroll.
     let pinch = 0;
     const touchDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
     const onTouchStart = (e) => {
@@ -732,6 +688,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     return () => {
       cancelAnimationFrame(animId);
       observer.disconnect();
+      resizer.disconnect();
       reduceMotion.removeEventListener('change', start);
       document.removeEventListener('visibilitychange', onVisibility);
       canvas.removeEventListener('webglcontextlost', onContextLost);

@@ -4,7 +4,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.toggleTodoCompleted",
     "namespace": "messages",
     "signature": "await ctx.set_checklist_completed(peer: InputPeer, msg_id: int, completed: Vector<int>, incompleted: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -39,7 +38,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.addPollAnswer",
     "namespace": "messages",
     "signature": "await ctx.add_poll_answer(peer: InputPeer, msg_id: int, answer: PollAnswer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -68,7 +66,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deletePollAnswer",
     "namespace": "messages",
     "signature": "await ctx.remove_poll_answer(peer: InputPeer, msg_id: int, option: bytes)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -97,7 +94,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getUnreadPollVotes",
     "namespace": "messages",
     "signature": "await ctx.unread_poll_votes(peer: InputPeer, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -150,7 +146,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.readPollVotes",
     "namespace": "messages",
     "signature": "await ctx.mark_poll_votes_read(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -173,7 +168,6 @@ export const CATALOG_METHODS = [
     "rpc": "stats.getPollStats",
     "namespace": "stats",
     "signature": "await ctx.poll_statistics(peer: InputPeer, msg_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -202,7 +196,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getScheduledHistory",
     "namespace": "messages",
     "signature": "await ctx.scheduled_messages(peer: InputPeer, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -225,7 +218,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getScheduledMessages",
     "namespace": "messages",
     "signature": "await ctx.scheduled_by_ids(peer: InputPeer, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -248,7 +240,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.sendScheduledMessages",
     "namespace": "messages",
     "signature": "await ctx.publish_scheduled(peer: InputPeer, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -271,7 +262,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteScheduledMessages",
     "namespace": "messages",
     "signature": "await ctx.cancel_scheduled(peer: InputPeer, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -294,7 +284,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.setChatAvailableReactions",
     "namespace": "messages",
     "signature": "await ctx.configure_chat_reactions(peer: InputPeer, available_reactions: ChatReactions)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -329,7 +318,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getAvailableReactions",
     "namespace": "messages",
     "signature": "await ctx.available_reactions(hash: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -346,7 +334,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.setDefaultReaction",
     "namespace": "messages",
     "signature": "await ctx.set_default_reaction(reaction: Reaction)",
-    "returns": "Any",
     "params": [
       {
         "name": "reaction",
@@ -363,7 +350,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getUnreadReactions",
     "namespace": "messages",
     "signature": "await ctx.unread_reactions(peer: InputPeer, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -422,7 +408,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.readReactions",
     "namespace": "messages",
     "signature": "await ctx.mark_reactions_read(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -451,7 +436,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getTopReactions",
     "namespace": "messages",
     "signature": "await ctx.popular_reactions(limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "limit",
@@ -474,7 +458,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getRecentReactions",
     "namespace": "messages",
     "signature": "await ctx.recent_reactions(limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "limit",
@@ -497,7 +480,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.clearRecentReactions",
     "namespace": "messages",
     "signature": "await ctx.clear_recent_reactions()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Clear recently used message reactions",
@@ -508,7 +490,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteParticipantReactions",
     "namespace": "messages",
     "signature": "await ctx.remove_member_reactions(peer: InputPeer, participant: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -531,7 +512,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteParticipantReaction",
     "namespace": "messages",
     "signature": "await ctx.remove_member_message_reaction(peer: InputPeer, msg_id: int, participant: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -560,7 +540,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSavedDialogs",
     "namespace": "messages",
     "signature": "await ctx.saved_dialogs(offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "exclude_pinned",
@@ -613,7 +592,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSavedHistory",
     "namespace": "messages",
     "signature": "await ctx.saved_history(peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -678,7 +656,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteSavedHistory",
     "namespace": "messages",
     "signature": "await ctx.clear_saved_history(peer: InputPeer, max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -719,7 +696,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getPinnedSavedDialogs",
     "namespace": "messages",
     "signature": "await ctx.pinned_saved_dialogs()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get pinned saved dialogs, see here for more info.",
@@ -730,7 +706,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.toggleSavedDialogPin",
     "namespace": "messages",
     "signature": "await ctx.set_saved_dialog_pinned(peer: InputDialogPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "pinned",
@@ -753,7 +728,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.reorderPinnedSavedDialogs",
     "namespace": "messages",
     "signature": "await ctx.reorder_saved_pins(order: Vector<InputDialogPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "force",
@@ -776,7 +750,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSavedReactionTags",
     "namespace": "messages",
     "signature": "await ctx.saved_reaction_tags(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -799,7 +772,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.updateSavedReactionTag",
     "namespace": "messages",
     "signature": "await ctx.rename_saved_tag(reaction: Reaction)",
-    "returns": "Any",
     "params": [
       {
         "name": "reaction",
@@ -822,7 +794,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getDefaultTagReactions",
     "namespace": "messages",
     "signature": "await ctx.suggested_saved_tags(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -839,7 +810,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSavedDialogsByID",
     "namespace": "messages",
     "signature": "await ctx.saved_dialogs_by_peers(ids: Vector<InputPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -862,7 +832,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.readSavedHistory",
     "namespace": "messages",
     "signature": "await ctx.mark_saved_history_read(parent_peer: InputPeer, peer: InputPeer, max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -891,7 +860,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getForumTopics",
     "namespace": "messages",
     "signature": "await ctx.forum_topics(peer: InputPeer, offset_date: int, offset_id: int, offset_topic: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -938,7 +906,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getForumTopicsByID",
     "namespace": "messages",
     "signature": "await ctx.forum_topics_by_ids(peer: InputPeer, topics: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -961,7 +928,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editForumTopic",
     "namespace": "messages",
     "signature": "await ctx.edit_forum_topic(peer: InputPeer, topic_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1008,7 +974,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.updatePinnedForumTopic",
     "namespace": "messages",
     "signature": "await ctx.set_forum_topic_pinned(peer: InputPeer, topic_id: int, pinned: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1037,7 +1002,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.reorderPinnedForumTopics",
     "namespace": "messages",
     "signature": "await ctx.reorder_forum_pins(peer: InputPeer, order: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "force",
@@ -1066,7 +1030,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.createForumTopic",
     "namespace": "messages",
     "signature": "await ctx.create_forum_topic(peer: InputPeer, title: string, random_id: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "title_missing",
@@ -1119,7 +1082,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteTopicHistory",
     "namespace": "messages",
     "signature": "await ctx.remove_forum_topic(peer: InputPeer, top_msg_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1142,7 +1104,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleForum",
     "namespace": "channels",
     "signature": "await ctx.set_forum_enabled(channel: InputChannel, enabled: Bool, tabs: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -1171,7 +1132,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleViewForumAsMessages",
     "namespace": "channels",
     "signature": "await ctx.set_forum_message_view(channel: InputChannel, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -1194,7 +1154,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.canSendStory",
     "namespace": "stories",
     "signature": "await ctx.story_posting_quota(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1211,7 +1170,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.sendStory",
     "namespace": "stories",
     "signature": "await ctx.post_story(peer: InputPeer, media: InputMedia, privacy_rules: Vector<InputPrivacyRule>, random_id: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "pinned",
@@ -1312,7 +1270,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.editStory",
     "namespace": "stories",
     "signature": "await ctx.edit_story(peer: InputPeer, id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1371,7 +1328,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.deleteStories",
     "namespace": "stories",
     "signature": "await ctx.delete_stories(peer: InputPeer, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1394,7 +1350,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.togglePinned",
     "namespace": "stories",
     "signature": "await ctx.set_stories_on_profile(peer: InputPeer, id: Vector<int>, pinned: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1423,7 +1378,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getAllStories",
     "namespace": "stories",
     "signature": "await ctx.story_feed()",
-    "returns": "Any",
     "params": [
       {
         "name": "next",
@@ -1452,7 +1406,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getPinnedStories",
     "namespace": "stories",
     "signature": "await ctx.profile_stories(peer: InputPeer, offset_id: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1481,7 +1434,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getStoriesArchive",
     "namespace": "stories",
     "signature": "await ctx.archived_stories(peer: InputPeer, offset_id: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1510,7 +1462,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getStoriesByID",
     "namespace": "stories",
     "signature": "await ctx.stories_by_ids(peer: InputPeer, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1533,7 +1484,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.readStories",
     "namespace": "stories",
     "signature": "await ctx.mark_stories_read(peer: InputPeer, max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1556,7 +1506,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getStoryViewsList",
     "namespace": "stories",
     "signature": "await ctx.story_viewers(peer: InputPeer, id: int, offset: string, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "just_contacts",
@@ -1615,7 +1564,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getStoriesViews",
     "namespace": "stories",
     "signature": "await ctx.story_view_counts(peer: InputPeer, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1638,7 +1586,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.exportStoryLink",
     "namespace": "stories",
     "signature": "await ctx.story_link(peer: InputPeer, id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1661,7 +1608,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.activateStealthMode",
     "namespace": "stories",
     "signature": "await ctx.activate_story_stealth()",
-    "returns": "Any",
     "params": [
       {
         "name": "past",
@@ -1684,7 +1630,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.sendReaction",
     "namespace": "stories",
     "signature": "await ctx.react_to_story(peer: InputPeer, story_id: int, reaction: Reaction)",
-    "returns": "Any",
     "params": [
       {
         "name": "add_to_recent",
@@ -1719,7 +1664,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getPeerStories",
     "namespace": "stories",
     "signature": "await ctx.peer_stories(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1736,7 +1680,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getAllReadPeerStories",
     "namespace": "stories",
     "signature": "await ctx.story_read_markers()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Obtain the latest read story ID for all peers when first logging in, returned as a list of updateReadStories updates, see here for more info.",
@@ -1747,7 +1690,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getPeerMaxIDs",
     "namespace": "stories",
     "signature": "await ctx.peer_latest_story_ids(id: Vector<InputPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -1764,7 +1706,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getChatsToSend",
     "namespace": "stories",
     "signature": "await ctx.story_posting_chats()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Obtain a list of channels where the user can post stories",
@@ -1775,7 +1716,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.togglePeerStoriesHidden",
     "namespace": "stories",
     "signature": "await ctx.set_peer_stories_hidden(peer: InputPeer, hidden: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1798,7 +1738,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getStoryReactionsList",
     "namespace": "stories",
     "signature": "await ctx.story_reaction_senders(peer: InputPeer, id: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "forwards_first",
@@ -1845,7 +1784,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.togglePinnedToTop",
     "namespace": "stories",
     "signature": "await ctx.reorder_profile_story_pins(peer: InputPeer, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1868,7 +1806,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.searchPosts",
     "namespace": "stories",
     "signature": "await ctx.search_stories(offset: string, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "hashtag",
@@ -1909,7 +1846,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.createAlbum",
     "namespace": "stories",
     "signature": "await ctx.create_story_album(peer: InputPeer, title: string, stories: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1938,7 +1874,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.updateAlbum",
     "namespace": "stories",
     "signature": "await ctx.edit_story_album(peer: InputPeer, album_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -1985,7 +1920,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.reorderAlbums",
     "namespace": "stories",
     "signature": "await ctx.reorder_story_albums(peer: InputPeer, order: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -2008,7 +1942,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.deleteAlbum",
     "namespace": "stories",
     "signature": "await ctx.remove_story_album(peer: InputPeer, album_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -2031,7 +1964,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getAlbums",
     "namespace": "stories",
     "signature": "await ctx.story_albums(peer: InputPeer, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -2054,7 +1986,6 @@ export const CATALOG_METHODS = [
     "rpc": "stories.getAlbumStories",
     "namespace": "stories",
     "signature": "await ctx.story_album_items(peer: InputPeer, album_id: int, offset: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -2089,7 +2020,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getStickers",
     "namespace": "messages",
     "signature": "await ctx.stickers_for_emoji(emoticon: string, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "emoticon",
@@ -2112,7 +2042,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getAllStickers",
     "namespace": "messages",
     "signature": "await ctx.installed_sticker_sets(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -2129,7 +2058,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getStickerSet",
     "namespace": "messages",
     "signature": "await ctx.sticker_set(stickerset: InputStickerSet, hash: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2152,7 +2080,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.installStickerSet",
     "namespace": "messages",
     "signature": "await ctx.install_sticker_set(stickerset: InputStickerSet, archived: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2175,7 +2102,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.uninstallStickerSet",
     "namespace": "messages",
     "signature": "await ctx.uninstall_sticker_set(stickerset: InputStickerSet)",
-    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2192,7 +2118,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.reorderStickerSets",
     "namespace": "messages",
     "signature": "await ctx.reorder_sticker_sets(order: Vector<long>)",
-    "returns": "Any",
     "params": [
       {
         "name": "masks",
@@ -2221,7 +2146,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSavedGifs",
     "namespace": "messages",
     "signature": "await ctx.saved_gifs(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -2238,7 +2162,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.saveGif",
     "namespace": "messages",
     "signature": "await ctx.set_gif_saved(id: InputDocument, unsave: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -2261,7 +2184,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getFeaturedStickers",
     "namespace": "messages",
     "signature": "await ctx.featured_sticker_sets(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -2278,7 +2200,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.readFeaturedStickers",
     "namespace": "messages",
     "signature": "await ctx.mark_featured_stickers_seen(id: Vector<long>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -2295,7 +2216,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getRecentStickers",
     "namespace": "messages",
     "signature": "await ctx.recent_stickers(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "attached",
@@ -2318,7 +2238,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.saveRecentSticker",
     "namespace": "messages",
     "signature": "await ctx.set_sticker_recent(id: InputDocument, unsave: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "attached",
@@ -2347,7 +2266,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.clearRecentStickers",
     "namespace": "messages",
     "signature": "await ctx.clear_recent_stickers()",
-    "returns": "Any",
     "params": [
       {
         "name": "attached",
@@ -2364,7 +2282,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getArchivedStickers",
     "namespace": "messages",
     "signature": "await ctx.archived_sticker_sets(offset_id: long, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "masks",
@@ -2399,7 +2316,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getMaskStickers",
     "namespace": "messages",
     "signature": "await ctx.installed_masks(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -2416,7 +2332,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getAttachedStickers",
     "namespace": "messages",
     "signature": "await ctx.media_sticker_sets(media: InputStickeredMedia)",
-    "returns": "Any",
     "params": [
       {
         "name": "media",
@@ -2433,7 +2348,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getFavedStickers",
     "namespace": "messages",
     "signature": "await ctx.favorite_stickers(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -2450,7 +2364,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.faveSticker",
     "namespace": "messages",
     "signature": "await ctx.set_sticker_favorite(id: InputDocument, unfave: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -2473,7 +2386,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.searchStickerSets",
     "namespace": "messages",
     "signature": "await ctx.search_sticker_sets(q: string, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "exclude_featured",
@@ -2502,7 +2414,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.toggleStickerSets",
     "namespace": "messages",
     "signature": "await ctx.bulk_sticker_set_action(stickersets: Vector<InputStickerSet>)",
-    "returns": "Any",
     "params": [
       {
         "name": "uninstall",
@@ -2537,7 +2448,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getOldFeaturedStickers",
     "namespace": "messages",
     "signature": "await ctx.older_featured_sticker_sets(offset: int, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "offset",
@@ -2566,7 +2476,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getCustomEmojiDocuments",
     "namespace": "messages",
     "signature": "await ctx.custom_emoji_documents(document_id: Vector<long>)",
-    "returns": "Any",
     "params": [
       {
         "name": "document_id",
@@ -2583,7 +2492,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getEmojiStickers",
     "namespace": "messages",
     "signature": "await ctx.installed_emoji_sets(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -2600,7 +2508,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getFeaturedEmojiStickers",
     "namespace": "messages",
     "signature": "await ctx.featured_emoji_sets(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -2617,7 +2524,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.searchCustomEmoji",
     "namespace": "messages",
     "signature": "await ctx.search_custom_emoji(emoticon: string, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "emoticon",
@@ -2640,7 +2546,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.searchEmojiStickerSets",
     "namespace": "messages",
     "signature": "await ctx.search_emoji_sets(q: string, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "exclude_featured",
@@ -2669,7 +2574,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getMyStickers",
     "namespace": "messages",
     "signature": "await ctx.owned_sticker_sets(offset_id: long, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "offset_id",
@@ -2692,7 +2596,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.searchStickers",
     "namespace": "messages",
     "signature": "await ctx.search_stickers(q: string, emoticon: string, lang_code: Vector<string>, offset: int, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "emojis",
@@ -2745,7 +2648,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.createStickerSet",
     "namespace": "stickers",
     "signature": "await ctx.create_sticker_set(user_id: InputUser, title: string, short_name: string, stickers: Vector<InputStickerSetItem>)",
-    "returns": "Any",
     "params": [
       {
         "name": "masks",
@@ -2810,7 +2712,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.removeStickerFromSet",
     "namespace": "stickers",
     "signature": "await ctx.remove_sticker(sticker: InputDocument)",
-    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -2827,7 +2728,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.changeStickerPosition",
     "namespace": "stickers",
     "signature": "await ctx.move_sticker(sticker: InputDocument, position: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -2850,7 +2750,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.addStickerToSet",
     "namespace": "stickers",
     "signature": "await ctx.add_sticker(stickerset: InputStickerSet, sticker: InputStickerSetItem)",
-    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2873,7 +2772,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.setStickerSetThumb",
     "namespace": "stickers",
     "signature": "await ctx.set_sticker_set_thumbnail(stickerset: InputStickerSet)",
-    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2902,7 +2800,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.checkShortName",
     "namespace": "stickers",
     "signature": "await ctx.check_sticker_set_name(short_name: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "short_name",
@@ -2919,7 +2816,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.suggestShortName",
     "namespace": "stickers",
     "signature": "await ctx.suggest_sticker_set_name(title: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "title",
@@ -2936,7 +2832,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.changeSticker",
     "namespace": "stickers",
     "signature": "await ctx.edit_sticker_metadata(sticker: InputDocument)",
-    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -2971,7 +2866,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.renameStickerSet",
     "namespace": "stickers",
     "signature": "await ctx.rename_sticker_set(stickerset: InputStickerSet, title: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -2994,7 +2888,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.deleteStickerSet",
     "namespace": "stickers",
     "signature": "await ctx.remove_sticker_set(stickerset: InputStickerSet)",
-    "returns": "Any",
     "params": [
       {
         "name": "stickerset",
@@ -3011,7 +2904,6 @@ export const CATALOG_METHODS = [
     "rpc": "stickers.replaceSticker",
     "namespace": "stickers",
     "signature": "await ctx.replace_sticker(sticker: InputDocument, new_sticker: InputStickerSetItem)",
-    "returns": "Any",
     "params": [
       {
         "name": "sticker",
@@ -3034,7 +2926,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.getContactIDs",
     "namespace": "contacts",
     "signature": "await ctx.contact_ids(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -3051,7 +2942,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.getStatuses",
     "namespace": "contacts",
     "signature": "await ctx.contact_statuses()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Use this method to obtain the online statuses of all contacts with an accessible Telegram account.",
@@ -3062,7 +2952,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.getContacts",
     "namespace": "contacts",
     "signature": "await ctx.contacts_list(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -3079,7 +2968,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.importContacts",
     "namespace": "contacts",
     "signature": "await ctx.import_contacts(contacts: Vector<InputContact>)",
-    "returns": "Any",
     "params": [
       {
         "name": "contacts",
@@ -3096,7 +2984,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.deleteContacts",
     "namespace": "contacts",
     "signature": "await ctx.remove_contacts(id: Vector<InputUser>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3113,7 +3000,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.deleteByPhones",
     "namespace": "contacts",
     "signature": "await ctx.remove_contacts_by_phone(phones: Vector<string>)",
-    "returns": "Any",
     "params": [
       {
         "name": "phones",
@@ -3130,7 +3016,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.block",
     "namespace": "contacts",
     "signature": "await ctx.block_peer(id: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3153,7 +3038,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.unblock",
     "namespace": "contacts",
     "signature": "await ctx.unblock_peer(id: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3176,7 +3060,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.getBlocked",
     "namespace": "contacts",
     "signature": "await ctx.blocked_peers(offset: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3205,7 +3088,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.search",
     "namespace": "contacts",
     "signature": "await ctx.search_public_peers(q: string, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "broadcasts",
@@ -3240,7 +3122,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.getTopPeers",
     "namespace": "contacts",
     "signature": "await ctx.frequent_peers(offset: int, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "correspondents",
@@ -3329,7 +3210,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.resetTopPeerRating",
     "namespace": "contacts",
     "signature": "await ctx.reset_peer_rating(category: TopPeerCategory, peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "category",
@@ -3352,7 +3232,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.resetSaved",
     "namespace": "contacts",
     "signature": "await ctx.clear_imported_contacts()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Removes all contacts without an associated Telegram account.",
@@ -3363,7 +3242,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.getSaved",
     "namespace": "contacts",
     "signature": "await ctx.imported_contacts()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get all contacts, requires a takeout session, see here for more info.",
@@ -3374,7 +3252,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.toggleTopPeers",
     "namespace": "contacts",
     "signature": "await ctx.set_frequent_peers_enabled(enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "enabled",
@@ -3391,7 +3268,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.addContact",
     "namespace": "contacts",
     "signature": "await ctx.add_contact(id: InputUser, first_name: string, last_name: string, phone: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "add_phone_privacy_exception",
@@ -3438,7 +3314,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.acceptContact",
     "namespace": "contacts",
     "signature": "await ctx.accept_contact(id: InputUser)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3455,7 +3330,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.editCloseFriends",
     "namespace": "contacts",
     "signature": "await ctx.set_close_friends(id: Vector<long>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3472,7 +3346,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.setBlocked",
     "namespace": "contacts",
     "signature": "await ctx.replace_blocklist(id: Vector<InputPeer>, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "my_stories_from",
@@ -3501,7 +3374,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.getBirthdays",
     "namespace": "contacts",
     "signature": "await ctx.contact_birthdays()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Fetch all users with birthdays that fall within +1/-1 days, relative to the current day: this method should be invoked by clients every 6-8 hours, and if the result is non-empty, it should be used to appropriately update locally cached birthday information in user.birthday. See here for more info.",
@@ -3512,7 +3384,6 @@ export const CATALOG_METHODS = [
     "rpc": "contacts.updateContactNote",
     "namespace": "contacts",
     "signature": "await ctx.edit_contact_note(id: InputUser, note: TextWithEntities)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3535,7 +3406,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getDialogs",
     "namespace": "messages",
     "signature": "await ctx.dialogs(offset_date: int, offset_id: int, offset_peer: InputPeer, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "exclude_pinned",
@@ -3588,7 +3458,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getHistory",
     "namespace": "messages",
     "signature": "await ctx.chat_history(peer: InputPeer, offset_id: int, offset_date: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -3647,7 +3516,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.search",
     "namespace": "messages",
     "signature": "await ctx.search_chat_messages(peer: InputPeer, q: string, filter: MessagesFilter, min_date: int, max_date: int, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -3748,7 +3616,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.readHistory",
     "namespace": "messages",
     "signature": "await ctx.mark_chat_read(peer: InputPeer, max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -3771,7 +3638,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteHistory",
     "namespace": "messages",
     "signature": "await ctx.clear_chat_history(peer: InputPeer, max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "just_clear",
@@ -3818,7 +3684,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getPeerSettings",
     "namespace": "messages",
     "signature": "await ctx.peer_settings(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -3835,7 +3700,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getChats",
     "namespace": "messages",
     "signature": "await ctx.basic_groups(id: Vector<long>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -3852,7 +3716,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getFullChat",
     "namespace": "messages",
     "signature": "await ctx.basic_group_details(chat_id: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -3869,7 +3732,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.searchGlobal",
     "namespace": "messages",
     "signature": "await ctx.search_all_messages(q: string, filter: MessagesFilter, min_date: int, max_date: int, offset_rate: int, offset_peer: InputPeer, offset_id: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "broadcasts_only",
@@ -3958,7 +3820,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getMessageEditData",
     "namespace": "messages",
     "signature": "await ctx.message_editability(peer: InputPeer, id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -3981,7 +3842,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getPeerDialogs",
     "namespace": "messages",
     "signature": "await ctx.peer_dialogs(peers: Vector<InputDialogPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peers",
@@ -3998,7 +3858,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getAllDrafts",
     "namespace": "messages",
     "signature": "await ctx.all_drafts()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Return all message drafts. Returns all the latest updateDraftMessage updates related to all chats with drafts.",
@@ -4009,7 +3868,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getCommonChats",
     "namespace": "messages",
     "signature": "await ctx.mutual_groups(user_id: InputUser, max_id: long, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "user_id",
@@ -4038,7 +3896,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.toggleDialogPin",
     "namespace": "messages",
     "signature": "await ctx.set_dialog_pinned(peer: InputDialogPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "pinned",
@@ -4061,7 +3918,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.reorderPinnedDialogs",
     "namespace": "messages",
     "signature": "await ctx.reorder_dialog_pins(folder_id: int, order: Vector<InputDialogPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "force",
@@ -4090,7 +3946,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getPinnedDialogs",
     "namespace": "messages",
     "signature": "await ctx.pinned_dialogs(folder_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "folder_id",
@@ -4107,7 +3962,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getUnreadMentions",
     "namespace": "messages",
     "signature": "await ctx.unread_mentions(peer: InputPeer, offset_id: int, add_offset: int, limit: int, max_id: int, min_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4160,7 +4014,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.readMentions",
     "namespace": "messages",
     "signature": "await ctx.mark_mentions_read(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4183,7 +4036,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getRecentLocations",
     "namespace": "messages",
     "signature": "await ctx.recent_live_locations(peer: InputPeer, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4212,7 +4064,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.markDialogUnread",
     "namespace": "messages",
     "signature": "await ctx.set_dialog_unread(peer: InputDialogPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "unread",
@@ -4241,7 +4092,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getDialogUnreadMarks",
     "namespace": "messages",
     "signature": "await ctx.unread_dialog_marks()",
-    "returns": "Any",
     "params": [
       {
         "name": "parent_peer",
@@ -4258,7 +4108,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.clearAllDrafts",
     "namespace": "messages",
     "signature": "await ctx.clear_all_drafts()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Clear all drafts.",
@@ -4269,7 +4118,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getOnlines",
     "namespace": "messages",
     "signature": "await ctx.chat_online_count(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4286,7 +4134,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSearchCounters",
     "namespace": "messages",
     "signature": "await ctx.message_type_counts(peer: InputPeer, filters: Vector<MessagesFilter>)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4321,7 +4168,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.hidePeerSettingsBar",
     "namespace": "messages",
     "signature": "await ctx.dismiss_peer_settings_bar(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4338,7 +4184,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.readDiscussion",
     "namespace": "messages",
     "signature": "await ctx.mark_discussion_read(peer: InputPeer, msg_id: int, read_max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4367,7 +4212,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.unpinAllMessages",
     "namespace": "messages",
     "signature": "await ctx.unpin_all_chat_messages(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4396,7 +4240,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getMessageReadParticipants",
     "namespace": "messages",
     "signature": "await ctx.message_readers(peer: InputPeer, msg_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4419,7 +4262,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSearchResultsCalendar",
     "namespace": "messages",
     "signature": "await ctx.message_search_calendar(peer: InputPeer, filter: MessagesFilter, offset_id: int, offset_date: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4460,7 +4302,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSearchResultsPositions",
     "namespace": "messages",
     "signature": "await ctx.message_search_positions(peer: InputPeer, filter: MessagesFilter, offset_id: int, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4501,7 +4342,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.saveDefaultSendAs",
     "namespace": "messages",
     "signature": "await ctx.set_default_send_as(peer: InputPeer, send_as: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4524,7 +4364,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.searchSentMedia",
     "namespace": "messages",
     "signature": "await ctx.sent_media_search(q: string, filter: MessagesFilter, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "q",
@@ -4553,7 +4392,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getOutboxReadDate",
     "namespace": "messages",
     "signature": "await ctx.outgoing_read_date(peer: InputPeer, msg_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -4576,7 +4414,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getMessageAuthor",
     "namespace": "channels",
     "signature": "await ctx.channel_message_author(channel: InputChannel, id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -4599,7 +4436,6 @@ export const CATALOG_METHODS = [
     "rpc": "folders.editPeerFolders",
     "namespace": "folders",
     "signature": "await ctx.move_dialogs_to_archive(folder_peers: Vector<InputFolderPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "folder_peers",
@@ -4616,7 +4452,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getDialogFilters",
     "namespace": "messages",
     "signature": "await ctx.chat_folders()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get folders",
@@ -4627,7 +4462,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getSuggestedDialogFilters",
     "namespace": "messages",
     "signature": "await ctx.suggested_chat_folders()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get suggested folders",
@@ -4638,7 +4472,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.updateDialogFilter",
     "namespace": "messages",
     "signature": "await ctx.save_chat_folder(id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -4661,7 +4494,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.updateDialogFiltersOrder",
     "namespace": "messages",
     "signature": "await ctx.reorder_chat_folders(order: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "order",
@@ -4678,7 +4510,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.toggleDialogFilterTags",
     "namespace": "messages",
     "signature": "await ctx.set_folder_tags_visible(enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "enabled",
@@ -4695,7 +4526,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.exportChatlistInvite",
     "namespace": "chatlists",
     "signature": "await ctx.share_chat_folder(chatlist: InputChatlist, title: string, peers: Vector<InputPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4724,7 +4554,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.deleteExportedInvite",
     "namespace": "chatlists",
     "signature": "await ctx.remove_folder_invite(chatlist: InputChatlist, slug: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4747,7 +4576,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.editExportedInvite",
     "namespace": "chatlists",
     "signature": "await ctx.edit_folder_invite(chatlist: InputChatlist, slug: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4782,7 +4610,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.getExportedInvites",
     "namespace": "chatlists",
     "signature": "await ctx.folder_invites(chatlist: InputChatlist)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4799,7 +4626,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.checkChatlistInvite",
     "namespace": "chatlists",
     "signature": "await ctx.inspect_folder_invite(slug: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "slug",
@@ -4816,7 +4642,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.joinChatlistInvite",
     "namespace": "chatlists",
     "signature": "await ctx.join_folder_invite(slug: string, peers: Vector<InputPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "slug",
@@ -4839,7 +4664,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.getChatlistUpdates",
     "namespace": "chatlists",
     "signature": "await ctx.folder_updates(chatlist: InputChatlist)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4856,7 +4680,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.joinChatlistUpdates",
     "namespace": "chatlists",
     "signature": "await ctx.accept_folder_updates(chatlist: InputChatlist, peers: Vector<InputPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4879,7 +4702,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.hideChatlistUpdates",
     "namespace": "chatlists",
     "signature": "await ctx.dismiss_folder_updates(chatlist: InputChatlist)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4896,7 +4718,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.getLeaveChatlistSuggestions",
     "namespace": "chatlists",
     "signature": "await ctx.folder_leave_suggestions(chatlist: InputChatlist)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4913,7 +4734,6 @@ export const CATALOG_METHODS = [
     "rpc": "chatlists.leaveChatlist",
     "namespace": "chatlists",
     "signature": "await ctx.leave_shared_folder(chatlist: InputChatlist, peers: Vector<InputPeer>)",
-    "returns": "Any",
     "params": [
       {
         "name": "chatlist",
@@ -4936,7 +4756,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updateProfile",
     "namespace": "account",
     "signature": "await ctx.edit_profile()",
-    "returns": "Any",
     "params": [
       {
         "name": "first_name",
@@ -4965,7 +4784,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updateStatus",
     "namespace": "account",
     "signature": "await ctx.set_online_status(offline: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "offline",
@@ -4982,7 +4800,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.checkUsername",
     "namespace": "account",
     "signature": "await ctx.check_profile_username(username: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "username",
@@ -4999,7 +4816,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updateUsername",
     "namespace": "account",
     "signature": "await ctx.set_profile_username(username: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "username",
@@ -5016,7 +4832,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getPrivacy",
     "namespace": "account",
     "signature": "await ctx.privacy_rules(key: InputPrivacyKey)",
-    "returns": "Any",
     "params": [
       {
         "name": "key",
@@ -5033,7 +4848,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getAccountTTL",
     "namespace": "account",
     "signature": "await ctx.account_inactivity_ttl()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get days to live of account",
@@ -5044,7 +4858,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updateEmojiStatus",
     "namespace": "account",
     "signature": "await ctx.set_emoji_status(emoji_status: EmojiStatus)",
-    "returns": "Any",
     "params": [
       {
         "name": "emoji_status",
@@ -5061,7 +4874,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getDefaultEmojiStatuses",
     "namespace": "account",
     "signature": "await ctx.suggested_emoji_statuses(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -5078,7 +4890,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getRecentEmojiStatuses",
     "namespace": "account",
     "signature": "await ctx.recent_emoji_statuses(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -5095,7 +4906,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.clearRecentEmojiStatuses",
     "namespace": "account",
     "signature": "await ctx.clear_recent_emoji_statuses()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Clears list of recently used emoji statuses",
@@ -5106,7 +4916,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.reorderUsernames",
     "namespace": "account",
     "signature": "await ctx.reorder_profile_usernames(order: Vector<string>)",
-    "returns": "Any",
     "params": [
       {
         "name": "order",
@@ -5123,7 +4932,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.toggleUsername",
     "namespace": "account",
     "signature": "await ctx.set_profile_username_active(username: string, active: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "username",
@@ -5146,7 +4954,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getDefaultProfilePhotoEmojis",
     "namespace": "account",
     "signature": "await ctx.profile_photo_emojis(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -5163,7 +4970,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updateColor",
     "namespace": "account",
     "signature": "await ctx.set_profile_color()",
-    "returns": "Any",
     "params": [
       {
         "name": "for_profile",
@@ -5186,7 +4992,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updateBirthday",
     "namespace": "account",
     "signature": "await ctx.set_birthday()",
-    "returns": "Any",
     "params": [
       {
         "name": "birthday",
@@ -5203,7 +5008,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updatePersonalChannel",
     "namespace": "account",
     "signature": "await ctx.set_personal_channel(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -5220,7 +5024,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.setMainProfileTab",
     "namespace": "account",
     "signature": "await ctx.set_profile_tab(tab: ProfileTab)",
-    "returns": "Any",
     "params": [
       {
         "name": "tab",
@@ -5237,7 +5040,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.saveMusic",
     "namespace": "account",
     "signature": "await ctx.set_music_saved(id: InputDocument)",
-    "returns": "Any",
     "params": [
       {
         "name": "unsave",
@@ -5266,7 +5068,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getSavedMusicIds",
     "namespace": "account",
     "signature": "await ctx.saved_music_ids(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -5283,7 +5084,6 @@ export const CATALOG_METHODS = [
     "rpc": "users.getFullUser",
     "namespace": "users",
     "signature": "await ctx.user_details(id: InputUser)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5300,7 +5100,6 @@ export const CATALOG_METHODS = [
     "rpc": "users.getRequirementsToContact",
     "namespace": "users",
     "signature": "await ctx.contact_requirements(id: Vector<InputUser>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5317,7 +5116,6 @@ export const CATALOG_METHODS = [
     "rpc": "users.getSavedMusic",
     "namespace": "users",
     "signature": "await ctx.user_music(id: InputUser, offset: int, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5352,7 +5150,6 @@ export const CATALOG_METHODS = [
     "rpc": "users.getSavedMusicByID",
     "namespace": "users",
     "signature": "await ctx.user_music_by_documents(id: InputUser, documents: Vector<InputDocument>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5375,7 +5172,6 @@ export const CATALOG_METHODS = [
     "rpc": "users.suggestBirthday",
     "namespace": "users",
     "signature": "await ctx.suggest_contact_birthday(id: InputUser, birthday: Birthday)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5398,7 +5194,6 @@ export const CATALOG_METHODS = [
     "rpc": "photos.updateProfilePhoto",
     "namespace": "photos",
     "signature": "await ctx.select_profile_photo(id: InputPhoto)",
-    "returns": "Any",
     "params": [
       {
         "name": "fallback",
@@ -5427,7 +5222,6 @@ export const CATALOG_METHODS = [
     "rpc": "photos.uploadProfilePhoto",
     "namespace": "photos",
     "signature": "await ctx.upload_profile_photo()",
-    "returns": "Any",
     "params": [
       {
         "name": "fallback",
@@ -5474,7 +5268,6 @@ export const CATALOG_METHODS = [
     "rpc": "photos.deletePhotos",
     "namespace": "photos",
     "signature": "await ctx.remove_profile_photos(id: Vector<InputPhoto>)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5491,7 +5284,6 @@ export const CATALOG_METHODS = [
     "rpc": "photos.getUserPhotos",
     "namespace": "photos",
     "signature": "await ctx.profile_photos(user_id: InputUser, offset: int, max_id: long, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "user_id",
@@ -5526,7 +5318,6 @@ export const CATALOG_METHODS = [
     "rpc": "photos.uploadContactProfilePhoto",
     "namespace": "photos",
     "signature": "await ctx.set_contact_photo(user_id: InputUser)",
-    "returns": "Any",
     "params": [
       {
         "name": "suggest",
@@ -5579,7 +5370,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getNotifySettings",
     "namespace": "account",
     "signature": "await ctx.notification_settings(peer: InputNotifyPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -5596,7 +5386,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.updateNotifySettings",
     "namespace": "account",
     "signature": "await ctx.set_notification_settings(peer: InputNotifyPeer, settings: InputPeerNotifySettings)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -5619,7 +5408,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.resetNotifySettings",
     "namespace": "account",
     "signature": "await ctx.reset_notification_settings()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Resets all notification settings from users and groups.",
@@ -5630,7 +5418,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getContactSignUpNotification",
     "namespace": "account",
     "signature": "await ctx.contact_signup_notifications()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Whether the user will receive notifications when contacts sign up",
@@ -5641,7 +5428,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.setContactSignUpNotification",
     "namespace": "account",
     "signature": "await ctx.set_contact_signup_notifications(silent: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "silent",
@@ -5658,7 +5444,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getNotifyExceptions",
     "namespace": "account",
     "signature": "await ctx.notification_exceptions()",
-    "returns": "Any",
     "params": [
       {
         "name": "compare_sound",
@@ -5687,7 +5472,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getReactionsNotifySettings",
     "namespace": "account",
     "signature": "await ctx.reaction_notification_settings()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get the current reaction notification settings.",
@@ -5698,7 +5482,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.setReactionsNotifySettings",
     "namespace": "account",
     "signature": "await ctx.set_reaction_notification_settings(settings: ReactionsNotifySettings)",
-    "returns": "Any",
     "params": [
       {
         "name": "settings",
@@ -5715,7 +5498,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.getSavedRingtones",
     "namespace": "account",
     "signature": "await ctx.saved_notification_sounds(hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "hash",
@@ -5732,7 +5514,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.saveRingtone",
     "namespace": "account",
     "signature": "await ctx.set_notification_sound_saved(id: InputDocument, unsave: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "id",
@@ -5755,7 +5536,6 @@ export const CATALOG_METHODS = [
     "rpc": "account.uploadRingtone",
     "namespace": "account",
     "signature": "await ctx.upload_notification_sound(file: InputFile, file_name: string, mime_type: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "file",
@@ -5784,7 +5564,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editChatTitle",
     "namespace": "messages",
     "signature": "await ctx.rename_basic_group(chat_id: long, title: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5807,7 +5586,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editChatPhoto",
     "namespace": "messages",
     "signature": "await ctx.set_basic_group_photo(chat_id: long, photo: InputChatPhoto)",
-    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5830,7 +5608,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.addChatUser",
     "namespace": "messages",
     "signature": "await ctx.add_basic_group_member(chat_id: long, user_id: InputUser, fwd_limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5859,7 +5636,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteChatUser",
     "namespace": "messages",
     "signature": "await ctx.remove_basic_group_member(chat_id: long, user_id: InputUser)",
-    "returns": "Any",
     "params": [
       {
         "name": "revoke_history",
@@ -5888,7 +5664,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.createChat",
     "namespace": "messages",
     "signature": "await ctx.create_basic_group(users: Vector<InputUser>, title: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "users",
@@ -5917,7 +5692,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editChatAdmin",
     "namespace": "messages",
     "signature": "await ctx.set_basic_group_admin(chat_id: long, user_id: InputUser, is_admin: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5946,7 +5720,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.migrateChat",
     "namespace": "messages",
     "signature": "await ctx.upgrade_basic_group(chat_id: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -5963,7 +5736,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editChatAbout",
     "namespace": "messages",
     "signature": "await ctx.edit_chat_description(peer: InputPeer, about: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -5986,7 +5758,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editChatDefaultBannedRights",
     "namespace": "messages",
     "signature": "await ctx.set_default_member_restrictions(peer: InputPeer, banned_rights: ChatBannedRights)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -6009,7 +5780,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteChat",
     "namespace": "messages",
     "signature": "await ctx.remove_basic_group(chat_id: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "chat_id",
@@ -6026,7 +5796,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.setHistoryTTL",
     "namespace": "messages",
     "signature": "await ctx.set_chat_auto_delete(peer: InputPeer, period: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -6049,7 +5818,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.toggleNoForwards",
     "namespace": "messages",
     "signature": "await ctx.set_content_protection(peer: InputPeer, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -6078,7 +5846,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.readHistory",
     "namespace": "channels",
     "signature": "await ctx.mark_channel_read(channel: InputChannel, max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6101,7 +5868,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getParticipants",
     "namespace": "channels",
     "signature": "await ctx.channel_members(channel: InputChannel, filter: ChannelParticipantsFilter, offset: int, limit: int, hash: long)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6142,7 +5908,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getParticipant",
     "namespace": "channels",
     "signature": "await ctx.channel_member(channel: InputChannel, participant: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6165,7 +5930,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getFullChannel",
     "namespace": "channels",
     "signature": "await ctx.channel_details(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6182,7 +5946,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.createChannel",
     "namespace": "channels",
     "signature": "await ctx.create_channel(title: string, about: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "broadcast",
@@ -6247,7 +6010,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.editAdmin",
     "namespace": "channels",
     "signature": "await ctx.set_channel_admin(channel: InputChannel, user_id: InputUser, admin_rights: ChatAdminRights)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6282,7 +6044,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.editTitle",
     "namespace": "channels",
     "signature": "await ctx.rename_channel(channel: InputChannel, title: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6305,7 +6066,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.editPhoto",
     "namespace": "channels",
     "signature": "await ctx.set_channel_photo(channel: InputChannel, photo: InputChatPhoto)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6328,7 +6088,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.checkUsername",
     "namespace": "channels",
     "signature": "await ctx.check_channel_username(channel: InputChannel, username: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6351,7 +6110,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.updateUsername",
     "namespace": "channels",
     "signature": "await ctx.set_channel_username(channel: InputChannel, username: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6374,7 +6132,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.joinChannel",
     "namespace": "channels",
     "signature": "await ctx.join_channel(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6391,7 +6148,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.leaveChannel",
     "namespace": "channels",
     "signature": "await ctx.leave_channel(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6408,7 +6164,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.inviteToChannel",
     "namespace": "channels",
     "signature": "await ctx.invite_channel_members(channel: InputChannel, users: Vector<InputUser>)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6431,7 +6186,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.deleteChannel",
     "namespace": "channels",
     "signature": "await ctx.remove_channel(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6448,7 +6202,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleSignatures",
     "namespace": "channels",
     "signature": "await ctx.set_channel_signatures(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "signatures_enabled",
@@ -6477,7 +6230,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getAdminedPublicChannels",
     "namespace": "channels",
     "signature": "await ctx.owned_public_channels()",
-    "returns": "Any",
     "params": [
       {
         "name": "by_location",
@@ -6512,7 +6264,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.editBanned",
     "namespace": "channels",
     "signature": "await ctx.restrict_channel_member(channel: InputChannel, participant: InputPeer, banned_rights: ChatBannedRights)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6541,7 +6292,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getAdminLog",
     "namespace": "channels",
     "signature": "await ctx.channel_admin_log(channel: InputChannel, q: string, max_id: long, min_id: long, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6594,7 +6344,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.setStickers",
     "namespace": "channels",
     "signature": "await ctx.set_group_sticker_set(channel: InputChannel, stickerset: InputStickerSet)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6617,7 +6366,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.readMessageContents",
     "namespace": "channels",
     "signature": "await ctx.mark_channel_media_read(channel: InputChannel, id: Vector<int>)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6640,7 +6388,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.deleteHistory",
     "namespace": "channels",
     "signature": "await ctx.clear_channel_history(channel: InputChannel, max_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "for_everyone",
@@ -6669,7 +6416,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.togglePreHistoryHidden",
     "namespace": "channels",
     "signature": "await ctx.set_prehistory_hidden(channel: InputChannel, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6692,7 +6438,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getLeftChannels",
     "namespace": "channels",
     "signature": "await ctx.left_channels(offset: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "offset",
@@ -6709,7 +6454,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getGroupsForDiscussion",
     "namespace": "channels",
     "signature": "await ctx.eligible_discussion_groups()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get all groups that can be used as discussion groups. Returned basic group chats must be first upgraded to supergroups before they can be set as a discussion group. To set a returned supergroup as a discussion group, access to its old messages must be enabled using channels.togglePreHistoryHidden, first.",
@@ -6720,7 +6464,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.setDiscussionGroup",
     "namespace": "channels",
     "signature": "await ctx.set_discussion_group(broadcast: InputChannel, group: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "broadcast",
@@ -6743,7 +6486,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.editLocation",
     "namespace": "channels",
     "signature": "await ctx.set_group_location(channel: InputChannel, geo_point: InputGeoPoint, address: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6772,7 +6514,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleSlowMode",
     "namespace": "channels",
     "signature": "await ctx.set_slow_mode(channel: InputChannel, seconds: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6795,7 +6536,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getInactiveChannels",
     "namespace": "channels",
     "signature": "await ctx.inactive_channels()",
-    "returns": "Any",
     "params": [
     ],
     "desc_en": "Get inactive channels and supergroups",
@@ -6806,7 +6546,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getSendAs",
     "namespace": "channels",
     "signature": "await ctx.send_as_identities(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "for_paid_reactions",
@@ -6835,7 +6574,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.deleteParticipantHistory",
     "namespace": "channels",
     "signature": "await ctx.remove_member_history(channel: InputChannel, participant: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6858,7 +6596,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleJoinToSend",
     "namespace": "channels",
     "signature": "await ctx.set_join_to_send(channel: InputChannel, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6881,7 +6618,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleJoinRequest",
     "namespace": "channels",
     "signature": "await ctx.set_join_requests(channel: InputChannel, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "apply_to_invites",
@@ -6916,7 +6652,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.reorderUsernames",
     "namespace": "channels",
     "signature": "await ctx.reorder_channel_usernames(channel: InputChannel, order: Vector<string>)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6939,7 +6674,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleUsername",
     "namespace": "channels",
     "signature": "await ctx.set_channel_username_active(channel: InputChannel, username: string, active: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6968,7 +6702,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.deactivateAllUsernames",
     "namespace": "channels",
     "signature": "await ctx.deactivate_channel_usernames(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -6985,7 +6718,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleAntiSpam",
     "namespace": "channels",
     "signature": "await ctx.set_antispam(channel: InputChannel, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7008,7 +6740,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleParticipantsHidden",
     "namespace": "channels",
     "signature": "await ctx.set_members_hidden(channel: InputChannel, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7031,7 +6762,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.updateColor",
     "namespace": "channels",
     "signature": "await ctx.set_channel_color(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "for_profile",
@@ -7066,7 +6796,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.getChannelRecommendations",
     "namespace": "channels",
     "signature": "await ctx.related_channels()",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7083,7 +6812,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.updateEmojiStatus",
     "namespace": "channels",
     "signature": "await ctx.set_channel_emoji_status(channel: InputChannel, emoji_status: EmojiStatus)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7106,7 +6834,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.setEmojiStickers",
     "namespace": "channels",
     "signature": "await ctx.set_group_emoji_set(channel: InputChannel, stickerset: InputStickerSet)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7129,7 +6856,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.toggleAutotranslation",
     "namespace": "channels",
     "signature": "await ctx.set_channel_auto_translation(channel: InputChannel, enabled: Bool)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7152,7 +6878,6 @@ export const CATALOG_METHODS = [
     "rpc": "channels.setMainProfileTab",
     "namespace": "channels",
     "signature": "await ctx.set_channel_profile_tab(channel: InputChannel, tab: ProfileTab)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7175,7 +6900,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editChatParticipantRank",
     "namespace": "messages",
     "signature": "await ctx.edit_member_rank(peer: InputPeer, participant: InputPeer, rank: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -7204,7 +6928,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.exportChatInvite",
     "namespace": "messages",
     "signature": "await ctx.create_chat_invite(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "legacy_revoke_permanent",
@@ -7251,7 +6974,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getExportedChatInvites",
     "namespace": "messages",
     "signature": "await ctx.chat_invites(peer: InputPeer, admin_id: InputUser, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "revoked",
@@ -7298,7 +7020,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getExportedChatInvite",
     "namespace": "messages",
     "signature": "await ctx.chat_invite_details(peer: InputPeer, link: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -7321,7 +7042,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.editExportedChatInvite",
     "namespace": "messages",
     "signature": "await ctx.edit_chat_invite(peer: InputPeer, link: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "revoked",
@@ -7374,7 +7094,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteRevokedExportedChatInvites",
     "namespace": "messages",
     "signature": "await ctx.purge_revoked_chat_invites(peer: InputPeer, admin_id: InputUser)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -7397,7 +7116,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.deleteExportedChatInvite",
     "namespace": "messages",
     "signature": "await ctx.remove_chat_invite(peer: InputPeer, link: string)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -7420,7 +7138,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getAdminsWithInvites",
     "namespace": "messages",
     "signature": "await ctx.invite_admins(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
@@ -7437,7 +7154,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.getChatInviteImporters",
     "namespace": "messages",
     "signature": "await ctx.invite_joiners(peer: InputPeer, offset_date: int, offset_user: InputUser, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "requested",
@@ -7496,7 +7212,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.hideChatJoinRequest",
     "namespace": "messages",
     "signature": "await ctx.resolve_join_request(peer: InputPeer, user_id: InputUser)",
-    "returns": "Any",
     "params": [
       {
         "name": "approved",
@@ -7525,7 +7240,6 @@ export const CATALOG_METHODS = [
     "rpc": "messages.hideAllChatJoinRequests",
     "namespace": "messages",
     "signature": "await ctx.resolve_all_join_requests(peer: InputPeer)",
-    "returns": "Any",
     "params": [
       {
         "name": "approved",
@@ -7554,7 +7268,6 @@ export const CATALOG_METHODS = [
     "rpc": "stats.getBroadcastStats",
     "namespace": "stats",
     "signature": "await ctx.channel_statistics(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7577,7 +7290,6 @@ export const CATALOG_METHODS = [
     "rpc": "stats.getMegagroupStats",
     "namespace": "stats",
     "signature": "await ctx.supergroup_statistics(channel: InputChannel)",
-    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7600,7 +7312,6 @@ export const CATALOG_METHODS = [
     "rpc": "stats.getMessageStats",
     "namespace": "stats",
     "signature": "await ctx.message_statistics(channel: InputChannel, msg_id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7629,7 +7340,6 @@ export const CATALOG_METHODS = [
     "rpc": "stats.getMessagePublicForwards",
     "namespace": "stats",
     "signature": "await ctx.message_public_forwards(channel: InputChannel, msg_id: int, offset: string, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "channel",
@@ -7664,7 +7374,6 @@ export const CATALOG_METHODS = [
     "rpc": "stats.getStoryStats",
     "namespace": "stats",
     "signature": "await ctx.story_statistics(peer: InputPeer, id: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "dark",
@@ -7693,7 +7402,6 @@ export const CATALOG_METHODS = [
     "rpc": "stats.getStoryPublicForwards",
     "namespace": "stats",
     "signature": "await ctx.story_public_forwards(peer: InputPeer, id: int, offset: string, limit: int)",
-    "returns": "Any",
     "params": [
       {
         "name": "peer",
