@@ -1,8 +1,3 @@
-/* Hallmark · shape: Observatory · genre: atmospheric · theme: brand · redesign: docs shell
- * paper: oklch(6% 0 0) · accent: oklch(98% 0 0), the ink itself · display: Tektur · body: Onest · mono: JetBrains Mono
- * hero: the raymarched black hole from the logo, live and draggable, in white light on black
- * docs: a floating search row over a sticky chapter rail, method names as luminous static headings
- * axes: dark/display-condensed/neutral · posture: restrained · contrast: pass · fold: pass · v3.0.0 */
 @import "./tokens.css";
 @import "./base.css" layer(base);
 
@@ -11,7 +6,7 @@
 @tailwind utilities;
 
 @layer components {
-  /* ── buttons: one radius for every control ───────────────────────────── */
+
   .btn {
     position: relative;
     isolation: isolate;
@@ -108,24 +103,17 @@
   }
   .lang-switch .tab[aria-pressed="true"]:hover { background: oklch(100% 0 0 / 0.14); }
 
-  /* ── hero ────────────────────────────────────────────────────────────── */
   .hero__body { position: relative; z-index: var(--z-raised); }
-  /* on a wide screen the copy sits beside the hole rather than under it,
-     so the two halves of the frame are both occupied */
+
   @media (min-width: 48rem) {
     .hero { justify-content: flex-end; }
     .hero__body { padding-top: 0; }
   }
-  /* on a narrow screen the hero takes the whole frame above the footer, so
-     the landing reads as one page instead of a scene and a gap */
+
   @media (max-width: 47.99rem) {
     .hero { flex: 1 1 auto; }
   }
 
-  /* the wordmark carries the glow on its own: a soft halo plus a slow
-     highlight that travels across the glyphs. the light also spills out
-     of the flanks of the letters, so the title has a side aura rather
-     than only being bright */
   .wordmark {
     position: relative;
     display: inline-block;
@@ -210,7 +198,6 @@
     .hero__body.hero__body { padding-top: 62svh; }
   }
 
-  /* ── floating navigation ─────────────────────────────────────────────── */
   .nav-head {
     transition: transform 320ms var(--ease-out), opacity 240ms var(--ease-out);
   }
@@ -250,7 +237,7 @@
       0 22px 44px -18px oklch(0% 0 0 / 0.92),
       0 0 26px oklch(100% 0 0 / 0.06),
       inset 0 1px 0 oklch(100% 0 0 / 0.12);
-    /* the sheet grows out of the button that summoned it */
+
     transform-origin: top right;
     animation: sheet-in 380ms var(--ease-out) backwards;
     will-change: transform, opacity;
@@ -266,7 +253,7 @@
     0% { opacity: 1; transform: translateY(0) scale(1); }
     100% { opacity: 0; transform: translateY(-8px) scale(0.9); }
   }
-  /* the rows settle in one after the other */
+
   .nav-sheet > * {
     animation: sheet-row-in 320ms var(--ease-out) backwards;
   }
@@ -317,14 +304,14 @@
 }
 
 @layer components {
-  /* ── documentation shell ───────────────────────────────────────────────── */
+
   .doc-shell {
     min-height: 100dvh;
     background:
       radial-gradient(1200px 620px at 78% -8%, oklch(100% 0 0 / 0.045), transparent 62%),
       radial-gradient(900px 520px at 8% 104%, oklch(100% 0 0 / 0.03), transparent 60%),
       var(--color-paper);
-    /* inside the guide the halo is barely there, so the reading stays quiet */
+
     text-shadow: var(--halo-whisper);
   }
 
@@ -434,7 +421,6 @@
   .doc-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
   .doc-btn--sm { min-height: 36px; padding: 0 var(--space-sm); font-size: var(--text-xs); }
 
-  /* segmented guide / methods switch */
   .doc-seg {
     display: inline-flex;
     align-items: center;
@@ -477,7 +463,6 @@
   }
   .doc-seg__btn[aria-pressed="true"] .doc-seg__num { color: oklch(78% 0 0); }
 
-  /* floating search row */
   @media (max-width: 61.99rem) {
     :root { --doc-head-h: 58px; }
   }
@@ -595,7 +580,6 @@
   .doc-search__clear:active { transform: scale(0.94); }
   .doc-search__clear:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 
-  /* command palette */
   .doc-overlay {
     position: fixed;
     inset: 0;
@@ -697,7 +681,6 @@
   .doc-palette__item:hover .doc-palette__go { opacity: 1; }
   .doc-palette__empty { padding: var(--space-lg); text-align: center; color: var(--color-muted); font-size: var(--text-sm); }
 
-  /* layout */
   .doc-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -774,7 +757,6 @@
 
   .doc-main { min-width: 0; }
 
-  /* mobile chapter controls */
   .doc-mobile { display: flex; flex-direction: column; gap: var(--space-sm); margin-bottom: var(--space-lg); }
   @media (min-width: 62rem) { .doc-mobile { display: none; } }
   .doc-mobile__seg { display: flex; }
@@ -836,7 +818,6 @@
     overflow-y: auto;
   }
 
-  /* article */
   .doc-article { max-width: 54rem; }
   .doc-eyebrow {
     display: flex;
@@ -951,7 +932,6 @@
   }
   .doc-table td:first-child, .doc-method__table td:first-child { color: var(--color-ink); }
 
-  /* code blocks */
   .doc-code-block {
     margin: 0;
     border: 1px solid oklch(100% 0 0 / 0.09);
@@ -1001,7 +981,6 @@
   }
   .doc-state--on { color: var(--color-ink); text-shadow: 0 0 14px var(--color-glow); }
 
-  /* method catalog */
   .doc-catalog { display: flex; flex-direction: column; gap: var(--space-lg); }
   .doc-catalog__bar {
     display: flex;
@@ -1042,7 +1021,6 @@
   .doc-catalog__list { display: flex; flex-direction: column; gap: var(--space-md); }
   .doc-empty { padding: var(--space-xl) 0; color: var(--color-muted); }
 
-  /* method card: a static, luminous heading with no copy control */
   .doc-method {
     padding: var(--space-md);
     border: 1px solid oklch(100% 0 0 / 0.07);
@@ -1067,9 +1045,7 @@
     overflow-wrap: anywhere;
   }
   .doc-method__prefix { color: var(--color-muted); opacity: 0.75; }
-  /* the name itself carries the light: the fill runs bright down the
-     middle of the strokes and dims at the edges, so the glow reads from
-     inside the lettering and not only around it */
+
   .doc-method__name {
     color: transparent;
     background-image: linear-gradient(
@@ -1104,7 +1080,6 @@
   .doc-method__opt { color: var(--color-muted); }
   .doc-method__default { font-family: var(--font-outlier); color: var(--color-muted); }
 
-  /* pager */
   .doc-pager {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1145,7 +1120,6 @@
     text-shadow: 0 0 16px oklch(100% 0 0 / 0.18);
   }
 
-  /* docs footer */
   .doc-footer {
     border-top: 1px solid var(--color-rule);
     background: oklch(0% 0 0 / 0.4);
@@ -1172,7 +1146,6 @@
   .doc-footer__link:hover { color: var(--color-ink); text-shadow: 0 0 16px oklch(100% 0 0 / 0.22); }
   .doc-footer__link:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 
-  /* ── press illumination ───────────────────────────────────────────────── */
   @property --press {
     syntax: '<number>';
     inherits: true;
@@ -1269,8 +1242,7 @@
       inset 0 0 12px 1px oklch(100% 0 0 / calc(var(--press) * 0.28)),
       inset 0 0 22px 2px oklch(100% 0 0 / calc(var(--press) * 0.18));
   }
-  /* the halo that sits outside the edge of the control, so the lit button
-     is not a hard shape with a soft inside */
+
   :is(
     .btn,
     .link,
@@ -1374,7 +1346,6 @@
     }
   }
 
-  /* ── shared focus ─────────────────────────────────────────────────────── */
   .btn:focus-visible,
   .tab:focus-visible,
   .link:focus-visible,

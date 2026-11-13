@@ -67,9 +67,6 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    // Older builds used a #docs fragment even though the guide is an
-    // in-app view. Remove it from old links so navigation never leaves a
-    // decorative hash in the address bar.
     if (window.location.hash.startsWith('#docs')) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
