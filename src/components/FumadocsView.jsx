@@ -266,10 +266,8 @@ function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
   );
 }
 
-export function FumadocsView({ content, lang, setLang, onBackToHome }) {
-  const [activeTab, setActiveTab] = useState(() =>
-    window.location.hash.includes('catalog') ? 'catalog' : 'chapters'
-  );
+export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab = 'chapters' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [activeSection, setActiveSection] = useState(0);
   const [chapterDropdownOpen, setChapterDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

@@ -26,7 +26,7 @@ Hotaru inherits the transport and the cryptography from GoyGram.
 
 ![The GoyGram mark](media/goygram-mark.png)
 
-The chart below is the upstream GoyGram TL codec benchmark, rendered here in grayscale to match the rest of the interface.
+The chart below is the upstream GoyGram TL codec benchmark.
 
 ![GoyGram TL codec benchmark: 351270 operations per second for serialize sendMessage](media/goygram-codec.png)`,
   },
@@ -101,7 +101,7 @@ HOTARU = {
 
 | Field | Type | Rule |
 | --- | --- | --- |
-| \`id\` | string | Non-empty, at most 128 characters, no slash or NUL. |
+| \`id\` | string | Canonical module ID and default name. Non-empty, at most 128 characters, no slash or NUL. |
 | \`version\` | string | Non-empty. |
 | \`commands\` | list of strings | No empty entries and no whitespace inside a command. |
 | \`capabilities\` | list of strings | Names from the capability registry. |
@@ -110,7 +110,7 @@ HOTARU = {
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| \`name\` | string | Display name. Defaults to \`id\`. |
+| \`name\` | string | Optional display label; the runtime uses \`id\` when omitted. |
 | \`watchers\` | list of strings | Watcher entry points the runtime subscribes. |
 | \`tasks\` | dict | Background tasks. Each entry may set \`interval\` (seconds, default 60) and \`autostart\`. |
 | \`aliases\` | dict | Alternative command names mapped to existing commands. |
@@ -385,9 +385,9 @@ The image below is the running Singularity frontend, captured from the upstream 
   },
   {
     id: 'skill',
-    title: 'The agent skill',
-    summary: 'SKILL.md, the reference an agent reads to write modules against the real API.',
-    content: `\`SKILL.md\` is the guide written for an AI agent that has to produce working modules. It is a single file, and it is the same file the download button serves.
+    title: 'Module-writing reference',
+    summary: 'SKILL.md documents the Hotaru module contract and runtime API.',
+    content: `\`SKILL.md\` is the reference for Hotaru's module contract and runtime API. It is available as a single-file download.
 
 ### What it contains
 
@@ -404,7 +404,7 @@ The method cards are generated from the upstream sources rather than written by 
 
 ### Language
 
-The guide is written in Russian, which is the language of the upstream project. The interface here keeps the same split: this documentation in the language you chose, the agent guide in the language it was written in.`,
+The guide is written in Russian, the language of the upstream project.`,
   },
 ];
 
@@ -436,7 +436,7 @@ Hotaru наследует транспорт и криптографию от Go
 
 ![Знак GoyGram](media/goygram-mark.png)
 
-На графике ниже — бенчмарк TL-кодек GoyGram из upstream-репозитория, переведённый здесь в оттенки серого, чтобы встать в ряд с остальным интерфейсом.
+На графике ниже — бенчмарк TL-кодек GoyGram из upstream-репозитория.
 
 ![Бенчмарк TL-кодек GoyGram: 351270 операций в секунду на serialize sendMessage](media/goygram-codec.png)`,
   },
@@ -511,7 +511,7 @@ HOTARU = {
 
 | Поле | Тип | Правило |
 | --- | --- | --- |
-| \`id\` | строка | Не пусто, не длиннее 128 символов, без слэша и NUL. |
+| \`id\` | строка | Канонический ID и имя модуля по умолчанию. Не пусто, не длиннее 128 символов, без слэша и NUL. |
 | \`version\` | строка | Не пусто. |
 | \`commands\` | список строк | Без пустых записей и без пробелов внутри команды. |
 | \`capabilities\` | список строк | Имена из реестра владений. |
@@ -520,7 +520,7 @@ HOTARU = {
 
 | Поле | Тип | Значение |
 | --- | --- | --- |
-| \`name\` | строка | Отображаемое имя. По умолчанию равно \`id\`. |
+| \`name\` | строка | Необязательная подпись для отображения; если её нет, среда использует \`id\`. |
 | \`watchers\` | список строк | Точки входа наблюдателей, на которые подписывается среда. |
 | \`tasks\` | словарь | Фоновые задачи. У каждой можно задать \`interval\` (секунды, по умолчанию 60) и \`autostart\`. |
 | \`aliases\` | словарь | Другие имена команд, отображаемые на существующие. |
@@ -795,9 +795,9 @@ Hotaru может поднять туннель Cloudflare Horizon и зарег
   },
   {
     id: 'skill',
-    title: 'Скилл для агента',
-    summary: 'SKILL.md — справочник, по которому агент пишет модули по настоящему API.',
-    content: `\`SKILL.md\` — руководство, написанное для ИИ-агента, которому нужно писать рабочие модули. Это один файл, и именно его отдаёт кнопка скачивания.
+    title: 'Справочник по разработке модулей',
+    summary: 'SKILL.md описывает контракт модулей Hotaru и API среды выполнения.',
+    content: `\`SKILL.md\` — справочник по контракту модулей и реальному API Hotaru. Он доступен для скачивания одним файлом.
 
 ### Что внутри
 
@@ -814,6 +814,6 @@ Hotaru может поднять туннель Cloudflare Horizon и зарег
 
 ### Язык
 
-Руководство написано по-русски — на языке самого проекта. Здесь разделение такое же: эта документация на выбранном вами языке, руководство для агента на языке, на котором оно написано.`,
+Руководство написано по-русски, как и сам проект.`,
   },
 ];

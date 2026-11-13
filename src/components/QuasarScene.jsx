@@ -300,6 +300,8 @@ function rotate(v, k, ang) {
 // the page bare
 const DEFAULT_PITCH = 0.34;
 const DEFAULT_DIST = 26.0;
+const DIST_MIN = 15.0;
+const DIST_MAX = 33.0;
 // how far the eye sits below the middle of the band, to compensate for the
 // bright limb of the disk glowing above the eye point
 const BRIGHT_LIFT = 16;
@@ -777,7 +779,7 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
       stateRef.current.isDragging = false;
     };
     const zoomBy = (k) => {
-      stateRef.current.dist = Math.max(14.0, Math.min(48.0, stateRef.current.dist * k));
+      stateRef.current.dist = Math.max(DIST_MIN, Math.min(DIST_MAX, stateRef.current.dist * k));
       start();
     };
 

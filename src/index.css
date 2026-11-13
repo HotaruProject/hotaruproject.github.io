@@ -882,7 +882,7 @@
     margin-top: var(--space-lg);
     font-size: var(--text-lg);
     color: var(--color-ink);
-    text-shadow: var(--halo-doc-title);
+    text-shadow: var(--halo-doc-head);
   }
   .doc-h3 {
     margin-top: var(--space-md);
@@ -890,7 +890,7 @@
     font-size: var(--text-md);
     font-weight: 600;
     color: var(--color-ink);
-    text-shadow: 0 0 16px oklch(100% 0 0 / 0.09);
+    text-shadow: var(--halo-doc-head);
   }
   .doc-list {
     margin: 0;
@@ -986,7 +986,7 @@
     cursor: pointer;
     transition: color var(--dur-short) var(--ease-out), background-color var(--dur-short) var(--ease-out);
   }
-  .doc-code code { font: inherit; white-space: pre; }
+  .doc-code code { font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
   .doc-code:hover { color: var(--color-ink); }
   .doc-code:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
   .doc-code--done { color: var(--color-ink); background: oklch(100% 0 0 / 0.035); }
