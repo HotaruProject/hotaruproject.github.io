@@ -6,5 +6,5 @@ Explain the modifications and motivation.
 
 - [ ] Tested locally with `npm run build` and verified output.
 - [ ] Responsive design verified on mobile (390px) and desktop (1440px).
-- [ ] Documentation and code style verified.
+- [ ] No comments added in source files.
 - [ ] Accessibility and contrast verified.

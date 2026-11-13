@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { RotateCcw } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { RotateCcw, Play, Pause, Hand } from 'lucide-react';
 
 const VERT_SRC = `
 attribute vec2 aPos;
-varying vec2 vUv;
 void main() {
-  vUv = aPos * 0.5 + 0.5;
   gl_Position = vec4(aPos, 0.0, 1.0);
 }
 `;
@@ -19,13 +17,9 @@ precision mediump float;
 
 uniform vec2 uRes;
 uniform float uTime;
-uniform vec3 uCamPos;
-uniform vec3 uCamRight;
-uniform vec3 uCamUp;
-uniform vec3 uCamFwd;
-uniform vec2 uCenter;
-uniform float uScale;
-uniform float uSteps;
+uniform float uYaw;
+uniform float uPitch;
+uniform float uDist;
 
 float hash13(vec3 p3) {
   p3 = fract(p3 * 0.1031);
@@ -69,7 +63,6 @@ float fbm2(vec2 p) {
 
 vec3 backgroundStars(vec3 dir) {
   vec3 col = vec3(0.0003, 0.0004, 0.0008);
-
   vec3 pStar = dir * 200.0;
   vec3 iStar = floor(pStar);
   vec3 fStar = fract(pStar) - 0.5;
@@ -80,11 +73,10 @@ vec3 backgroundStars(vec3 dir) {
     float size = 0.045 + 0.055 * fract(rnd * 137.1);
     float glow = exp(-dist * dist / (size * size * 0.20));
     float twinkle = 0.75 + 0.25 * sin(uTime * 2.5 + rnd * 60.0);
-    vec3 starCol = mix(vec3(1.0), vec3(0.68, 0.68, 0.68), fract(rnd * 43.1));
-    if (fract(rnd * 89.2) > 0.85) starCol = vec3(0.86);
+    vec3 starCol = mix(vec3(0.95, 0.98, 1.0), vec3(0.75, 0.90, 1.0), fract(rnd * 43.1));
+    if (fract(rnd * 89.2) > 0.85) starCol = vec3(1.0, 0.92, 0.82);
     col += starCol * glow * twinkle * 2.2;
   }
-
   return col;
 }
 
@@ -110,13 +102,12 @@ vec4 sampleDisk(vec3 hit, vec3 rayDir) {
 
   vec3 diskVelocity = normalize(vec3(-hit.z, 0.0, hit.x));
   float doppler = dot(diskVelocity, -rayDir);
-  float dop = clamp(1.0 + 0.62 * doppler, 0.15, 2.7);
-  float dopplerFactor = dop * dop * dop * sqrt(dop);
+  float dopplerFactor = pow(clamp(1.0 + 0.62 * doppler, 0.15, 2.7), 3.5);
 
-  vec3 colHot = vec3(1.42);
-  vec3 colMid = vec3(0.99);
-  vec3 colWarm = vec3(0.78);
-  vec3 colOuter = vec3(0.34);
+  vec3 colHot = vec3(1.35, 1.40, 1.48);
+  vec3 colMid = vec3(0.96, 0.98, 1.05);
+  vec3 colWarm = vec3(0.85, 0.82, 0.78);
+  vec3 colOuter = vec3(0.55, 0.35, 0.18);
 
   vec3 col = mix(colOuter, colWarm, smoothstep(0.0, 0.35, density));
   col = mix(col, colMid, smoothstep(0.3, 0.7, density));
@@ -124,17 +115,21 @@ vec4 sampleDisk(vec3 hit, vec3 rayDir) {
 
   float innerGlow = smoothstep(innerR + 0.95, innerR, rad);
   col += colHot * innerGlow * innerGlow * 2.4;
-
   col *= dopplerFactor * 1.95;
   float alpha = smoothstep(0.015, 0.32, density);
   return vec4(col, alpha);
 }
 
 vec3 traceScene(vec2 uv) {
-  vec3 camPos = uCamPos;
-  vec3 fwd = uCamFwd;
-  vec3 right = uCamRight;
-  vec3 up = uCamUp;
+  vec3 lookAt = vec3(0.0, 0.0, 0.0);
+  vec3 camPos = lookAt + uDist * vec3(
+    cos(uPitch) * sin(uYaw),
+    sin(uPitch),
+    -cos(uPitch) * cos(uYaw)
+  );
+  vec3 fwd = normalize(lookAt - camPos);
+  vec3 right = normalize(cross(fwd, vec3(0.0, 1.0, 0.0)));
+  vec3 up = cross(right, fwd);
   float fov = 0.85;
   vec3 dir = normalize(fwd + uv.x * fov * right + uv.y * fov * up);
 
@@ -148,15 +143,15 @@ vec3 traceScene(vec2 uv) {
   bool captured = false;
   float minR = 1000.0;
   int diskCrossings = 0;
-  for (int i = 0; i < 300; i++) {
-    if (float(i) >= uSteps) break;
+
+  for (int i = 0; i < 220; i++) {
     vec3 prevPos = pos;
     float r = length(pos);
     minR = min(minR, r);
 
-    float dt = clamp(r * 0.042, 0.005, 0.85);
+    float dt = clamp(r * 0.052, 0.007, 0.98);
     float r2safe = max(dot(pos, pos), 0.55);
-    vec3 acc = -1.65 * h2 * pos / (r2safe * r2safe * sqrt(r2safe));
+    vec3 acc = -1.65 * h2 * pos / pow(r2safe, 2.5);
     dir = normalize(dir + acc * dt);
     pos += dir * dt;
 
@@ -178,7 +173,7 @@ vec3 traceScene(vec2 uv) {
       diskCrossings++;
     }
 
-    if (r > 40.0) {
+    if (r > 36.0) {
       break;
     }
   }
@@ -187,39 +182,23 @@ vec3 traceScene(vec2 uv) {
   if (!captured) {
     col += backgroundStars(normalize(dir)) * (1.0 - diskAccum.a);
     float ringGlow = exp(-abs(minR - photonR) * 22.0);
-    col += vec3(1.0) * ringGlow * 2.9;
+    col += vec3(1.35, 1.40, 1.48) * ringGlow * 2.9;
     float ringHalo = exp(-abs(minR - photonR) * 4.2);
-    col += vec3(0.95) * ringHalo * 0.5;
-    float halo = exp(-abs(minR - photonR) * 0.85);
-    col += vec3(0.7) * halo * 0.34;
+    col += vec3(0.96, 0.98, 1.05) * ringHalo * 0.45;
   }
-
-  float dScreen = length(uv);
-  float bloom = exp(-max(0.0, dScreen - 0.58) * 3.1);
-  col += vec3(0.62) * bloom * 0.17;
 
   return col;
 }
 
 void main() {
   float minDim = min(uRes.x, uRes.y);
-  vec2 uv = (gl_FragCoord.xy - uCenter * uRes) / minDim * uScale;
+  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / minDim;
   vec3 col = traceScene(uv);
   col = col / (1.0 + col);
   col = pow(col, vec3(0.86));
-  vec2 vigUv = (gl_FragCoord.xy - 0.5 * uRes) / minDim;
-  float vig = 1.0 - 0.22 * smoothstep(0.35, 1.5, length(vigUv));
+  float vig = 1.0 - 0.20 * smoothstep(0.4, 1.4, length(uv));
   col *= vig;
   gl_FragColor = vec4(col, 1.0);
-}
-`;
-
-const BLIT_SRC = `
-precision mediump float;
-varying vec2 vUv;
-uniform sampler2D uTex;
-void main() {
-  gl_FragColor = vec4(texture2D(uTex, vUv).rgb, 1.0);
 }
 `;
 
@@ -241,7 +220,6 @@ function createProgram(gl, vsSrc, fsSrc) {
   const prog = gl.createProgram();
   gl.attachShader(prog, vs);
   gl.attachShader(prog, fs);
-  gl.bindAttribLocation(prog, 0, 'aPos');
   gl.linkProgram(prog);
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
     const err = gl.getProgramInfoLog(prog);
@@ -251,197 +229,29 @@ function createProgram(gl, vsSrc, fsSrc) {
   return prog;
 }
 
-function makeTarget(gl) {
-  const tex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  const fb = gl.createFramebuffer();
-  const t = { tex, fb, w: 0, h: 0 };
-  t.size = (w, h) => {
-    if (t.w === w && t.h === h) return;
-    t.w = w;
-    t.h = h;
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-  };
-  t.free = () => {
-    gl.deleteTexture(tex);
-    gl.deleteFramebuffer(fb);
-  };
-  return t;
-}
-
-const norm = (v) => {
-  const l = Math.hypot(v[0], v[1], v[2]) || 1;
-  return [v[0] / l, v[1] / l, v[2] / l];
-};
-const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-
-function rotate(v, k, ang) {
-  const c = Math.cos(ang);
-  const s = Math.sin(ang);
-  const kv = cross(k, v);
-  const d = dot(k, v) * (1 - c);
-  return [v[0] * c + kv[0] * s + k[0] * d, v[1] * c + kv[1] * s + k[1] * d, v[2] * c + kv[2] * s + k[2] * d];
-}
-const DEFAULT_PITCH = 0.34;
-const DEFAULT_DIST = 26.0;
-const DIST_MIN = 15.0;
-const DIST_MAX = 33.0;
-const BRIGHT_LIFT = 16;
-
-const isWideScreen = () =>
-  typeof window !== 'undefined' && window.innerWidth >= 768;
-
-function defaultFrame() {
-  const cp = Math.cos(DEFAULT_PITCH);
-  const back = [0.0, Math.sin(DEFAULT_PITCH), -cp];
-  const right = norm(cross([0, 1, 0], back));
-  const up = cross(back, right);
-  return { right, up, back };
-}
-
-const QUALITY = [0.8, 0.9, 1.0];
-const STEPS = [110, 190, 300];
-const COMPACT_HEIGHT = 560;
-const FIT_SPAN = 0.674;
-const TILT_BASE = 0.3986;
-const TILT_GROW = 0.4111;
-const PITCH_MIN = -0.62;
-const PITCH_MAX = 0.62;
-const SENS = 0.0036;
-const FOLLOW_TAU = 0.075;
-const VEL_TAU = 0.09;
-const GLIDE = 2.0;
-const MAX_RATE = 3.0;
-const DRIFT = 0.055;
-const DOLLY_MAX = 0.46;
-
-const LABELS = {
-  en: { hint: 'Drag to turn it any way, pinch or Ctrl and scroll to zoom', reset: 'Reset view' },
-  ru: { hint: 'Тяните, чтобы повернуть в любую сторону, щипок или Ctrl и колесо для зума', reset: 'Сбросить вид' },
-};
-
-export function QuasarScene({ lang = 'en', copyRef = null }) {
-  const labels = LABELS[lang] || LABELS.en;
+export function QuasarScene() {
   const canvasRef = useRef(null);
-  const layoutRef = useRef({ ready: false, scale: 1, eyeY: 0, room: 1, compact: false, shiftX: 0 });
-  const rectRef = useRef({ width: 0, height: 0, top: 0, left: 0 });
+  const [autoRotate, setAutoRotate] = useState(true);
   const stateRef = useRef({
-    ...defaultFrame(),
-    dist: DEFAULT_DIST,
+    yaw: 0.0,
+    pitch: 0.18,
+    dist: 24.0,
+    autoRotate: true,
     isDragging: false,
     lastX: 0,
     lastY: 0,
-    lastT: 0,
-    velX: 0,
-    velY: 0,
-    pendingX: 0,
-    pendingY: 0,
-    fit: 1,
-    spin: 0,
-    hole: { x: 0, y: 0, r: 0 },
+    yawVel: 0,
+    pitchVel: 0,
   });
 
-  useEffect(() => {
-    const measure = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const canvasRect = canvas.getBoundingClientRect();
-      const canvasW = canvasRect.width;
-      const canvasH = canvasRect.height;
-      rectRef.current = {
-        width: canvasW,
-        height: canvasH,
-        top: canvasRect.top,
-        left: canvasRect.left,
-      };
-      const phone = canvasW < 768;
-      const compact = window.innerHeight < COMPACT_HEIGHT;
-      if (!phone && !compact) {
-        layoutRef.current = { ready: false, scale: 1, eyeY: 0, room: 1, compact: false, shiftX: 0 };
-        return;
-      }
-      const scrollY = window.scrollY;
-      const canvasDocTop = canvasRect.top + scrollY;
-      const navHead = document.querySelector('.nav-head');
-      const pill = document.querySelector('.nav-pill');
-      let plateBottom = 68;
-      if (navHead && pill) {
-        const headTop = parseFloat(getComputedStyle(navHead).top);
-        const pillH = pill.getBoundingClientRect().height;
-        plateBottom = (Number.isFinite(headTop) ? headTop : 0) + pillH;
-      }
-      const copy = copyRef ? copyRef.current : null;
-      const copyDocTop = copy
-        ? copy.getBoundingClientRect().top + scrollY
-        : canvasDocTop + canvasH * 0.44;
-      const band = Math.max(60, copyDocTop - plateBottom);
-      const gap = phone || compact ? 14 : 26;
-      const room = Math.max(46, band - gap * 2);
-      const minCss = Math.min(canvasW, canvasH);
-      const wanted = canvasW * (phone ? 0.82 : 0.80);
-      const byHeight = room / 0.76;
-      const apparent = Math.max(120, Math.min(wanted, byHeight));
-      let scale = (FIT_SPAN * minCss) / apparent;
-      if (scale > 3.4) scale = 3.4;
-      const eyeMid = plateBottom + band / 2 + BRIGHT_LIFT;
-      layoutRef.current = {
-        ready: true,
-        scale,
-        room,
-        shiftX: 0,
-        eyeY: eyeMid - canvasDocTop,
-        compact,
-      };
-    };
-    measure();
-    let wasWide = isWideScreen();
-    const onResize = () => {
-      const wide = isWideScreen();
-      if (wide !== wasWide) {
-        wasWide = wide;
-        Object.assign(stateRef.current, defaultFrame(), {
-          dist: DEFAULT_DIST,
-          velX: 0,
-          velY: 0,
-          pendingX: 0,
-          pendingY: 0,
-          spin: 0,
-        });
-      }
-      measure();
-    };
-    window.addEventListener('resize', onResize);
-    window.addEventListener('orientationchange', measure);
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (observer) {
-      if (canvasRef.current) observer.observe(canvasRef.current);
-      if (copyRef && copyRef.current) observer.observe(copyRef.current);
-    }
-    return () => {
-      window.removeEventListener('resize', onResize);
-      window.removeEventListener('orientationchange', measure);
-      if (observer) observer.disconnect();
-    };
-  }, [copyRef]);
+  stateRef.current.autoRotate = autoRotate;
 
   const resetCamera = useCallback(() => {
-    Object.assign(stateRef.current, defaultFrame(), {
-      dist: DEFAULT_DIST,
-      velX: 0,
-      velY: 0,
-      pendingX: 0,
-      pendingY: 0,
-      spin: 0,
-    });
-    stateRef.current.wake?.();
+    stateRef.current.yaw = 0.0;
+    stateRef.current.pitch = 0.18;
+    stateRef.current.dist = 24.0;
+    stateRef.current.yawVel = 0;
+    stateRef.current.pitchVel = 0;
   }, []);
 
   useEffect(() => {
@@ -450,18 +260,15 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
 
     let gl;
     try {
-      gl = canvas.getContext('webgl', { powerPreference: 'high-performance', alpha: false, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false });
+      gl = canvas.getContext('webgl', { powerPreference: 'high-performance', alpha: false, depth: false, antialias: false });
     } catch {
       return;
     }
     if (!gl) return;
 
-    let progs;
+    let prog;
     try {
-      progs = {
-        scene: createProgram(gl, VERT_SRC, FRAG_SRC),
-        blit: createProgram(gl, VERT_SRC, BLIT_SRC),
-      };
+      prog = createProgram(gl, VERT_SRC, FRAG_SRC);
     } catch {
       return;
     }
@@ -469,379 +276,155 @@ export function QuasarScene({ lang = 'en', copyRef = null }) {
     const posBuf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    const loc = {};
-    Object.entries(progs).forEach(([key, p]) => {
-      loc[key] = {};
-      ['uRes', 'uTime', 'uCamPos', 'uCamRight', 'uCamUp', 'uCamFwd', 'uCenter', 'uScale', 'uSteps', 'uTex'].forEach((n) => {
-        loc[key][n] = gl.getUniformLocation(p, n);
-      });
-    });
-    const sceneT = makeTarget(gl);
-
-    let quality = QUALITY.length - 1;
-    let frameSum = 0;
-    let frameCount = 0;
-    let lastDraw = 0;
-    let windowStart = performance.now();
-    canvas.dataset.quality = String(QUALITY.length - 1);
-    let frames = 0;
-    canvas.dataset.frames = '0';
-    const FRAME_MIN = 1000 / 61;
-
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let visible = true;
-    let running = false;
+    const aPos = gl.getAttribLocation(prog, 'aPos');
+    const uRes = gl.getUniformLocation(prog, 'uRes');
+    const uTime = gl.getUniformLocation(prog, 'uTime');
+    const uYaw = gl.getUniformLocation(prog, 'uYaw');
+    const uPitch = gl.getUniformLocation(prog, 'uPitch');
+    const uDist = gl.getUniformLocation(prog, 'uDist');
 
     let animId;
     let t0 = performance.now();
 
-    const pass = (prog, target, w, h) => {
-      gl.useProgram(prog);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fb : null);
-      gl.viewport(0, 0, w, h);
-    };
-    const bindTex = (unit, tex, uniform) => {
-      gl.activeTexture(gl.TEXTURE0 + unit);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.uniform1i(uniform, unit);
-    };
-
     const render = (now) => {
-      if (now - lastDraw < FRAME_MIN) {
-        animId = requestAnimationFrame(render);
-        return;
-      }
-      const rawDt = (now - t0) * 0.001;
-      const dt = Math.min(rawDt, 0.1);
+      const dt = Math.min((now - t0) * 0.001, 0.1);
       t0 = now;
-      frames += 1;
-      canvas.dataset.frames = String(frames);
-      if (lastDraw) {
-        frameSum += now - lastDraw;
-        frameCount++;
-        if (frameCount >= 3 && now - windowStart > 600) {
-          const avg = frameSum / frameCount;
-          if (avg > 45 && quality > 0) {
-            quality = avg > 200 ? Math.max(0, quality - 2)
-              : avg > 90 ? Math.max(0, quality - 1)
-                : quality - 1;
-          } else if (avg < 26 && quality < QUALITY.length - 1) {
-            quality++;
-          }
-          frameSum = 0;
-          frameCount = 0;
-          windowStart = now;
-          canvas.dataset.quality = String(quality);
-        }
-      }
-      lastDraw = now;
 
-      const rect = rectRef.current.width > 0 ? rectRef.current : canvas.getBoundingClientRect();
-      const isMobile = rect.width < 768;
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
-      const outW = Math.max(1, Math.round(rect.width * dpr));
-      const outH = Math.max(1, Math.round(rect.height * dpr));
-      const sw = Math.max(1, Math.round(rect.width * dpr * QUALITY[quality]));
-      const sh = Math.max(1, Math.round(rect.height * dpr * QUALITY[quality]));
+      const rect = canvas.getBoundingClientRect();
+      const isMobile = window.innerWidth < 768;
+      const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.0 : 1.35);
+      const width = Math.floor(rect.width * dpr);
+      const height = Math.floor(rect.height * dpr);
 
-      if (canvas.width !== outW || canvas.height !== outH) {
-        canvas.width = outW;
-        canvas.height = outH;
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
       }
-      sceneT.size(sw, sh);
 
       const st = stateRef.current;
-      const follow = 1 - Math.exp(-dt / FOLLOW_TAU);
-      const takeX = st.pendingX * follow;
-      const takeY = st.pendingY * follow;
-      st.pendingX -= takeX;
-      st.pendingY -= takeY;
-      if (import.meta.env.DEV) {
-        st.applied = (st.applied || 0) + takeX;
-        st.appliedGlide = (st.appliedGlide || 0) + (st.isDragging ? 0 : st.velX * dt);
+      if (st.autoRotate && !st.isDragging) {
+        st.yaw += dt * 0.12;
       }
-      if (st.isDragging) {
-        turn(takeX, takeY);
-      } else {
-        const damp = Math.exp(-GLIDE * dt);
-        st.velX *= damp;
-        st.velY *= damp;
-        const yawRate = st.velX + (reduceMotion.matches ? 0 : DRIFT);
-        turn(takeX + yawRate * dt, takeY + st.velY * dt);
+
+      if (!st.isDragging) {
+        st.yaw += st.yawVel * dt;
+        st.pitch += st.pitchVel * dt;
+        st.yawVel *= 0.92;
+        st.pitchVel *= 0.92;
       }
-      const spinDt = Math.min(rawDt, 0.5);
-      st.spin = st.isDragging
-        ? Math.min(1, st.spin + spinDt * 1.15)
-        : Math.max(0, st.spin - spinDt * 0.55);
-      const dolly = 1 + DOLLY_MAX * st.spin;
 
-      const pos = st.back.map((v) => v * st.dist * dolly);
-      const fwd = st.back.map((v) => -v);
+      st.pitch = Math.max(-0.65, Math.min(0.65, st.pitch));
 
-      let center;
-      let scale;
-      const minCss = Math.min(rect.width, rect.height);
-      const layout = layoutRef.current;
-      if (isMobile || layout.compact) {
-        if (layout.ready) {
-          scale = layout.scale;
-          center = [0.5 - (layout.shiftX || 0), 1 - layout.eyeY / rect.height];
-        } else {
-          center = [0.5, 0.7];
-          scale = 1.0;
-        }
-      } else {
-        const cssW = rect.width;
-        let textRight = 760;
-        if (cssW >= 1440) textRight = (cssW - 1440) / 2 + 760;
-        else if (cssW < 1280) textRight = Math.min(760, cssW * 0.58);
-        const free = Math.max(cssW - textRight, 200);
-        scale = Math.max(0.6, Math.min(1.8, (0.52 * minCss) / free));
-        center = [(textRight + free * 0.18) / cssW, 0.47];
-      }
-      if ((isMobile || layout.compact) && layout.ready) {
-        const pitch = Math.asin(Math.max(-1, Math.min(1, st.back[1])));
-        const tilt = Math.abs(Math.sin(pitch));
-        const need = ((TILT_BASE + TILT_GROW * tilt) * minCss) / layout.room;
-        const target = Math.max(1, need / layout.scale);
-        st.fit += (target - st.fit) * Math.min(1, dt * 8);
-        scale *= st.fit;
-      } else {
-        st.fit = 1;
-      }
-      scale *= st.dist / DEFAULT_DIST;
+      gl.useProgram(prog);
+      gl.enableVertexAttribArray(aPos);
+      gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
-      const holeR = (0.37 * minCss) / scale;
-      st.hole = { x: center[0] * rect.width, y: (1 - center[1]) * rect.height, r: holeR };
+      gl.uniform2f(uRes, width, height);
+      gl.uniform1f(uTime, now * 0.001);
+      gl.uniform1f(uYaw, st.yaw);
+      gl.uniform1f(uPitch, st.pitch);
+      gl.uniform1f(uDist, st.dist);
 
-      const S = loc.scene;
-      pass(progs.scene, sceneT, sw, sh);
-      gl.uniform2f(S.uRes, sw, sh);
-      gl.uniform1f(S.uTime, (now * 0.001) % 3600);
-      gl.uniform3fv(S.uCamPos, pos);
-      gl.uniform3fv(S.uCamRight, st.right);
-      gl.uniform3fv(S.uCamUp, st.up);
-      gl.uniform3fv(S.uCamFwd, fwd);
-      gl.uniform2f(S.uCenter, center[0], center[1]);
-      gl.uniform1f(S.uScale, scale);
-      gl.uniform1f(S.uSteps, STEPS[quality]);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-      pass(progs.blit, null, outW, outH);
-      bindTex(0, sceneT.tex, loc.blit.uTex);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-      const moving = st.isDragging
-        || Math.abs(st.velX) > 0.002
-        || Math.abs(st.velY) > 0.002
-        || Math.abs(st.pendingX) > 0.0001
-        || Math.abs(st.pendingY) > 0.0001;
-      if (visible && (!reduceMotion.matches || moving)) {
-        animId = requestAnimationFrame(render);
-      } else {
-        running = false;
-      }
-    };
-
-    const turn = (a, b) => {
-      const st = stateRef.current;
-      let { right, up, back } = st;
-      if (a) {
-        back = rotate(back, up, a);
-        right = rotate(right, up, a);
-      }
-      if (b) {
-        back = rotate(back, right, b);
-        up = rotate(up, right, b);
-      }
-      back = norm(back);
-      right = norm(cross(up, back));
-      up = cross(back, right);
-      const pitch = Math.asin(Math.max(-1, Math.min(1, back[1])));
-      if (pitch > PITCH_MAX || pitch < PITCH_MIN) {
-        const target = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch));
-        back = norm(rotate(back, right, target - pitch));
-        right = norm(cross(up, back));
-        up = cross(back, right);
-        st.velY = 0;
-        st.pendingY = 0;
-      }
-      Object.assign(st, { right, up, back });
-    };
-
-    const start = () => {
-      if (running || !visible) return;
-      running = true;
-      t0 = performance.now();
-      lastDraw = 0;
       animId = requestAnimationFrame(render);
     };
-    stateRef.current.wake = start;
 
-    const observer = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (visible) start();
-    });
-    observer.observe(canvas);
-    reduceMotion.addEventListener('change', start);
-
-    const onVisibility = () => {
-      visible = !document.hidden;
-      if (visible) start();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-
-    const onContextLost = (e) => {
-      e.preventDefault();
-      cancelAnimationFrame(animId);
-      running = false;
-      visible = false;
-    };
-    canvas.addEventListener('webglcontextlost', onContextLost);
-    if (import.meta.env.DEV) window.__hotaru = stateRef.current;
-    start();
-
-    const dragTo = (x, y) => {
-      const st = stateRef.current;
-      const now = performance.now();
-      const dx = x - st.lastX;
-      const dy = y - st.lastY;
-      const dt = Math.min(0.2, Math.max(0.005, (now - st.lastT) / 1000));
-      st.lastX = x;
-      st.lastY = y;
-      st.lastT = now;
-      st.pendingX += -dx * SENS;
-      st.pendingY += dy * SENS;
-      const k = 1 - Math.exp(-dt / VEL_TAU);
-      st.velX += (-dx * SENS / dt - st.velX) * k;
-      st.velY += (dy * SENS / dt - st.velY) * k;
-      st.velX = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velX));
-      st.velY = Math.max(-MAX_RATE, Math.min(MAX_RATE, st.velY));
-      const effort = Math.min(0.14, (Math.abs(dx) + Math.abs(dy)) * SENS * 26);
-      st.spin = Math.min(1, st.spin + effort);
-    };
-    const beginDrag = (x, y) => {
-      Object.assign(stateRef.current, {
-        isDragging: true,
-        lastX: x,
-        lastY: y,
-        lastT: performance.now(),
-        velX: 0,
-        velY: 0,
-        pendingX: 0,
-        pendingY: 0,
-      });
-      start();
-    };
-    const endDrag = () => {
-      stateRef.current.isDragging = false;
-    };
-    const zoomBy = (k) => {
-      stateRef.current.dist = Math.max(DIST_MIN, Math.min(DIST_MAX, stateRef.current.dist * k));
-      start();
-    };
+    animId = requestAnimationFrame(render);
 
     const onPointerDown = (e) => {
-      if (e.pointerType === 'touch') return;
-      beginDrag(e.clientX, e.clientY);
-    };
-    const onPointerMove = (e) => {
-      if (e.pointerType === 'touch' || !stateRef.current.isDragging) return;
-      dragTo(e.clientX, e.clientY);
-    };
-    const onPointerUp = (e) => {
-      if (e.pointerType === 'touch') return;
-      endDrag();
-    };
-
-    let pinch = 0;
-    const touchDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-    const onTouchStart = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        pinch = touchDist(e.touches);
-        stateRef.current.isDragging = false;
+      if (e.pointerType === 'touch') {
+        stateRef.current.lastX = e.clientX;
+        stateRef.current.lastY = e.clientY;
         return;
       }
-      const t = e.touches[0];
-      const { hole } = stateRef.current;
-      if (Math.hypot(t.clientX - rect.left - hole.x, t.clientY - rect.top - hole.y) > hole.r) return;
-      e.preventDefault();
-      beginDrag(t.clientX, t.clientY);
+      stateRef.current.isDragging = true;
+      stateRef.current.lastX = e.clientX;
+      stateRef.current.lastY = e.clientY;
+      stateRef.current.yawVel = 0;
+      stateRef.current.pitchVel = 0;
     };
-    const onTouchMove = (e) => {
-      if (e.touches.length === 2 && pinch) {
-        e.preventDefault();
-        const d = touchDist(e.touches);
-        zoomBy(pinch / d);
-        pinch = d;
+
+    const onPointerMove = (e) => {
+      if (e.pointerType === 'touch') {
+        const dx = e.clientX - stateRef.current.lastX;
+        const dy = e.clientY - stateRef.current.lastY;
+        if (Math.abs(dx) > Math.abs(dy) + 4) {
+          stateRef.current.yaw -= dx * 0.005;
+          stateRef.current.lastX = e.clientX;
+          stateRef.current.lastY = e.clientY;
+        }
         return;
       }
       if (!stateRef.current.isDragging) return;
-      e.preventDefault();
-      dragTo(e.touches[0].clientX, e.touches[0].clientY);
+      const dx = e.clientX - stateRef.current.lastX;
+      const dy = e.clientY - stateRef.current.lastY;
+      stateRef.current.lastX = e.clientX;
+      stateRef.current.lastY = e.clientY;
+
+      const sens = 0.005;
+      stateRef.current.yaw -= dx * sens;
+      stateRef.current.pitch += dy * sens;
+      stateRef.current.yawVel = -dx * sens * 30;
+      stateRef.current.pitchVel = dy * sens * 30;
     };
-    const onTouchEnd = (e) => {
-      if (e.touches.length < 2) pinch = 0;
-      if (e.touches.length === 0) stateRef.current.isDragging = false;
+
+    const onPointerUp = () => {
+      stateRef.current.isDragging = false;
     };
 
     const onWheel = (e) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      e.preventDefault();
-      if (e.deltaY) zoomBy(Math.exp(e.deltaY * 0.0015));
+      if (Math.abs(e.deltaY) > 0) {
+        stateRef.current.dist = Math.max(14.0, Math.min(38.0, stateRef.current.dist + e.deltaY * 0.015));
+      }
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('blur', endDrag);
-    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onTouchEnd);
-    canvas.addEventListener('touchcancel', onTouchEnd);
-    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('wheel', onWheel, { passive: true });
 
     return () => {
       cancelAnimationFrame(animId);
-      observer.disconnect();
-      reduceMotion.removeEventListener('change', start);
-      document.removeEventListener('visibilitychange', onVisibility);
-      canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('blur', endDrag);
-      canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchmove', onTouchMove);
-      canvas.removeEventListener('touchend', onTouchEnd);
-      canvas.removeEventListener('touchcancel', onTouchEnd);
       canvas.removeEventListener('wheel', onWheel);
-      gl.deleteBuffer(posBuf);
-      sceneT.free();
-      Object.values(progs).forEach((p) => gl.deleteProgram(p));
+      if (posBuf) gl.deleteBuffer(posBuf);
+      if (prog) gl.deleteProgram(prog);
     };
   }, []);
 
   return (
-    <figure className="relative m-0 w-full h-full overflow-hidden select-none">
+    <div className="relative w-full h-full overflow-hidden select-none touch-pan-y">
       <canvas
         ref={canvasRef}
-        aria-hidden="true"
-        className="w-full h-full block cursor-grab active:cursor-grabbing touch-manipulation"
+        className="w-full h-full block cursor-grab active:cursor-grabbing touch-pan-y"
       />
-      <figcaption className="hidden md:block absolute bottom-6 inset-x-0 z-raised pointer-events-none">
-        <div className="max-w-container mx-auto px-[var(--gutter)] flex items-center justify-end gap-[var(--space-xs)] text-sm text-muted">
-          <span>{labels.hint}</span>
-          <button type="button" onClick={resetCamera} className="tab pointer-events-auto" aria-label={labels.reset}>
-            <RotateCcw aria-hidden="true" className="w-4 h-4" />
-          </button>
-        </div>
-      </figcaption>
-    </figure>
+      <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 flex items-center gap-2 bg-[#050508]/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20">
+        <button
+          onClick={() => setAutoRotate(!autoRotate)}
+          className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white transition-colors"
+          title={autoRotate ? "Pause rotation" : "Auto rotate"}
+        >
+          {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+          <span className="hidden sm:inline">{autoRotate ? "Pause" : "Spin"}</span>
+        </button>
+        <span className="text-white/20">|</span>
+        <button
+          onClick={resetCamera}
+          className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white transition-colors"
+          title="Reset Camera"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Reset</span>
+        </button>
+      </div>
+      <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 hidden sm:block text-[11px] text-white/40 tracking-wider font-mono z-20">
+        DRAG TO ROTATE • SCROLL TO ZOOM
+      </div>
+    </div>
   );
 }

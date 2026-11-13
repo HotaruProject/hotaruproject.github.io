@@ -29,4 +29,4 @@ We welcome contributions to the official Hotaru web portal and documentation man
 
 - Maintain the dark monochrome aesthetic.
 - Preserve responsive layout across mobile and desktop breakpoints.
-- Ensure all technical documentation accurately reflects the Hotaru codebase.
+- Hotaru enforces a strict policy of zero comments in code.
