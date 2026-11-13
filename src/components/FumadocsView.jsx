@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { LangSwitch } from './Navbar';
 import { CATALOG_METHODS } from '../data/catalog.jsx';
+import { DOCS_EN, DOCS_RU } from '../data/docs.jsx';
 import { codeText } from '../lib/codeText.jsx';
 import { useCopy } from '../lib/useCopy.jsx';
 
@@ -122,11 +123,27 @@ function Inline({ text }) {
   });
 }
 
-function Figure({ src, alt }) {
-  const mark = src.endsWith('-mark.png');
+const MEDIA_SIZE = {
+  'media/hotaru-banner.webp': [1400, 608],
+  'media/goygram-mark.webp': [720, 708],
+  'media/goygram-codec.webp': [2136, 1080],
+  'media/singularity-panel.webp': [1280, 720],
+};
+
+function Figure({ src, alt, first }) {
+  const mark = src.endsWith('-mark.webp');
+  const [width, height] = MEDIA_SIZE[src] || [];
   return (
     <figure className={`doc-figure${mark ? ' doc-figure--mark' : ''}`}>
-      <img src={src} alt={alt || ''} loading="lazy" decoding="async" />
+      <img
+        src={src}
+        alt={alt || ''}
+        width={width}
+        height={height}
+        loading={first ? 'eager' : 'lazy'}
+        fetchpriority={first ? 'high' : undefined}
+        decoding="async"
+      />
     </figure>
   );
 }
@@ -194,6 +211,7 @@ function FormattedContent({ rawContent, copyLabel, copiedLabel, failedLabel }) {
                     key={bIdx}
                     src={figure[2]}
                     alt={figure[1]}
+                    first={index === 0 && bIdx === 0}
                   />
                 );
               }
@@ -276,6 +294,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
   const searchRef = useRef(null);
 
   const t = content.docs;
+  const sections = lang === 'ru' ? DOCS_RU : DOCS_EN;
 
   const L = lang === 'ru'
     ? {
@@ -294,11 +313,9 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
         next: 'Дальше',
         empty: 'Ничего не найдено. Измените запрос.',
         copyCode: 'Скопировать код',
-        copyMethod: 'Скопировать сигнатуру метода',
         copied: 'Скопировано',
         failed: 'Не удалось скопировать',
         search: 'Поиск',
-        searchHint: 'Нажмите / для поиска',
         noResults: 'Совпадений нет',
         closeSearch: 'Закрыть поиск',
       }
@@ -318,11 +335,9 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
         next: 'Next',
         empty: 'Nothing matches. Change the query.',
         copyCode: 'Copy code',
-        copyMethod: 'Copy method signature',
         copied: 'Copied',
         failed: 'Copy failed',
         search: 'Search',
-        searchHint: 'Press / to search',
         noResults: 'No matches',
         closeSearch: 'Close search',
       };
@@ -351,30 +366,30 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
   }, [selectedNamespace, searchQuery, lang]);
 
   const filteredSections = useMemo(() => {
-    if (!searchQuery.trim()) return t.sections;
+    if (!searchQuery.trim()) return sections;
     const q = searchQuery.toLowerCase();
-    return t.sections.filter(
+    return sections.filter(
       (s) =>
         s.title.toLowerCase().includes(q) ||
         s.summary.toLowerCase().includes(q) ||
         s.content.toLowerCase().includes(q)
     );
-  }, [t.sections, searchQuery]);
+  }, [sections, searchQuery]);
 
   const currentSection =
-    filteredSections[activeSection] || filteredSections[0] || t.sections[0];
+    filteredSections[activeSection] || filteredSections[0] || sections[0];
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
-      return t.sections.map((s) => ({
+      return sections.map((s) => ({
         kind: 'chapter',
         id: s.id,
         title: s.title,
         summary: s.summary,
       }));
     }
-    const chapters = t.sections
+    const chapters = sections
       .filter((s) =>
         s.title.toLowerCase().includes(q) || s.summary.toLowerCase().includes(q)
       )
@@ -389,7 +404,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
       .slice(0, 12)
       .map((m) => ({ kind: 'method', id: m.name, title: m.name, summary: m.rpc }));
     return [...chapters, ...methods];
-  }, [searchQuery, t.sections, lang]);
+  }, [searchQuery, sections, lang]);
 
   const openSearch = useCallback(() => {
     setSearchOpen(true);
@@ -441,7 +456,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
     setActiveTab('chapters');
     setSearchQuery('');
     closeSearch();
-    const index = t.sections.findIndex((s) => s.id === id);
+    const index = sections.findIndex((s) => s.id === id);
     if (index >= 0) setActiveSection(index);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -481,7 +496,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
       <button type="button" onClick={() => setActiveTab('chapters')} aria-pressed={activeTab === 'chapters'} className="doc-seg__btn">
         <BookOpen aria-hidden="true" className="w-4 h-4" />
         <span>{L.guide}</span>
-        <span className="doc-seg__num">{t.sections.length}</span>
+        <span className="doc-seg__num">{sections.length}</span>
       </button>
       <button type="button" onClick={() => setActiveTab('catalog')} aria-pressed={activeTab === 'catalog'} className="doc-seg__btn">
         <Boxes aria-hidden="true" className="w-4 h-4" />
@@ -503,7 +518,7 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
           </div>
 
           <div className="doc-header__brand">
-            <span className="doc-header__title wordmark" data-text="Hotaru">Hotaru</span>
+            <span className="doc-header__title wordmark">Hotaru</span>
             <span className="doc-header__sep" aria-hidden="true" />
             <span className="doc-header__crumb">
               {activeTab === 'chapters' ? (currentSection?.title || t.title) : L.catalogTitle}
@@ -698,11 +713,6 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
           {activeTab === 'chapters' ? (
             currentSection ? (
               <article className="doc-article">
-                <p className="doc-eyebrow">
-                  <span className="doc-eyebrow__num">{String(activeSection + 1).padStart(2, '0')}</span>
-                  <span className="doc-eyebrow__rule" aria-hidden="true" />
-                  <span>{t.tocTitle || L.chapters}</span>
-                </p>
                 <h1 className="doc-title">{currentSection.title}</h1>
                 <p className="doc-lead">{currentSection.summary}</p>
 
@@ -749,11 +759,6 @@ export function FumadocsView({ content, lang, setLang, onBackToHome, initialTab 
             )
           ) : (
             <section className="doc-article">
-              <p className="doc-eyebrow">
-                <span className="doc-eyebrow__num">{String(CATALOG_METHODS.length).padStart(3, '0')}</span>
-                <span className="doc-eyebrow__rule" aria-hidden="true" />
-                <span>{L.methods}</span>
-              </p>
               <h1 className="doc-title">{L.catalogTitle}</h1>
               <p className="doc-lead">{L.catalogLead}</p>
 

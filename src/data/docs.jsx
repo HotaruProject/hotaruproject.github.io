@@ -3,7 +3,7 @@ export const DOCS_EN = [
     id: 'overview',
     title: 'Overview',
     summary: 'Hotaru is a Telegram userbot runtime that loads .hmod modules into isolated sandboxes.',
-    content: `![The Hotaru userbot banner from the upstream project](media/hotaru-banner.png)
+    content: `![The Hotaru userbot banner from the upstream project](media/hotaru-banner.webp)
 
 Hotaru is a Telegram userbot built on GoyGram, an asynchronous Python MTProto client with native Rust cryptography. The runtime owns the account session; modules are third-party code that the runtime loads, supervises and confines.
 
@@ -24,11 +24,11 @@ The kernel boots, activates modules from the \`constellations/\` directory, and 
 
 Hotaru inherits the transport and the cryptography from GoyGram.
 
-![The GoyGram mark](media/goygram-mark.png)
+![The GoyGram mark](media/goygram-mark.webp)
 
 The chart below is the upstream GoyGram TL codec benchmark.
 
-![GoyGram TL codec benchmark: 351270 operations per second for serialize sendMessage](media/goygram-codec.png)`,
+![GoyGram TL codec benchmark: 351270 operations per second for serialize sendMessage](media/goygram-codec.webp)`,
   },
   {
     id: 'install',
@@ -381,7 +381,7 @@ The dashboard is owner-only. A request carries the Telegram \`initData\`, and th
 
 The image below is the running Singularity frontend, captured from the upstream build.
 
-![The Singularity panel: a ray-marched black hole with its accretion disk](media/singularity-panel.png)`,
+![The Singularity panel: a ray-marched black hole with its accretion disk](media/singularity-panel.webp)`,
   },
   {
     id: 'skill',
@@ -413,7 +413,7 @@ export const DOCS_RU = [
     id: 'overview',
     title: 'Обзор',
     summary: 'Hotaru — среда выполнения Telegram-юзербота, которая загружает модули .hmod в изолированные песочницы.',
-    content: `![Баннер юзербота Hotaru из upstream-проекта](media/hotaru-banner.png)
+    content: `![Баннер юзербота Hotaru из upstream-проекта](media/hotaru-banner.webp)
 
 Hotaru — Telegram-юзербот на базе GoyGram, асинхронного Python-клиента MTProto с нативной криптографией на Rust. Среда выполнения владеет сессией аккаунта; модули — это сторонний код, который среда загружает, контролирует и изолирует.
 
@@ -434,11 +434,11 @@ Hotaru — Telegram-юзербот на базе GoyGram, асинхронног
 
 Hotaru наследует транспорт и криптографию от GoyGram.
 
-![Знак GoyGram](media/goygram-mark.png)
+![Знак GoyGram](media/goygram-mark.webp)
 
 На графике ниже — бенчмарк TL-кодек GoyGram из upstream-репозитория.
 
-![Бенчмарк TL-кодек GoyGram: 351270 операций в секунду на serialize sendMessage](media/goygram-codec.png)`,
+![Бенчмарк TL-кодек GoyGram: 351270 операций в секунду на serialize sendMessage](media/goygram-codec.webp)`,
   },
   {
     id: 'install',
@@ -791,7 +791,7 @@ Hotaru может поднять туннель Cloudflare Horizon и зарег
 
 На изображении ниже — работающий фронтенд Singularity, снятый с upstream-сборки.
 
-![Панель Singularity: чёрная дыра с аккреционным диском, отрисованная реймарчем](media/singularity-panel.png)`,
+![Панель Singularity: чёрная дыра с аккреционным диском, отрисованная реймарчем](media/singularity-panel.webp)`,
   },
   {
     id: 'skill',

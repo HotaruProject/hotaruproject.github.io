@@ -18,7 +18,6 @@ export function LangSwitch({ lang, setLang }) {
 export function Navbar({ lang, setLang, content, onOpenDocs }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileClosing, setMobileClosing] = useState(false);
-  const headRef = useRef(null);
   const progressRef = useRef(null);
   const menuOpen = useRef(false);
   const closeTimer = useRef(0);
@@ -74,15 +73,13 @@ export function Navbar({ lang, setLang, content, onOpenDocs }) {
   return (
     <>
       <header
-        ref={headRef}
-        className="nav-head fixed top-[var(--space-sm)] inset-x-0 z-sticky-nav px-[var(--space-sm)] pointer-events-none"
+        className="fixed top-[var(--space-sm)] inset-x-0 z-sticky-nav px-[var(--space-sm)] pointer-events-none"
       >
         <div className="nav-pill pointer-events-auto max-w-[64rem] mx-auto rounded-input min-h-[56px] pl-[var(--space-md)] pr-[var(--space-xs)] flex items-center justify-between gap-[var(--space-md)]">
           <button
             type="button"
             onClick={scrollToTop}
             className="wordmark font-display uppercase text-lg text-ink min-h-[44px] rounded-input focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-            data-text="Hotaru"
             aria-label="Hotaru, back to top"
           >
             Hotaru
