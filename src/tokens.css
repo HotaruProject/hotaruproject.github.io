@@ -20,15 +20,11 @@
   --glow-md: 0 0 26px oklch(100% 0 0 / 0.20), 0 0 6px oklch(100% 0 0 / 0.12);
   --glow-lg: 0 0 44px oklch(100% 0 0 / 0.26), 0 0 10px oklch(100% 0 0 / 0.16);
   --glow-edge: inset 0 1px 0 oklch(100% 0 0 / 0.12);
-  /* the small aura that sits just outside a control's boundary: a crisp
-     one pixel ring right at the edge and a tight bloom outside it, so the
-     border itself stays sharp and readable */
+
   --aura-control: 0 0 0 1px oklch(100% 0 0 / 0.11), 0 0 9px 0 oklch(100% 0 0 / 0.15);
   --aura-control-lit: 0 0 0 1px oklch(100% 0 0 / 0.22), 0 0 14px 1px oklch(100% 0 0 / 0.24);
   --glow-text: 0 0 18px oklch(100% 0 0 / 0.32);
-  /* the text halos, in four weights. the headings carry a side aura: the
-     light spills out of the flanks of the glyphs and leaves the strokes
-     themselves crisp, the way the buttons carry a rim of light */
+
   --halo-faint: 0 0 10px oklch(100% 0 0 / 0.05);
   --halo-whisper: 0 0 8px oklch(100% 0 0 / 0.028);
   --halo-title:
