@@ -8,6 +8,9 @@ import { CONTENT } from './data/content.jsx';
 export function App() {
   const [lang, setLang] = useState('en');
   const [view, setView] = useState(() => (window.location.hash.startsWith('#docs') ? 'docs' : 'home'));
+  const [docsInitialTab, setDocsInitialTab] = useState(() =>
+    window.location.hash.includes('catalog') ? 'catalog' : 'chapters'
+  );
   const currentContent = CONTENT[lang] || CONTENT.en;
 
   useEffect(() => {
@@ -64,25 +67,21 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const handleHash = () => {
-      if (window.location.hash.startsWith('#docs')) {
-        setView('docs');
-      } else {
-        setView('home');
-      }
-    };
-    window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
+    // Older builds used a #docs fragment even though the guide is an
+    // in-app view. Remove it from old links so navigation never leaves a
+    // decorative hash in the address bar.
+    if (window.location.hash.startsWith('#docs')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
   }, []);
 
   const openDocs = (target) => {
-    window.location.hash = target === 'catalog' ? '#docs-catalog' : '#docs';
+    setDocsInitialTab(target === 'catalog' ? 'catalog' : 'chapters');
     setView('docs');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const backHome = () => {
-    window.location.hash = '';
     setView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -94,6 +93,7 @@ export function App() {
         lang={lang}
         setLang={setLang}
         onBackToHome={backHome}
+        initialTab={docsInitialTab}
       />
     );
   }
