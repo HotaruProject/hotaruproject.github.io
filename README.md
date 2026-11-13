@@ -130,10 +130,11 @@ This project is open-source software licensed under the GNU Affero General Publi
 [tailwind-badge]: https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC.svg?style=for-the-badge&logo=tailwindcss&logoColor=white
 [tailwind-url]: https://tailwindcss.com/
 [pages-badge]: https://img.shields.io/badge/GitHub_Pages-Active-emerald.svg?style=for-the-badge&logo=githubpages&logoColor=white
-[pages-url]: https://hotaruproject.github.io/
+[pages-url]: https://jhotaruproject.github.io/
 [license-badge]: https://img.shields.io/badge/License-AGPL_3.0-blue.svg?style=for-the-badge
 [license-url]: LICENSE
 [hotaru-badge]: https://img.shields.io/badge/Hotaru_Userbot-Repository-000000.svg?style=for-the-badge&logo=telegram&logoColor=white
 [hotaru-url]: https://github.com/HotaruProject/Hotaru
 [telegram-badge]: https://img.shields.io/badge/Telegram-Community-2CA5E0.svg?style=for-the-badge&logo=telegram&logoColor=white
 [telegram-url]: https://t.me/hotaru_ub
+Authors: @i-execute @samsepi0l_ovf
